@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RecoveryCodesPanel } from "@/components/auth/RecoveryCodesPanel";
 import { MfaEnrollModal } from "@/components/auth/MfaEnrollModal";
+import { AlterarSenhaCard } from "@/components/auth/AlterarSenhaCard";
 import { regenerateRecoveryCodes } from "@/app/actions/settings/regenerateRecoveryCodes";
 import { irAoDesafioDeMfa } from "@/lib/auth/ir-ao-desafio-de-mfa";
 import { signOutEverywhere } from "@/app/actions/settings/signOutEverywhere";
@@ -121,6 +122,8 @@ export function SecurityClient({
       {/* O modal é o MESMO do bloqueador de tela cheia — reusado, não copiado.
           Ele recarrega a página ao terminar, e o servidor reavalia o estado. */}
       {ativando ? <MfaEnrollModal motivo="escolha" /> : null}
+
+      <AlterarSenhaCard />
 
       <Card className="space-y-3 p-6">
         <div className="flex items-start justify-between gap-4">
