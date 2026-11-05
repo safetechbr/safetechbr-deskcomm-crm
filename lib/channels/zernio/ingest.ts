@@ -617,6 +617,30 @@ async function insertMessage(
   const anuncio =
     msg.direction === "inbound" ? metadataDoAnuncio(extrairAtribuicaoMeta(msg.referral)) : {};
 
+  // ─── A legenda de uma mídia nossa volta como um SEGUNDO balão ─────────────
+  //
+  // O Instagram não tem legenda: a mídia enviada com `message` vira dois balões
+  // (a imagem e o texto), cada um com seu id. O eco do texto não casa com a
+  // linha da imagem pelo id e entrava como "enviado pelo celular" — a legenda
+  // aparecia duas vezes no CRM (na imagem e embaixo), embora na conversa real
+  // do cliente exista uma só. Se o texto do eco é a legenda de uma mídia que
+  // ESTE CRM acabou de enviar nesta conversa, ele é eco, não digitação externa.
+  if (msg.direction === "outbound" && !temAnexo && !msg.location && msg.text?.trim()) {
+    const desde = new Date(Date.now() - 5 * 60_000).toISOString();
+    const { data: midiasNossas } = await admin
+      .from("messages")
+      .select("id, body, type, sent_via")
+      .eq("organization_id", input.organizationId)
+      .eq("conversation_id", input.conversationId)
+      .eq("direction", "outbound")
+      .neq("type", "text")
+      .neq("sent_via", "external_device")
+      .gte("created_at", desde)
+      .limit(20);
+    const texto = msg.text.trim();
+    if ((midiasNossas ?? []).some((m) => (m.body ?? "").trim() === texto)) return "duplicate";
+  }
+
   const { data, error } = await admin
     .from("messages")
     .insert({

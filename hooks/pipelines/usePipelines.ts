@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { apiClient } from "@/lib/api/client";
+import { EVENTO_FUNIS_MUDARAM } from "@/hooks/pipelines/useFunisDoMenu";
 
 /**
  * Criar, editar e arquivar FUNIL — a escrita da tela do Kanban.
@@ -65,7 +66,11 @@ type Resposta = { data: { pipelines: FunilDaResposta[]; arquivados: FunilDaRespo
 
 function useReler() {
   const router = useRouter();
-  return () => router.refresh();
+  return () => {
+    // O submenu "Funis" da barra lateral tem leitura própria: avisa que mudou.
+    window.dispatchEvent(new Event(EVENTO_FUNIS_MUDARAM));
+    router.refresh();
+  };
 }
 
 export function useCriarFunil() {

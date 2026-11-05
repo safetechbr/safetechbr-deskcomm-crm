@@ -102,7 +102,7 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self' http://localhost:5173 https://app.safetechbr.com" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           // microphone=(self): o gravador de voz do composer (PTT estilo WhatsApp)
           // usa getUserMedia({audio}); microphone=() bloquearia em TODA origem,

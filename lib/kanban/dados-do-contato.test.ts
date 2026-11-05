@@ -102,4 +102,19 @@ describe("anexarDadosDoContato — o que o card do funil recebe do contato", () 
       "um@exemplo.com",
     ]);
   });
+
+  it("marca contact_has_avatar só quando há foto e o contato não está anonimizado", () => {
+    const leads = anexarDadosDoContato(
+      [lead("l1", "c1"), lead("l2", "c2"), lead("l3", "c3")],
+      [
+        contato("c1", { phone_number: "+5511900000001", avatar_storage_path: "org/c1.jpg" }),
+        contato("c2", { phone_number: "+5511900000002" }),
+        contato("c3", { phone_number: "+5511900000003", avatar_storage_path: "org/c3.jpg", is_anonymized: true }),
+      ],
+    );
+
+    expect(leads[0]?.contact_has_avatar).toBe(true);
+    expect(leads[1]?.contact_has_avatar).toBeUndefined();
+    expect(leads[2]?.contact_has_avatar).toBeUndefined();
+  });
 });

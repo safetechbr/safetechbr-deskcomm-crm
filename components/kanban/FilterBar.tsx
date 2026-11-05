@@ -29,6 +29,7 @@ import {
 } from "@/lib/kanban/filters";
 import { categoriaDoMotivo } from "@/lib/leads/motivos-de-perda-do-funil";
 import { rotuloDoMotivoDePerda } from "@/lib/schemas/leads";
+import { canalDoLead, rotuloDoCanal } from "@/lib/channels/selo-do-canal";
 import { cn } from "@/lib/utils";
 
 interface FilterBarProps {
@@ -81,6 +82,20 @@ export function FilterBar({ filters, onChange, leads, settings }: FilterBarProps
     for (const l of leads) for (const t of marcadoresDoCard(l)) set.add(t);
     return Array.from(set).sort();
   }, [leads]);
+
+  // Só os canais que existem no quadro: oferecer um sem card devolveria vazio.
+  const canalOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of leads) {
+      const c = canalDoLead(l.source);
+      if (c) set.add(c);
+    }
+    if (filters.channel) set.add(filters.channel);
+    return Array.from(set).sort((a, b) =>
+      rotuloDoCanal(a).localeCompare(rotuloDoCanal(b), "pt-BR"),
+    );
+  }, [leads, filters.channel]);
+  const canalLabel = filters.channel ? rotuloDoCanal(filters.channel) : t("Todos");
 
   const filteredAgentId = parseAgentOwnerFilter(filters.owner);
 
@@ -261,6 +276,27 @@ export function FilterBar({ filters, onChange, leads, settings }: FilterBarProps
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {canalOptions.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              {t("Canal")}: {canalLabel}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => onChange({ ...filters, channel: undefined })}>
+              {t("Todos")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {canalOptions.map((c) => (
+              <DropdownMenuItem key={c} onClick={() => onChange({ ...filters, channel: c })}>
+                {rotuloDoCanal(c)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
       {mostraPerda ? (
         <>
           <DropdownMenu>
@@ -382,6 +418,7 @@ export function FilterBar({ filters, onChange, leads, settings }: FilterBarProps
         filters.owner ||
         marcadoresEscolhidos.length > 0 ||
         filters.overdueOnly ||
+        filters.channel ||
         filters.lostReason ||
         filters.lostCategory ||
         (filters.status && filters.status !== "all")) && (

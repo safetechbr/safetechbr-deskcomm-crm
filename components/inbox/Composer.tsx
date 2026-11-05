@@ -10,6 +10,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { PaperPlaneTilt } from "@/lib/ui/icons";
+import { EstoqueButton } from "@/components/inbox/composer/EstoqueButton";
 import { Button } from "@/components/ui/button";
 import { AttachMenu } from "@/components/inbox/composer/AttachMenu";
 import { AttachmentPreviewDialog } from "@/components/inbox/composer/AttachmentPreviewDialog";
@@ -939,6 +940,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             onPick={escolherArquivo}
             onPickContact={mode === "reply" ? () => setContactPickerOpen(true) : undefined}
           />
+          {mode === "reply" ? (
+            <EstoqueButton conversationId={conversationId} disabled={respostaBarrada} />
+          ) : null}
           <EmojiButton
             disabled={isDisabled}
             onPick={(emoji) => {

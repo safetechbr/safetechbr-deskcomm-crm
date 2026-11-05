@@ -1,4 +1,5 @@
 import type { Lead } from "@/lib/types/leads";
+import { canalDoLead } from "@/lib/channels/selo-do-canal";
 import { diaDeHojeLocal } from "@/lib/ai/pacing-knobs";
 import { cardTemMarcador, cardTemTodasNaMesmaCaixa } from "@/lib/kanban/marcadores-do-card";
 import {
@@ -39,6 +40,8 @@ export interface LeadFilters {
   /** E ou OU entre as etiquetas escolhidas (#1274). `e` é o padrão. */
   tagMode?: ModoDeEtiqueta;
   search?: string;
+  /** Canal de origem do card (sigla de `canalDoLead`: WA, IG, FB). */
+  channel?: string;
   /**
    * Limite de valor mínimo/máximo, em centavos (#1531).
    *
@@ -109,6 +112,7 @@ export function filtersFromParams(
   const tags = typeof sp.getAll === "function" ? sp.getAll("tag") : [];
   const tag = tags.length > 0 ? tags : sp.get("tag") ?? undefined;
   const search = sp.get("q");
+  const canal = sp.get("canal");
   const modo = sp.get("modo") ?? undefined;
   return {
     owner: owner ?? undefined,
@@ -123,6 +127,7 @@ export function filtersFromParams(
     // colado à mão.
     ...(modoDeEtiqueta(modo) ? { tagMode: modoDeEtiqueta(modo) } : {}),
     search: search ?? undefined,
+    channel: canal ?? undefined,
     overdueOnly: sp.get("overdue") === "1" || undefined,
     lostReason: sp.get("motivo") ?? undefined,
     lostCategory: sp.get("categoria") ?? undefined,
@@ -138,6 +143,7 @@ export function filtersToParams(f: LeadFilters): string {
   for (const marcador of marcadoresDoFiltro(f.tag)) p.append("tag", marcador);
   if (f.tagMode === "ou") p.set("modo", "ou");
   if (f.search?.trim()) p.set("q", f.search.trim());
+  if (f.channel) p.set("canal", f.channel);
   if (f.overdueOnly) p.set("overdue", "1");
   if (f.lostReason) p.set("motivo", f.lostReason);
   if (f.lostCategory) p.set("categoria", f.lostCategory);
@@ -203,6 +209,7 @@ export function applyFilters(
       }
     }
     if (f.status && f.status !== "all" && l.status !== f.status) return false;
+    if (f.channel && canalDoLead(l.source) !== f.channel) return false;
     // Motivo/categoria só existem em negócio PERDIDO (issue #1537). Escolher um
     // deles é pedir perdas: sem isso, o filtro combinado com a aba "Ganhos"
     // devolvia lista vazia sem dizer por quê.

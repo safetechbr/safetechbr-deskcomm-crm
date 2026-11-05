@@ -15,6 +15,10 @@ import { LogotipoDoProduto, SimboloDoProduto } from "@/components/branding/Marca
 import { marcaEhADoProduto } from "@/lib/branding";
 import { useMarcaDaInstalacao } from "@/lib/branding/contexto";
 import { GRUPO_NO_RODAPE, sidebarGroups } from "@/lib/navigation/registry";
+import { useFunisDoMenu } from "@/hooks/pipelines/useFunisDoMenu";
+
+const CHAVE_FUNIS_FECHADOS = "sidebar-funis-fechados";
+const HREF_DOS_FUNIS = "/app/kanban";
 
 const CHAVE_GRUPOS_FECHADOS = "sidebar-grupos-fechados";
 
@@ -84,6 +88,32 @@ export function SidebarContent({
       return next;
     });
   }
+
+  /**
+   * Submenu de Funis: atalho direto para o quadro de cada funil, sem passar pela
+   * lista. Aberto por padrão; a preferência de fechar é por navegador, como a dos
+   * grupos. Só existe com a barra aberta — recolhida (64px) não há onde desenhar.
+   */
+  const [funisFechados, setFunisFechados] = useState(false);
+  useEffect(() => {
+    try {
+      setFunisFechados(window.localStorage.getItem(CHAVE_FUNIS_FECHADOS) === "1");
+    } catch {
+      // Storage bloqueado — fica aberto.
+    }
+  }, []);
+  function toggleFunis() {
+    setFunisFechados((v) => {
+      try {
+        window.localStorage.setItem(CHAVE_FUNIS_FECHADOS, v ? "0" : "1");
+      } catch {
+        // Só não sobrevive a um F5.
+      }
+      return !v;
+    });
+  }
+  const temFunisNoMenu = grupos.some((g) => g.items.some((i) => i.href === HREF_DOS_FUNIS));
+  const funis = useFunisDoMenu(temFunisNoMenu && !collapsed);
 
   const brand = useMarcaDaInstalacao();
   /**
@@ -329,8 +359,10 @@ export function SidebarContent({
                   {items.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                     const Icon = item.icon;
+                    const ehFunis = item.href === HREF_DOS_FUNIS && !collapsed;
                     return (
                       <li key={item.href}>
+                        <div className="relative">
                         <Link
                           href={item.href}
                           title={collapsed ? t(item.label) : undefined}
@@ -354,6 +386,49 @@ export function SidebarContent({
                           {item.contador === "casos" && <ContadorDeCasos compacto={collapsed} />}
                           {item.contador === "fila" && <ContadorDaFila compacto={collapsed} />}
                         </Link>
+                        {ehFunis && (
+                          <button
+                            type="button"
+                            onClick={toggleFunis}
+                            aria-expanded={!funisFechados}
+                            aria-label={funisFechados ? t("Mostrar funis") : t("Esconder funis")}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-text-subtle hover:bg-accent/50 hover:text-foreground"
+                          >
+                            <CaretDown
+                              size={12}
+                              weight="bold"
+                              className={cn("transition-transform", funisFechados && "-rotate-90")}
+                              aria-hidden
+                            />
+                          </button>
+                        )}
+                        </div>
+                        {ehFunis && !funisFechados && funis.length > 0 && (
+                          <ul className="mt-1 space-y-1 border-l pl-2 ml-5" aria-label={t("Funis")}>
+                            {funis.map((f) => {
+                              const href = `/app/pipelines/${f.id}`;
+                              const ativo = pathname === href || pathname.startsWith(href + "/");
+                              return (
+                                <li key={f.id}>
+                                  <Link
+                                    href={href}
+                                    onClick={onNavigate}
+                                    aria-current={ativo ? "page" : undefined}
+                                    title={f.name}
+                                    className={cn(
+                                      "flex items-center rounded-md px-2 py-1 text-sm transition-colors",
+                                      ativo
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                                    )}
+                                  >
+                                    <span className="truncate">{f.name}</span>
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
                       </li>
                     );
                   })}

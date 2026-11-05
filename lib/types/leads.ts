@@ -130,6 +130,13 @@ export interface Lead {
   contact_email?: string;
   contact_links?: Array<{ tipo: string; href: string }>;
   /**
+   * Derivado (não é coluna): o contato tem foto de perfil guardada. É só o
+   * indicador — a imagem vem de `/api/v1/contacts/{contact_id}/avatar`, para
+   * o card não pedir a rota (e levar 404) de quem não tem foto. Ausente no
+   * contato anonimizado (LGPD).
+   */
+  contact_has_avatar?: boolean;
+  /**
    * Derivado (não é coluna): os marcadores das CONVERSAS do contato deste
    * negócio — a terceira caixa, "Tags da conversa" no painel do Inbox, onde a
    * IA também escreve. União de TODAS as conversas do contato, não só da mais

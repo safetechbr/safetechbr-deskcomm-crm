@@ -801,6 +801,16 @@ export const AUDIT_ACTIONS = [
   // As fotos do produto (migration 0390): subir uma, e reordenar/remover.
   "catalog_product.photo_added",
   "catalog_product.photos_updated",
+  // O estoque de veículos da loja de carros (migration 9030).
+  "veiculo.created",
+  "veiculo.updated",
+  "veiculo.status_changed",
+  "veiculo.deleted",
+  "veiculo.photo_added",
+  "veiculo.photos_updated",
+  "veiculo.video_set",
+  "veiculo.video_removed",
+  "veiculo.presented",
 
   // As tarefas do CRM (migration 0210). Tarefa é combinado de trabalho entre
   // pessoas do time — quem a criou, quem mudou o prazo e quem a apagou é

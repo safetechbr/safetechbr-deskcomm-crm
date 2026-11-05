@@ -20,6 +20,7 @@ import type { Lead } from "@/lib/types/leads";
 import type { BoardData, Pipeline, Stage } from "@/lib/kanban/types";
 import { StageColumn } from "./StageColumn";
 import { LeadDossier } from "./LeadDossier";
+import { ChatLateralDoLead } from "./ChatLateralDoLead";
 import { RetomarComoNovoNegocioDialog } from "./RetomarComoNovoNegocioDialog";
 import { camposDoFunil, camposPorEscopo } from "@/lib/leads/campos-do-funil";
 
@@ -155,6 +156,9 @@ export function KanbanBoard({
   // o histórico de captação tinha o id e nenhum lugar para levá-lo. Uma vez
   // aberto, o estado local manda (fechar não reabre pela URL).
   const [dossieId, setDossieId] = useState<string | null>(leadInicial ?? null);
+  // Chat lateral: o clique no card abre a conversa do negócio numa gaveta, sem
+  // sair do quadro. Lead sem conversa continua abrindo o dossiê.
+  const [chatId, setChatId] = useState<string | null>(null);
   const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
   const selectedLeadIds = useMemo(
     () => (selectedIds ? new Set(selectedIds) : internalSelected),
@@ -175,6 +179,16 @@ export function KanbanBoard({
   const leadDoDossie = dossieId
     ? (data?.leads.find((l) => l.id === dossieId) ?? null)
     : null;
+
+  const leadDoChat = chatId ? (data?.leads.find((l) => l.id === chatId) ?? null) : null;
+  const abrirCard = useCallback(
+    (leadId: string) => {
+      const l = data?.leads.find((x) => x.id === leadId);
+      if (l?.conversa?.id) setChatId(leadId);
+      else setDossieId(leadId);
+    },
+    [data],
+  );
 
   const grouped = useMemo(() => {
     if (!data) return null;
@@ -378,7 +392,7 @@ export function KanbanBoard({
               canonicalTags={canonicalTags}
               selectedLeadIds={selectedLeadIds}
               onSelectMany={handleSelectMany}
-              onOpen={setDossieId}
+              onOpen={abrirCard}
               etapas={data.stages}
               onMoverPara={aoMoverPelaLista}
               podeRenomear={podeRenomearEtapa}
@@ -387,6 +401,17 @@ export function KanbanBoard({
           ))}
         </div>
       </div>
+      {leadDoChat?.conversa?.id && (
+        <ChatLateralDoLead
+          conversationId={leadDoChat.conversa.id}
+          titulo={leadDoChat.title}
+          onFechar={() => setChatId(null)}
+          onVerNegocio={() => {
+            setChatId(null);
+            setDossieId(leadDoChat.id);
+          }}
+        />
+      )}
       {leadDoDossie && (
         <LeadDossier
           open

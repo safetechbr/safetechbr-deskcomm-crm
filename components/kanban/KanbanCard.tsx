@@ -14,7 +14,10 @@ import { ConversaSlot } from "./ConversaSlot";
 import { ScoreSlot } from "./ScoreSlot";
 import { OwnerBadge } from "./OwnerBadge";
 import { ContatoNoCard } from "./ContatoNoCard";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { iniciaisDe } from "@/components/agenda/paleta";
 import { TarefasNoCard } from "./TarefasNoCard";
+import { seloDoCanal } from "@/lib/channels/selo-do-canal";
 
 /** Os dois gestos de seleção que o card sabe relatar. */
 export type GestoDeSelecao = "alterna" | "intervalo";
@@ -61,13 +64,10 @@ function formatValor(cents: number | null, currency: string | null): string | nu
 }
 
 /**
- * O card do Kanban — orçamento FIXO: 5 elementos, 3 faixas, altura constante.
- *
- * As alturas são reservadas em vez de derivadas do conteúdo: título sempre
- * ocupa 2 linhas, valor sempre ocupa a sua linha (com "—" quando não há valor),
- * e a faixa do agente existe mesmo vazia. É isso que faz o board continuar
- * legível quando score, próxima ação e alerta chegarem — o card não cresce com
- * dados, ele TROCA de estado.
+ * O card do Kanban — compacto: título em UMA linha, e a linha do valor e a
+ * faixa do agente só ocupam altura quando têm o que mostrar (antes eram
+ * reservadas vazias, o que deixava cada card alto à toa e cabiam poucos
+ * contatos por coluna).
  *
  * Cor só aparece na borda esquerda, e só quando o estado pede (Lei C).
  */
@@ -145,7 +145,7 @@ export function KanbanCard({
           title={card.tags.length > 0 ? `Tags: ${card.tags.join(", ")}` : undefined}
           className={cn(
             "group relative overflow-hidden rounded-md border border-border bg-surface",
-            "py-2.5 pl-3 pr-3 shadow-xs transition-colors",
+            "py-2 pl-3 pr-3 shadow-xs transition-colors",
             "hover:border-border-strong",
             snapshot.isDragging && "rotate-1 shadow-md ring-1 ring-accent/40",
             isSelected && "ring-2 ring-accent",
@@ -224,7 +224,47 @@ export function KanbanCard({
                   acessibilidade; deixar só onKeyDown daria uma ação que existe
                   e NÃO É DESCOBERTA por leitor de tela. O título como button
                   atende mouse, teclado e leitor sem desfazer a decisão antiga. */}
-              <h3 className="line-clamp-2 h-10 text-sm font-medium leading-5 text-text">
+              {/* Miniatura do contato: identifica a pessoa de relance. Largura
+                  fixa (h-8 w-8) para não mexer no orçamento de altura do card.
+                  Só monta a <img> quando o contato tem foto (`contact_has_avatar`)
+                  — sem isso o card pediria a rota de TODO contato e levaria 404
+                  em quem não tem. O fallback do Radix cobre foto que falha; sem
+                  letra no título (só número de telefone) mostra "#", não "+5". */}
+              <div className="relative shrink-0">
+              <Avatar className="h-8 w-8" data-testid="avatar-do-card">
+                {lead.contact_id && lead.contact_has_avatar ? (
+                  <AvatarImage
+                    src={`/api/v1/contacts/${lead.contact_id}/avatar`}
+                    alt=""
+                    loading="lazy"
+                    className="object-cover"
+                  />
+                ) : null}
+                <AvatarFallback className="bg-surface-elevated text-[11px] font-medium text-text-muted">
+                  {/\p{L}/u.test(card.title) ? iniciaisDe(card.title) : "#"}
+                </AvatarFallback>
+              </Avatar>
+              {(() => {
+                const selo = seloDoCanal(lead.source);
+                return selo ? (
+                  // Sobre o canto do avatar: não ocupa altura nem largura do card.
+                  <span
+                    role="img"
+                    aria-label={`${t("Canal")}: ${selo.rotulo}`}
+                    title={selo.rotulo}
+                    data-testid="selo-do-canal"
+                    className={cn(
+                      "absolute -bottom-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center",
+                      "rounded-full px-0.5 text-[7px] font-bold leading-none ring-1 ring-surface",
+                      selo.classe,
+                    )}
+                  >
+                    {selo.sigla}
+                  </span>
+                ) : null;
+              })()}
+              </div>
+              <h3 className="line-clamp-1 mt-1.5 text-sm font-medium leading-5 text-text">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -250,17 +290,15 @@ export function KanbanCard({
           </div>
 
           {/* ② valor — altura reservada mesmo sem valor, senão o card encolhe. */}
-          <p
-            className={cn(
-              "mt-1 h-5 text-xs font-medium leading-5 tabular-nums",
-              value ? "text-text" : "text-text-muted",
-            )}
-          >
-            {value ?? "—"}
-          </p>
+          {value && (
+            <p className="h-5 text-xs font-medium leading-5 tabular-nums text-text">
+              {value}
+            </p>
+          )}
 
           {/* ③ a linha do agente — um slot, três estados, nunca três blocos. */}
-          <div className="mt-1.5 flex h-6 items-center gap-2 text-xs">
+          {state.slot.type !== "idle" && (
+          <div className="mt-1 flex h-6 items-center gap-2 text-xs">
             {state.slot.type === "awaiting" && (
               // A proposta do agente é a ÚNICA linha do card com ação: é o
               // ponto onde a decisão do humano entra. Sem os botões aqui, o
@@ -297,6 +335,7 @@ export function KanbanCard({
               />
             )}
           </div>
+          )}
 
           {/* A última mensagem, com atalho para o inbox. Fica ANTES do rodapé
               de dono/tempo porque é conteúdo do negócio, não metadado do card —
@@ -312,7 +351,7 @@ export function KanbanCard({
           <ContatoNoCard lead={lead} />
 
           {/* ④ dono (+ selo de tarefas) · ⑤ tempo no estágio */}
-          <div className="mt-1 flex h-6 items-center justify-between gap-2">
+          <div className="flex h-6 items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
               <OwnerBadge
                 ownerKind={card.owner.kind}
