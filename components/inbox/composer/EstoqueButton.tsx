@@ -186,9 +186,9 @@ function DialogoDeEstoque({ conversationId, aoFechar }: { conversationId: string
               <li key={v.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
                 {v.capa_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={v.capa_url} alt="" className="h-14 w-20 shrink-0 rounded object-cover" />
+                  <img src={v.capa_url} alt="" className="h-14 w-20 shrink-0 rounded-md object-cover" />
                 ) : (
-                  <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
+                  <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
                     {t("Sem foto")}
                   </div>
                 )}

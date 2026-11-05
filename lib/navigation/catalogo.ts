@@ -168,14 +168,6 @@ export const NAV_CATALOG = [
   },
   // ---- Atendimento — onde o operador passa o dia ----
   {
-    href: "/app/estoque",
-    label: "Estoque",
-    description: "Veículos da loja com fotos e ficha, prontos para enviar ao cliente.",
-    icon: "Storefront",
-    group: "atendimento",
-    sidebar: true,
-  },
-  {
     href: "/app/inbox",
     label: "Inbox",
     description: "As conversas de WhatsApp, com você e a IA atendendo lado a lado.",
@@ -184,6 +176,14 @@ export const NAV_CATALOG = [
     sidebar: true,
     // Quantas conversas a IA passou para a equipe e esperam uma pessoa (aba Fila).
     contador: "fila",
+  },
+  {
+    href: "/app/estoque",
+    label: "Estoque",
+    description: "Veículos da loja com fotos e ficha, prontos para enviar ao cliente.",
+    icon: "Storefront",
+    group: "atendimento",
+    sidebar: true,
   },
   {
     href: "/app/radar",

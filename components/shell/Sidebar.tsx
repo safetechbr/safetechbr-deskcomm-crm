@@ -392,7 +392,7 @@ export function SidebarContent({
                             onClick={toggleFunis}
                             aria-expanded={!funisFechados}
                             aria-label={funisFechados ? t("Mostrar funis") : t("Esconder funis")}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-text-subtle hover:bg-accent/50 hover:text-foreground"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-subtle hover:bg-accent/50 hover:text-foreground"
                           >
                             <CaretDown
                               size={12}

@@ -271,7 +271,7 @@ function FormularioDoVeiculo({
 
   const campo = (k: keyof Rascunho, rotulo: string, extra?: string, lista?: string, aoMudar?: (v: string) => void) => (
     <label className={`text-sm ${extra ?? ""}`}>
-      {t(rotulo)}
+      {rotulo}
       <input
         value={r[k]}
         onChange={(e) => (aoMudar ? aoMudar(e.target.value) : setR({ ...r, [k]: e.target.value }))}
@@ -393,21 +393,21 @@ function FormularioDoVeiculo({
               </div>
             </div>
           ) : null}
-          {campo("marca", "Marca", undefined, "lista-marcas")}
-          {campo("modelo", r.marca ? "Modelo (digite para buscar)" : "Modelo (escolha a marca antes)", undefined, "lista-modelos", aoDigitarModelo)}
+          {campo("marca", t("Marca"), undefined, "lista-marcas")}
+          {campo("modelo", r.marca ? t("Modelo (digite para buscar)") : t("Modelo (escolha a marca antes)"), undefined, "lista-modelos", aoDigitarModelo)}
           <datalist id="lista-marcas">{marcas.map((m) => <option key={m} value={m} />)}</datalist>
           <datalist id="lista-modelos">{sugestoes.map((m) => <option key={m} value={m} />)}</datalist>
           <datalist id="lista-anos">{anos.map((a) => <option key={a} value={a} />)}</datalist>
-          {campo("versao", "Versão")}
-          {campo("ano_fabricacao", "Ano de fabricação", undefined, "lista-anos")}
-          {campo("ano_modelo", "Ano do modelo", undefined, "lista-anos")}
-          {campo("km", "Quilometragem")}
-          {campo("preco", "Preço (R$)")}
-          {campo("motor", "Motor (ex.: 1.0 turbo)")}
-          {campo("cambio", "Câmbio (ex.: automático)")}
-          {campo("combustivel", "Combustível")}
-          {campo("cor", "Cor")}
-          {campo("placa_final", "Final da placa")}
+          {campo("versao", t("Versão"))}
+          {campo("ano_fabricacao", t("Ano de fabricação"), undefined, "lista-anos")}
+          {campo("ano_modelo", t("Ano do modelo"), undefined, "lista-anos")}
+          {campo("km", t("Quilometragem"))}
+          {campo("preco", t("Preço (R$)"))}
+          {campo("motor", t("Motor (ex.: 1.0 turbo)"))}
+          {campo("cambio", t("Câmbio (ex.: automático)"))}
+          {campo("combustivel", t("Combustível"))}
+          {campo("cor", t("Cor"))}
+          {campo("placa_final", t("Final da placa"))}
           <label className="text-sm sm:col-span-2">
             {t("Opcionais")}
             <textarea
@@ -459,7 +459,7 @@ function FormularioDoVeiculo({
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {fotos.map((c, i) => (
                 <li key={c} className="space-y-1">
-                  <div className="aspect-[4/3] overflow-hidden rounded bg-muted">
+                  <div className="aspect-[4/3] overflow-hidden rounded-md bg-muted">
                     {urlsDasFotos[c] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={urlsDasFotos[c]} alt="" className="h-full w-full object-cover" />
