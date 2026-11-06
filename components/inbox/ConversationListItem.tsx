@@ -174,6 +174,13 @@ export function ConversationListItem({
   const overflow = tags.length - visibleTags.length;
   const preview = conversation.last_message_preview?.trim() || t("Sem mensagens");
   const truncated = preview.length > 60 ? `${preview.slice(0, 60)}…` : preview;
+  // Quem mandou a última mensagem: se a última saída é igual ou posterior à
+  // última entrada, a prévia é da equipe (atendente ou IA); senão, do cliente.
+  const ultimaEhDaEquipe =
+    !!conversation.last_outbound_at &&
+    (!conversation.last_inbound_at ||
+      new Date(conversation.last_outbound_at).getTime() >=
+        new Date(conversation.last_inbound_at).getTime());
   const naFila = queuePosition !== undefined;
   /**
    * A HORA DO CANTO RESPONDE À MESMA PERGUNTA QUE ORDENA A LISTA.
@@ -417,6 +424,9 @@ export function ConversationListItem({
           >
             {isAi && mostrarAutomatico ? (
               <Robot size={12} weight="duotone" className="mr-1 inline align-[-2px]" aria-hidden />
+            ) : null}
+            {ultimaEhDaEquipe ? (
+              <span className="mr-1 font-medium text-accent">{t("Você:")}</span>
             ) : null}
             {truncated}
           </p>

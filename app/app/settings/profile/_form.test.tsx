@@ -15,6 +15,10 @@ import { ProfileForm } from "./_form";
  *    voseo ("Escribí") reprova o caso 3.
  */
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
 vi.mock("@/app/actions/settings/updateProfile", () => ({
   updateProfile: vi.fn(async () => ({ ok: true })),
 }));

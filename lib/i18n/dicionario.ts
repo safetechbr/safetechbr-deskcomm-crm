@@ -1947,6 +1947,8 @@ export const DICIONARIO: Traducoes = {
   "Perfil atualizado.": { es: "Perfil actualizado." },
   "Organização atualizada.": { es: "Organización actualizada." },
   "Salvando…": { es: "Guardando…" },
+  "Salvar e continuar": { es: "Guardar y continuar" },
+  "Você:": { es: "Tú:" },
   "Nome completo": { es: "Nombre completo" },
   "Trocar email — em breve.": { es: "Cambiar email — próximamente." },
   "Fuso horário": { es: "Zona horaria" },

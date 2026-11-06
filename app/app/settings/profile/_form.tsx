@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -42,14 +43,15 @@ export function ProfileForm({
   initialTimezone,
 }: Props) {
   const t = useT();
+  const router = useRouter();
   const [fullName, setFullName] = useState(initialFullName ?? "");
   const [locale, setLocale] = useState<Locale | typeof SEM_PREFERENCIA_DE_IDIOMA>(initialLocale);
   const [timezone, setTimezone] = useState(initialTimezone);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl ?? "");
   const [isPending, startTransition] = useTransition();
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // `continuar`: depois de salvar com sucesso, abre o menu inicial.
+  function salvar(continuar: boolean) {
     const parsed = profileSchema.safeParse({
       full_name: fullName || null,
       locale,
@@ -62,9 +64,18 @@ export function ProfileForm({
     }
     startTransition(async () => {
       const r = await updateProfile(parsed.data);
-      if (r.ok) toast.success(t("Perfil atualizado."));
-      else toast.error(`${t("Erro")}: ${r.error}`);
+      if (!r.ok) {
+        toast.error(`${t("Erro")}: ${r.error}`);
+        return;
+      }
+      toast.success(t("Perfil atualizado."));
+      if (continuar) router.push("/app");
     });
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    salvar(false);
   }
 
   return (
@@ -138,9 +149,22 @@ export function ProfileForm({
             {t("Upload de arquivo — em breve. Cole uma URL pública.")}
           </p>
         </div>
-        <div className="flex sm:justify-end">
-          <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={isPending}
+            className="w-full sm:w-auto"
+          >
             {isPending ? t("Salvando…") : t("Salvar")}
+          </Button>
+          <Button
+            type="button"
+            disabled={isPending}
+            onClick={() => salvar(true)}
+            className="w-full sm:w-auto"
+          >
+            {t("Salvar e continuar")}
           </Button>
         </div>
       </Card>
