@@ -14,6 +14,7 @@
  * `list` e nada foi marcado — conexão nova enxerga NADA, e a primeira impressão
  * não pode ser um assistente mudo sem explicação.
  */
+import { TreeStructure as IconeDoTitulo } from "@/lib/ui/icons";
 import { notFound, redirect } from "next/navigation";
 
 import { ExploradorDeDados } from "./_components/ExploradorDeDados";
@@ -73,12 +74,17 @@ export default async function ConexaoExternaPage({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{conexao.label}</h1>
         <p className="text-sm text-muted-foreground">
           {conexao.host}:{conexao.port}/{conexao.database_name} · {conexao.username} ·{" "}
           {traduzir("somente leitura", idioma)}
         </p>
+      </div>
       </header>
 
       {!conexao.enabled && (

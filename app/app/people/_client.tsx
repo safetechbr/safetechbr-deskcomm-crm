@@ -79,8 +79,8 @@ export function PeopleListClient() {
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{t("Pessoas")}</h1>
+        <div className="ds-entra">
+          <h1 className="text-2xl font-semibold tracking-tight">{t("Pessoas")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("Decisores e contatos — telefones ficam em Contatos.")}
           </p>

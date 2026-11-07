@@ -10,7 +10,7 @@
  * `navegacao-registry.test.ts`; aqui é a superfície.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { Sidebar } from "@/components/shell/Sidebar";
 import type { ActiveOrg, AuthUser } from "@/lib/auth/types";
@@ -52,6 +52,17 @@ vi.mock("@/components/shell/VersionFooter", () => ({
   VersionFooter: () => null,
 }));
 
+/**
+ * A barra abre com só as Ações rápidas expandidas. Os casos que medem ONDE um
+ * item mora abrem os menus como o usuário faria: clicando no título.
+ */
+function abrirTodosOsMenus() {
+  for (const titulo of screen.getAllByRole("heading")) {
+    const botao = titulo.querySelector("button");
+    if (botao && botao.getAttribute("aria-expanded") === "false") fireEvent.click(botao);
+  }
+}
+
 function comoPapel(role: ActiveOrg["role"]) {
   authRef.user = { is_platform_admin: false };
   authRef.activeOrg = { orgId: "org-1", name: "Org", role };
@@ -75,6 +86,7 @@ describe("Sidebar agrupado", () => {
   it("leva às Etapas do funil pelo CRM, e não por Configurações", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsMenus();
     // ⚠️ O CAMINHO MUDOU, A PROPRIEDADE NÃO. Etapas do funil saiu do menu para
     // dentro do hub do CRM quando Tarefas virou o quinto destino do grupo e o
     // menu passou a rolar. A porta continua sendo CRM — "Ver tudo em CRM" leva
@@ -91,10 +103,12 @@ describe("Sidebar agrupado", () => {
   it("o número de Casos mora no item de Casos, e o da Fila no item de Inbox", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsMenus();
     const casos = screen.getAllByTestId("marcador-casos");
     const fila = screen.getAllByTestId("marcador-fila");
     expect(casos).toHaveLength(1);
-    expect(fila).toHaveLength(1);
+    // Inbox aparece duas vezes: no atalho das Ações rápidas e no menu Atendimento.
+    expect(fila).toHaveLength(2);
     expect(casos[0]!.closest("a")).toHaveAttribute("href", "/app/ai/cases");
     expect(fila[0]!.closest("a")).toHaveAttribute("href", "/app/inbox");
     // Roteadores saiu do menu para Casos caber (a folga era menos de uma linha).
@@ -108,12 +122,29 @@ describe("Sidebar agrupado", () => {
   it("e os dois itens de funil não disputam o mesmo nome", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.getByRole("link", { name: "Funis" })).toHaveAttribute("href", "/app/kanban");
+    abrirTodosOsMenus();
+    // O atalho das Ações rápidas e o item de Atendimento levam ao mesmo lugar, com nomes próprios.
+    expect(screen.getByRole("link", { name: /Central de conversas/ })).toHaveAttribute("href", "/app/inbox");
+    expect(screen.getByRole("link", { name: /^Inbox/ })).toHaveAttribute("href", "/app/inbox");
+    expect(screen.getByRole("link", { name: /^Funis/ })).toHaveAttribute("href", "/app/kanban");
+  });
+
+  it("ao carregar, só as Ações rápidas vêm abertas", () => {
+    comoPapel("admin");
+    render(<Sidebar collapsed={false} />);
+    // Atalhos à vista, logo depois de Nova venda…
+    expect(screen.getByRole("link", { name: /Histórico de Vendas/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Ver estoque/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Central de conversas/ })).toBeTruthy();
+    // …e os demais menus recolhidos: o item original não aparece até abrir.
+    expect(screen.queryByRole("link", { name: /^Funis/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Inbox/ })).toBeNull();
   });
 
   it("desenterra Audit Log — e Nuvemshop ficou de fora, por escolha", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsMenus();
     // ⚠️ O CAMINHO MUDOU, A PROPRIEDADE NÃO. O que esta linha sempre prendeu é
     // que Audit Log deixou de existir só como card enterrado em Configurações.
     // Quando Atividades (PR #583) virou o quinto destino do grupo Análise e o
@@ -163,6 +194,7 @@ describe("Sidebar agrupado", () => {
   it("oferece o hub dos grupos que têm um", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
+    abrirTodosOsMenus();
     expect(screen.getByRole("link", { name: /Ver tudo em IA/ })).toHaveAttribute("href", "/app/ai");
   });
 
@@ -170,14 +202,14 @@ describe("Sidebar agrupado", () => {
     comoPapel("admin");
     render(<Sidebar collapsed />);
     expect(screen.queryAllByRole("heading")).toHaveLength(0);
-    expect(screen.getByRole("link", { name: /Inbox/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /^Inbox/ })).toBeTruthy();
   });
 
   it("marca a rota atual com aria-current", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
-    expect(screen.getByRole("link", { name: /Inbox/ })).toHaveAttribute("aria-current", "page");
-    // "Kanban" saiu da interface; o item da mesma URL agora se chama "Funis".
-    expect(screen.getByRole("link", { name: "Funis" })).not.toHaveAttribute("aria-current");
+    abrirTodosOsMenus();
+    expect(screen.getByRole("link", { name: /^Inbox/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /Central de conversas/ })).toHaveAttribute("aria-current", "page");
   });
 });

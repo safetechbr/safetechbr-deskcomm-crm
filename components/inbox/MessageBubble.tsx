@@ -312,7 +312,7 @@ export function MessageBubble({
           isBareSticker
             ? "px-0 py-0"
             : cn(
-                "rounded-2xl px-3 py-2 shadow-sm",
+                "rounded-2xl px-3 py-2 shadow-xs",
                 temMenu && "pr-8",
                 // A área de toque da seta ocupa 48px. O documento precisa
                 // terminar antes dela, inclusive quando o cartão encolhe.

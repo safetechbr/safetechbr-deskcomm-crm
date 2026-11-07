@@ -37,7 +37,7 @@ export default async function AtendimentoFlowsPage() {
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <header className="flex flex-wrap items-end justify-between gap-2">
-        <div>
+        <div className="ds-entra">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Fluxos de atendimento")}</h1>
           <p className="text-sm text-text-muted">
             {t(

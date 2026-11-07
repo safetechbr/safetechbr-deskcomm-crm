@@ -162,7 +162,7 @@ export function CompanyDetailClient({ id }: Props) {
           <Link href="/app/companies" className="text-sm text-muted-foreground hover:underline">
             ← {t("Empresas")}
           </Link>
-          <h1 className="text-xl font-semibold">
+          <h1 className="ds-entra text-2xl font-semibold tracking-tight">
             {(c.trade_name as string) || (c.legal_name as string) || t("Empresa")}
           </h1>
           <p className="font-mono text-sm text-muted-foreground">{(c.cnpj as string) || "—"}</p>

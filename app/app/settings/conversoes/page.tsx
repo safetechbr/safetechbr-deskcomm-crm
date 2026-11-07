@@ -1,3 +1,4 @@
+import { ChartLineUp as IconeDoTitulo } from "@/lib/ui/icons";
 import { LinksRastreaveis } from "./_linksRastreaveis";
 import { listarLinks, metricasLinks } from "@/lib/plataformas-de-anuncio/rastreio/links";
 /**
@@ -258,13 +259,18 @@ export default async function ConversoesPage({
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Conversões")}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t(
             "Quando um negócio que veio de anúncio é marcado como ganho, o valor da venda volta para a plataforma que trouxe o cliente. É esse retorno que ensina o anúncio a procurar mais gente parecida com quem comprou.",
           )}
         </p>
+      </div>
       </header>
 
       <nav className="flex gap-1 border-b" aria-label={t("Seções de conversões")}>

@@ -64,8 +64,8 @@ export default async function NuvemshopIntegrationPage() {
         <div className="rounded-md border border-border bg-surface p-3">
           <Storefront size={28} weight="duotone" className="text-muted-foreground" />
         </div>
-        <div>
-          <h1 className="text-xl font-semibold">Nuvemshop</h1>
+        <div className="ds-entra">
+          <h1 className="text-2xl font-semibold tracking-tight">Nuvemshop</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {traduzir("Sincroniza pedidos, produtos e clientes via OAuth + webhooks.", idioma)}
           </p>

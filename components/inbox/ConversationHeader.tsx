@@ -252,7 +252,7 @@ export function ConversationHeader({
     // fileira que rola na horizontal — a mesma régua de não esconder ação, sem
     // pagar em altura. `py-2` pelo mesmo motivo: cada pixel de altura ali é
     // tirado da conversa.
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-3 py-2 md:gap-3 md:px-4 md:py-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-surface px-3 py-2 md:gap-3 md:px-4 md:py-3">
       {/* FAIXA DA CARTEIRA (#2591, regra 2): "este cliente pertence à carteira de
           A". `w-full` a põe numa linha própria acima da identidade, sem disputar
           espaço com a barra de ações — a faixa só existe quando o dono é OUTRA

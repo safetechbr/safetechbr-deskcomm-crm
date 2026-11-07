@@ -1,5 +1,6 @@
 "use client";
 
+import { Tag as IconeDoTitulo } from "@/lib/ui/icons";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -335,9 +336,14 @@ export function ProdutosClient({
 
   return (
     <div className="mx-auto w-full max-w-5xl p-6" data-testid="tela-produtos">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">{textos.titulo}</h1>
+      <header className="ds-entra flex items-start gap-3 mb-6">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+        <h1 className="text-2xl font-semibold tracking-tight">{textos.titulo}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{textos.subtitulo}</p>
+      </div>
       </header>
 
       <div className="mb-4 flex items-center gap-3">

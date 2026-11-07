@@ -53,7 +53,7 @@ export function CartaoDaConexaoGoogle({
     return (
       <div
         data-testid="google-nao-configurado"
-        className="rounded-lg border border-border bg-surface-elevated/50 p-3"
+        className="rounded-xl border border-border/60 bg-surface p-4 shadow-xs"
       >
         <p className="text-sm font-medium text-text">{t("Sincronizar com o Google ainda não está disponível")}</p>
         {/*
@@ -122,17 +122,20 @@ export function CartaoDaConexaoGoogle({
     return (
       <div
         data-testid="google-conectado"
-        className="flex items-center gap-2 rounded-lg border border-border bg-surface p-3"
+        className="flex items-center gap-3 rounded-xl border border-border/60 bg-surface p-4 shadow-xs"
       >
-        <GoogleLogo size={16} weight="bold" className="shrink-0 text-text-muted" aria-hidden />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <GoogleLogo size={16} weight="bold" aria-hidden />
+        </span>
         <p className="min-w-0 flex-1 truncate text-sm">
           <span className="text-text-muted">{t("Agenda conectada:")} </span>
           <span className="font-medium">{contaConectada}</span>
         </p>
-        <a href="/app/settings/tenant/agenda" className="text-xs underline">{t("Configurar suas agendas")}</a>
+        <a href="/app/settings/tenant/agenda" className="text-xs font-medium text-accent hover:underline">{t("Configurar suas agendas")}</a>
         <Button
           variant="outline"
           size="sm"
+          className="rounded-full"
           data-testid="desconectar-google"
           disabled={desconectando}
           onClick={() => {
@@ -155,11 +158,11 @@ export function CartaoDaConexaoGoogle({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3">
+    <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-surface p-4 shadow-xs">
       <p className="min-w-0 flex-1 text-sm text-text-muted">
         {t("Conecte sua agenda do Google para ver aqui o que já está marcado lá — e enviar para lá o que for marcado aqui.")}
       </p>
-      <Button variant="outline" size="sm" data-testid="conectar-google" asChild>
+      <Button variant="outline" size="sm" className="rounded-full" data-testid="conectar-google" asChild>
         <a href="/api/v1/agenda/google/connect">
           <GoogleLogo size={16} weight="bold" aria-hidden />
           <span>{t("Conectar Google")}</span>

@@ -1248,3 +1248,27 @@ export const NAV_CATALOG = [
 ] as const satisfies readonly NavMetadata[];
 
 export type NavDestinationId = (typeof NAV_CATALOG)[number]["href"];
+
+/**
+ * ATALHOS das Ações rápidas — a mesma tela, por uma porta mais à mão.
+ *
+ * Não são destinos novos: cada um aponta para um `href` que já mora no seu
+ * menu de origem (Vendas, Estoque, CRM) e continua lá. Por isso ficam FORA do
+ * `NAV_CATALOG` — o catálogo tem um destino por href, e o ⌘K, o hub e a
+ * completude continuam contando cada tela uma vez. Quem vê o atalho é quem vê o
+ * destino: a permissão é a do item original.
+ *
+ * Entram logo abaixo de `depoisDe`, na ordem desta lista. `label` troca só o
+ * nome que aparece no atalho ("Inbox" vira "Central de conversas" aqui).
+ */
+export const ATALHOS_RAPIDOS: ReadonlyArray<{
+  href: NavDestinationId;
+  label?: string;
+}> = [
+  { href: "/app/vendas/historico" },
+  { href: "/app/estoque" },
+  { href: "/app/inbox", label: "Central de conversas" },
+];
+
+/** Os atalhos entram logo depois deste item das Ações rápidas. */
+export const ATALHOS_DEPOIS_DE: NavDestinationId = "/app/nova-venda";

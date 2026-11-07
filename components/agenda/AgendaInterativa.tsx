@@ -243,7 +243,7 @@ export function AgendaInterativa({
               aria-pressed={t.id === tipo?.id}
               onClick={() => onEscolherTipo(t.id)}
               className={cn(
-                "rounded-full border px-2.5 py-0.5 transition-colors duration-fast",
+                "rounded-full border px-3 py-1 font-medium transition-colors duration-fast",
                 t.id === tipo?.id
                   ? "border-transparent bg-accent text-accent-foreground"
                   : "border-border hover:border-border-strong hover:text-text",
@@ -268,7 +268,7 @@ export function AgendaInterativa({
           data-testid="motivo-da-grade"
           data-motivo={motivo}
           role="status"
-          className="rounded-sm border border-border bg-surface-sunken px-3 py-2 text-xs leading-4 text-text-muted"
+          className="rounded-xl border border-border/60 bg-surface-sunken px-4 py-2.5 text-xs leading-4 text-text-muted"
         >
           {motivo === "sem-jornada" ? (
             <>
@@ -299,7 +299,7 @@ export function AgendaInterativa({
         <div
           data-testid="confirmar-remarcacao"
           role="status"
-          className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-accent/50 bg-accent-soft px-3 py-2"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/40 bg-accent-soft px-4 py-2.5"
         >
           <p className="text-xs leading-4 text-text">
             {t("Remarcar")} <span className="font-semibold">{nomeDoPendente}</span> {t("para")}{" "}
@@ -325,7 +325,7 @@ export function AgendaInterativa({
         <div
           data-testid="remarcacao-recusada"
           role="status"
-          className="flex items-center justify-between gap-2 rounded-sm border border-warning/40 bg-warning-bg px-3 py-2"
+          className="flex items-center justify-between gap-2 rounded-xl border border-warning/40 bg-warning-bg px-4 py-2.5"
         >
           <p className="text-xs leading-4 text-text">{recusa}</p>
           <button

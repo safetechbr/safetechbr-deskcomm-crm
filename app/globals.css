@@ -32,9 +32,9 @@
 
 :root {
   /* Surfaces (light) */
-  --color-bg: #faf9f6;
+  --color-bg: #f5f5f3;
   --color-surface: #ffffff;
-  --color-surface-elevated: #f5f3ee;
+  --color-surface-elevated: #f0efec;
   --color-overlay: rgba(28, 26, 22, 0.42);
 
   /* Text (light) */
@@ -43,21 +43,21 @@
   --color-text-subtle: #7d786c;
 
   /* Borders (light) */
-  --color-border: #e7e3da;
-  --color-border-strong: #d2cdbf;
+  --color-border: #e8e7e3;
+  --color-border-strong: #d5d3cc;
 
   /* Accent — Sage (11 stops) */
-  --color-accent-50: #f3f6f1;
-  --color-accent-100: #e4ebe0;
-  --color-accent-200: #c8d6c1;
-  --color-accent-300: #a4ba9a;
-  --color-accent-400: #82a077;
-  --color-accent-500: #67885d;
-  --color-accent-600: #506d48;
-  --color-accent-700: #41573b;
-  --color-accent-800: #374731;
-  --color-accent-900: #2f3c2b;
-  --color-accent-950: #171f15;
+  --color-accent-50: #fdf3f2;
+  --color-accent-100: #fbe5e3;
+  --color-accent-200: #f7cdc9;
+  --color-accent-300: #efa9a2;
+  --color-accent-400: #e27a70;
+  --color-accent-500: #b0281c;
+  --color-accent-600: #8e1b12;
+  --color-accent-700: #75160f;
+  --color-accent-800: #5f130e;
+  --color-accent-900: #4d120e;
+  --color-accent-950: #2a0806;
   --color-accent: var(--color-accent-600);
   --color-accent-fg: #ffffff;
   --color-accent-soft: var(--color-accent-100);
@@ -108,18 +108,18 @@
 
   /* Radius */
   --radius-none: 0px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
   /* Shadows — desaturated, neutral-based */
-  --shadow-xs: 0 1px 2px 0 rgba(20, 18, 14, 0.04);
-  --shadow-sm: 0 1px 2px 0 rgba(20, 18, 14, 0.05), 0 1px 1px 0 rgba(20, 18, 14, 0.03);
-  --shadow-md: 0 4px 12px -2px rgba(20, 18, 14, 0.06), 0 2px 4px -1px rgba(20, 18, 14, 0.04);
-  --shadow-lg: 0 12px 32px -6px rgba(20, 18, 14, 0.1), 0 4px 12px -2px rgba(20, 18, 14, 0.06);
-  --shadow-xl: 0 24px 48px -12px rgba(20, 18, 14, 0.16), 0 8px 16px -4px rgba(20, 18, 14, 0.08);
+  --shadow-xs: 0 1px 2px 0 rgba(24, 22, 20, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(24, 22, 20, 0.05), 0 1px 2px -1px rgba(24, 22, 20, 0.04);
+  --shadow-md: 0 6px 16px -4px rgba(24, 22, 20, 0.07), 0 2px 6px -2px rgba(24, 22, 20, 0.04);
+  --shadow-lg: 0 16px 36px -8px rgba(24, 22, 20, 0.1), 0 4px 12px -4px rgba(24, 22, 20, 0.05);
+  --shadow-xl: 0 28px 56px -14px rgba(24, 22, 20, 0.16), 0 8px 20px -6px rgba(24, 22, 20, 0.07);
 
   /* Density — Aerada */
   --density-row: 56px;
@@ -263,15 +263,15 @@
    (lib/branding/css.ts), que só ganha consumidor com a tela de marca.
    ───────────────────────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-bg: #faf9f6;
+  --color-bg: #f5f5f3;
   --color-surface: #ffffff;
-  --color-surface-elevated: #f5f3ee;
+  --color-surface-elevated: #f0efec;
   --color-overlay: rgba(28, 26, 22, 0.42);
   --color-text: #1c1a16;
   --color-text-muted: #5d594f;
   --color-text-subtle: #7d786c;
-  --color-border: #e7e3da;
-  --color-border-strong: #d2cdbf;
+  --color-border: #e8e7e3;
+  --color-border-strong: #d5d3cc;
   --color-accent: var(--color-accent-600);
   --color-accent-fg: #ffffff;
   --color-accent-soft: var(--color-accent-100);
@@ -299,11 +299,11 @@
   --color-info: #4a7a93;
   --color-info-bg: rgba(74, 122, 147, 0.12);
   --color-info-fg: #355d72;
-  --shadow-xs: 0 1px 2px 0 rgba(20, 18, 14, 0.04);
-  --shadow-sm: 0 1px 2px 0 rgba(20, 18, 14, 0.05), 0 1px 1px 0 rgba(20, 18, 14, 0.03);
-  --shadow-md: 0 4px 12px -2px rgba(20, 18, 14, 0.06), 0 2px 4px -1px rgba(20, 18, 14, 0.04);
-  --shadow-lg: 0 12px 32px -6px rgba(20, 18, 14, 0.1), 0 4px 12px -2px rgba(20, 18, 14, 0.06);
-  --shadow-xl: 0 24px 48px -12px rgba(20, 18, 14, 0.16), 0 8px 16px -4px rgba(20, 18, 14, 0.08);
+  --shadow-xs: 0 1px 2px 0 rgba(24, 22, 20, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(24, 22, 20, 0.05), 0 1px 2px -1px rgba(24, 22, 20, 0.04);
+  --shadow-md: 0 6px 16px -4px rgba(24, 22, 20, 0.07), 0 2px 6px -2px rgba(24, 22, 20, 0.04);
+  --shadow-lg: 0 16px 36px -8px rgba(24, 22, 20, 0.1), 0 4px 12px -4px rgba(24, 22, 20, 0.05);
+  --shadow-xl: 0 28px 56px -14px rgba(24, 22, 20, 0.16), 0 8px 20px -6px rgba(24, 22, 20, 0.07);
   --background: var(--color-bg);
   --foreground: var(--color-text);
   --card: var(--color-surface);
@@ -356,20 +356,20 @@
   --color-border-strong: #444239;
 
   /* Accent stays same hex stops; default shifts up for dark contrast */
-  --color-accent-50: #f3f6f1;
-  --color-accent-100: #e4ebe0;
-  --color-accent-200: #c8d6c1;
-  --color-accent-300: #a4ba9a;
-  --color-accent-400: #82a077;
-  --color-accent-500: #67885d;
-  --color-accent-600: #506d48;
-  --color-accent-700: #41573b;
-  --color-accent-800: #374731;
-  --color-accent-900: #2f3c2b;
-  --color-accent-950: #171f15;
+  --color-accent-50: #fdf3f2;
+  --color-accent-100: #fbe5e3;
+  --color-accent-200: #f7cdc9;
+  --color-accent-300: #efa9a2;
+  --color-accent-400: #e27a70;
+  --color-accent-500: #b0281c;
+  --color-accent-600: #8e1b12;
+  --color-accent-700: #75160f;
+  --color-accent-800: #5f130e;
+  --color-accent-900: #4d120e;
+  --color-accent-950: #2a0806;
   --color-accent: var(--color-accent-400);
   --color-accent-fg: #161510;
-  --color-accent-soft: rgba(130, 160, 119, 0.16);
+  --color-accent-soft: rgba(226, 122, 112, 0.16);
   --color-accent-hover: var(--color-accent-300);
 
   /* Neutrals — greige (11 stops, dark) */
@@ -386,9 +386,9 @@
   --color-neutral-950: #0c0b08;
 
   /* States (dark) */
-  --color-success: #82a077;
+  --color-success: #e27a70;
   --color-success-bg: rgba(130, 160, 119, 0.18);
-  --color-success-fg: #a4ba9a;
+  --color-success-fg: #efa9a2;
   --color-warning: #d09455;
   --color-warning-bg: rgba(208, 148, 85, 0.18);
   --color-warning-fg: #e0ad77;
@@ -546,7 +546,7 @@
 
   /* Tipografia */
   --font-sans:
-    var(--font-atkinson), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    var(--font-jakarta), var(--font-atkinson), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Espaçamento. Os valores são px LITERAIS (`--space-6` = 24px), não rem — e
@@ -783,6 +783,7 @@
     background-color: var(--color-bg);
     color: var(--color-text);
     font-family:
+      var(--font-jakarta),
       var(--font-atkinson),
       ui-sans-serif,
       system-ui,
@@ -794,8 +795,8 @@
       sans-serif;
     font-feature-settings:
       "rlig" 1,
-      "calt" 1,
-      "ss01" 1;
+      "calt" 1;
+    letter-spacing: -0.006em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -988,7 +989,7 @@
   .card-pulse {
     animation: none;
     /* Anel ESTÁTICO, não fundo: no tema claro `--color-accent-soft` é cor
-       sólida (#e4ebe0), e um overlay sólido sobre o card inteiro deixaria quem
+       sólida (#fbe5e3), e um overlay sólido sobre o card inteiro deixaria quem
        usa movimento reduzido 1,2s SEM LER o card. O caminho de acessibilidade
        é para ser igual, não pior — então o aviso é o mesmo anel, só que parado.
        Ele dura os PULSE_MS inteiros (useBoard.ts), NÃO os 320ms da animação:
@@ -1519,5 +1520,46 @@
   .animate-spin {
     animation-duration: 1s !important;
     animation-iteration-count: infinite !important;
+  }
+}
+
+/* ---- Redesenho M AUTO · entrada em cascata ------------------------------
+   Tipo 1 da lei de movimento (fade + subida curta, curva `--ease-out-slow`),
+   para blocos que nascem juntos — a faixa de indicadores, as colunas do
+   kanban. `--i` é o índice do item: cada um espera 40ms a mais que o
+   anterior, com teto de 8 para uma lista longa não ficar "chegando" por um
+   segundo inteiro. Só `opacity` e `translate` — nada que dispare layout.
+   A regra global de `prefers-reduced-motion` acima já zera a duração. */
+@keyframes ds-entra {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.ds-entra {
+  /* `backwards`, não `both`: o estado final é o normal, e segurar `translate`
+     depois do fim travaria o `translate` do hover de `.ds-elevavel`. */
+  animation: ds-entra var(--duration-slow) var(--ease-out-slow) backwards;
+  animation-delay: calc(min(var(--i, 0), 8) * 40ms);
+}
+
+/* Elevação no hover para cartões clicáveis: sobe 1px e ganha a sombra
+   média. A transição é curta (`--duration-base`) e só em propriedades
+   compostas pela GPU. */
+.ds-elevavel {
+  transition:
+    box-shadow var(--duration-base) var(--ease-out),
+    translate var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+@media (hover: hover) {
+  .ds-elevavel:hover {
+    translate: 0 -1px;
+    box-shadow: var(--shadow-md);
   }
 }

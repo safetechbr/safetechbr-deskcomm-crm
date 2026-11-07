@@ -37,8 +37,8 @@ export default async function Page() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">{t("Comandas")}</h1>
+      <div className="ds-entra">
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Comandas")}</h1>
         <p className="text-sm text-text-muted">
           {t("O que foi feito, por quem, e quanto o cliente paga.")}
         </p>

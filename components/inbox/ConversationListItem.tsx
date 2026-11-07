@@ -280,7 +280,7 @@ export function ConversationListItem({
   return (
     <div
       className={cn(
-        "relative flex w-full items-start border-b border-border/70",
+        "relative flex w-full items-start border-b border-border/50",
         selecionado && "bg-accent-soft",
       )}
     >
@@ -314,7 +314,7 @@ export function ConversationListItem({
         data-conversation-id={conversation.id}
         onClick={() => onSelect(conversation.id)}
         className={cn(
-          "group relative flex min-w-0 flex-1 items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-elevated",
+          "group relative flex min-w-0 flex-1 items-start gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-foreground/[0.03]",
           "focus-visible:outline-hidden focus-visible:bg-surface-elevated",
           // `accent-soft`, e não um degrau fixo da rampa: os degraus têm o MESMO
           // hex nos dois temas, e o `accent-50` (quase branco) no escuro deixava o

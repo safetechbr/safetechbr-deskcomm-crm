@@ -11,6 +11,7 @@
  * Gate = manager+, o mesmo da "Distribuição de atendimento": quem monta a
  * regra é quem decide se ela consulta o modelo.
  */
+import { Lightning as IconeDoTitulo } from "@/lib/ui/icons";
 import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -56,9 +57,14 @@ export default async function AutomacoesSettingsPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Automações", idioma)}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">{traduzir(DESCRICAO, idioma)}</p>
+      </div>
       </header>
 
       {error ? (

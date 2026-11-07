@@ -25,6 +25,7 @@
  * O token NÃO é lido aqui, nem decifrado: `existeConexaoDeLeitura` responde
  * apenas se a linha existe. A tela nunca mostra o token de volta.
  */
+import { Megaphone as IconeDoTitulo } from "@/lib/ui/icons";
 import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -56,13 +57,18 @@ export default async function MetaAdsSettingsPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Meta Ads")}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t(
             "Conecte um token de acesso para o sistema ler o desempenho das suas campanhas e mostrá-lo em Análise › Meta Ads. É uma conexão só de leitura: nada é criado, pausado ou alterado na sua conta de anúncios.",
           )}
         </p>
+      </div>
       </header>
 
       <div className="rounded-md border border-sky-500/40 bg-sky-500/10 p-4 text-sm">

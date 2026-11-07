@@ -467,7 +467,7 @@ export function AgendaClient({
       data-testid="tela-agenda"
       data-fonte={agendamentosIniciais.length > 0 ? "api" : "api-sem-dado"}
       data-fuso={fusoDeApresentacao ?? "organizacao"}
-      className="flex h-full flex-col gap-4 p-6"
+      className="flex h-full flex-col gap-6 p-4 md:p-6"
     >
       {tiposIniciais.some((tipo) => tipo.servicoColetivo) && <ReservasColetivas today={hojeNaOrganizacao} zone={fusoDaAgenda} canWrite={podeMarcar}/>}
       {/*
@@ -488,7 +488,7 @@ export function AgendaClient({
         enderecoDeRetorno={enderecoDeRetorno}
       />
 
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <header className="ds-entra flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{tituloDaAgenda ?? t("Agendamentos")}</h1>
           <p className="text-sm text-muted-foreground">
@@ -502,6 +502,7 @@ export function AgendaClient({
           <Button
             variant="outline"
             size="sm"
+            className="rounded-full px-4"
             onClick={() => setAncora(ancoraLocalDoDia(hojeNaOrganizacao))}
           >
             {t("Hoje")}
@@ -539,6 +540,7 @@ export function AgendaClient({
           {podeMarcar && (
             <Button
               size="sm"
+              className="rounded-full px-4"
               disabled={!tipo}
               // `data-testid` porque o RÓTULO deixou de ser estável: até este PR
               // ele era literal, e `agenda-escopo-da-organizacao.spec.ts` o acha
@@ -559,12 +561,13 @@ export function AgendaClient({
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="ds-entra flex flex-wrap items-center justify-between gap-3" style={{ animationDelay: "50ms" }}>
         <div className="flex min-w-0 items-center gap-2">
           <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="icon"
+              className="rounded-full"
               aria-label={t("Período anterior")}
               data-testid="periodo-anterior"
               onClick={() => setAncora((d) => addDays(d, -passo))}
@@ -574,6 +577,7 @@ export function AgendaClient({
             <Button
               variant="ghost"
               size="icon"
+              className="rounded-full"
               aria-label={t("Próximo período")}
               data-testid="periodo-seguinte"
               onClick={() => setAncora((d) => addDays(d, passo))}
@@ -622,7 +626,7 @@ export function AgendaClient({
           <FiltroDePessoas pessoas={pessoas} isolada={isolada} onIsolar={setIsolada} />
           <div
             data-testid="alternador-de-visao"
-            className="flex items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
+            className="flex items-center gap-0.5 rounded-full border border-border/60 bg-surface p-1 shadow-xs"
           >
             {VISOES.map((v) => (
               <button
@@ -640,11 +644,11 @@ export function AgendaClient({
                   //
                   // `lg:` devolve o compacto onde quem aciona é cursor, no mesmo
                   // corte que `components/ui/button.tsx` já usa.
-                  "min-h-11 rounded-sm px-3 py-1 text-xs transition-colors duration-fast ease-out lg:min-h-0 lg:px-2.5",
+                  "min-h-11 rounded-full px-3.5 py-1 text-xs font-medium transition-colors duration-fast ease-out lg:min-h-0 lg:px-3",
                   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500",
                   visao === v.id
-                    ? "bg-accent font-semibold text-accent-foreground"
-                    : "text-text-muted hover:bg-surface-elevated hover:text-text",
+                    ? "bg-accent font-semibold text-accent-foreground shadow-xs"
+                    : "text-text-muted hover:bg-muted/50 hover:text-text",
                 )}
               >
                 {t(v.rotulo)}
@@ -750,7 +754,7 @@ export function AgendaClient({
               {remarcandoId ? t("Remarcar agendamento") : t("Novo agendamento")}
             </SheetTitle>
           </SheetHeader>
-          <div className="grid shrink-0 gap-3 rounded-lg border p-3 lg:grid-cols-2">
+          <div className="grid shrink-0 gap-3 rounded-xl border border-border/60 bg-surface p-4 shadow-xs lg:grid-cols-2">
             {!remarcandoId ? (
               <div className="lg:col-span-2">
                 <VinculoDaMarcacao
@@ -1171,7 +1175,7 @@ export function AgendaClient({
           limpo. O mesmo formato do defeito que `agenda-tela-do-produto` já
           tinha pago: verde por banco sujo. */}
       {agendamentos.length === 0 ? (
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="ds-entra rounded-xl border border-dashed border-border/60 bg-surface p-6 shadow-xs">
           <EmptyAgenda />
         </div>
       ) : null}

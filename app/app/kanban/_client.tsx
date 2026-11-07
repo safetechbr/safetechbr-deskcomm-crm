@@ -229,7 +229,7 @@ export function FunisClient({
   }
 
   const formularioDeCriacao = novo !== null && (
-    <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center" data-testid="form-novo-funil">
+    <Card className="ds-entra flex w-full flex-col gap-3 rounded-xl border-border/60 bg-surface p-4 shadow-xs sm:flex-row sm:items-center" data-testid="form-novo-funil">
       <Input
         autoFocus
         value={novo}
@@ -238,16 +238,17 @@ export function FunisClient({
           if (e.key === "Enter") criarFunil();
           if (e.key === "Escape") setNovo(null);
         }}
+        className="h-10 rounded-full border-border/80 bg-surface px-4 shadow-xs focus-visible:border-accent/50 focus-visible:ring-accent/20"
         placeholder={t("Nome do funil — ex.: Consultas, Obras, Matrículas")}
         aria-label={t("Nome do novo funil")}
         data-testid="nome-do-novo-funil"
         disabled={ocupado}
       />
       <div className="flex gap-2">
-        <Button onClick={criarFunil} disabled={ocupado || !novo.trim()} data-testid="confirmar-novo-funil">
+        <Button onClick={criarFunil} disabled={ocupado || !novo.trim()} data-testid="confirmar-novo-funil" className="rounded-full px-6">
           {t("Criar funil")}
         </Button>
-        <Button variant="ghost" onClick={() => setNovo(null)} disabled={ocupado}>
+        <Button variant="ghost" onClick={() => setNovo(null)} disabled={ocupado} className="rounded-full">
           {t("Cancelar")}
         </Button>
       </div>
@@ -272,7 +273,7 @@ export function FunisClient({
       <Button
         variant="ghost"
         size="sm"
-        className="self-start text-muted-foreground"
+        className="self-start rounded-full text-muted-foreground hover:bg-muted/50 hover:text-accent"
         onClick={() => setArquivoAberto((aberto) => !aberto)}
         aria-expanded={arquivoAberto}
         aria-controls={ID_DA_LISTA_DE_ARQUIVADOS}
@@ -296,7 +297,7 @@ export function FunisClient({
           </p>
           <ul
             id={ID_DA_LISTA_DE_ARQUIVADOS}
-            className="flex flex-col divide-y divide-border rounded-md border border-border"
+            className="flex flex-col gap-2"
           >
             {arquivados.map((funil) => {
               const excluindoAqui = excluindo?.id === funil.id ? excluindo : null;
@@ -304,14 +305,14 @@ export function FunisClient({
               return (
                 <li
                   key={funil.id}
-                  className="flex flex-col gap-3 p-4"
+                  className="ds-entra flex flex-col gap-3 rounded-xl border border-dashed border-border/60 bg-surface p-4 shadow-xs"
                   data-testid={`arquivado-${funil.id}`}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
                       {funil.name}
                     </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">/{funil.slug}</span>
+                    <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 font-mono text-xs text-muted-foreground">/{funil.slug}</span>
                     <div className="flex shrink-0 flex-wrap gap-1">
                       <Button
                         variant="ghost"
@@ -319,6 +320,7 @@ export function FunisClient({
                         onClick={() => aplicar(funil.id, { is_archived: false })}
                         disabled={ocupado}
                         data-testid={`desarquivar-${funil.id}`}
+                        className="rounded-full hover:bg-muted/50 hover:text-accent"
                       >
                         <ArrowBendUpLeft size={16} className="mr-1" aria-hidden />{" "}
                         {t("Tirar do arquivo")}
@@ -332,6 +334,7 @@ export function FunisClient({
                         }}
                         disabled={ocupado}
                         data-testid={`excluir-arquivado-${funil.id}`}
+                        className="rounded-full hover:bg-error-bg hover:text-error-fg"
                       >
                         <Trash size={16} className="mr-1" aria-hidden /> {t("Excluir de vez")}
                       </Button>
@@ -340,7 +343,7 @@ export function FunisClient({
 
                   {erro?.id === funil.id && (
                     <p
-                      className="text-sm leading-relaxed text-destructive"
+                      className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg leading-relaxed"
                       data-testid={`erro-arquivado-${funil.id}`}
                     >
                       {erro.texto}
@@ -428,7 +431,7 @@ export function FunisClient({
 
   if (funis.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      <div className="ds-entra flex flex-1 flex-col items-center justify-center gap-4">
         {formularioDeCriacao}
         {novo === null && (
           // ⚠️ O BOTÃO CRIA AQUI MESMO. O texto anterior mandava "Ir para
@@ -445,7 +448,7 @@ export function FunisClient({
           />
         )}
         {erro && (
-          <p className="text-sm text-destructive" data-testid="erro-geral">
+          <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg" data-testid="erro-geral">
             {erro.texto}
           </p>
         )}
@@ -467,7 +470,7 @@ export function FunisClient({
               uma vez por mês — ruído permanente para um gesto ocasional. */}
           {podeImportar ? <ImportarLeads funis={funis} /> : null}
           {podeGerenciar && novo === null ? (
-            <Button onClick={() => setNovo("")} disabled={ocupado} data-testid="novo-funil" className="w-full sm:w-auto">
+            <Button onClick={() => setNovo("")} disabled={ocupado} data-testid="novo-funil" className="w-full rounded-full px-5 sm:w-auto">
               <Plus size={16} className="mr-2" aria-hidden /> {t("Novo funil")}
             </Button>
           ) : null}
@@ -477,19 +480,24 @@ export function FunisClient({
       {formularioDeCriacao}
 
       {erro?.id === null && (
-        <p className="text-sm text-destructive" data-testid="erro-geral">
+        <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg" data-testid="erro-geral">
           {erro.texto}
         </p>
       )}
 
-      <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <ul className="flex flex-col gap-2">
         {funis.map((funil, i) => {
           const renomeandoAqui = renomeando?.id === funil.id ? renomeando : null;
           const arquivandoAqui = arquivando?.id === funil.id ? arquivando : null;
           const erroDaLinha = erro?.id === funil.id ? erro.texto : null;
 
           return (
-            <li key={funil.id} className="flex flex-col gap-3 p-4" data-testid={`funil-${funil.id}`}>
+            <li
+              key={funil.id}
+              className="ds-entra flex flex-col gap-3 rounded-xl border border-border/60 bg-surface p-4 shadow-xs transition-shadow hover:shadow-sm"
+              style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+              data-testid={`funil-${funil.id}`}
+            >
               {/* `sm:flex-wrap`: a linha do funil QUEBRA em vez de espremer a
                   coluna do nome. Em ~900px o grupo de ações (Renomear/Tornar
                   padrão/Funil de clientes/Arquivar) e o `shrink-0` que ele
@@ -508,6 +516,7 @@ export function FunisClient({
                       size="icon"
                       aria-label={`${t("Subir")} «${funil.name}» ${t("na lista")}`}
                       data-testid={`subir-${funil.id}`}
+                      className="rounded-full hover:bg-muted/50 hover:text-accent"
                       disabled={ocupado || i === 0}
                       onClick={() => aplicar(funil.id, { depois_de: vizinhoAoMover(funis, i, "subir") })}
                     >
@@ -518,6 +527,7 @@ export function FunisClient({
                       size="icon"
                       aria-label={`${t("Descer")} «${funil.name}» ${t("na lista")}`}
                       data-testid={`descer-${funil.id}`}
+                      className="rounded-full hover:bg-muted/50 hover:text-accent"
                       disabled={ocupado || i === funis.length - 1}
                       onClick={() => aplicar(funil.id, { depois_de: vizinhoAoMover(funis, i, "descer") })}
                     >
@@ -546,6 +556,7 @@ export function FunisClient({
                           if (e.key === "Escape") setRenomeando(null);
                         }}
                         aria-label={`${t("Novo nome de")} «${funil.name}»`}
+                        className="h-10 rounded-full border-border/80 bg-surface px-4 shadow-xs focus-visible:border-accent/50 focus-visible:ring-accent/20"
                         data-testid={`nome-${funil.id}`}
                         disabled={ocupado}
                       />
@@ -554,6 +565,7 @@ export function FunisClient({
                         onClick={() => aplicar(funil.id, { name: renomeandoAqui.nome })}
                         disabled={ocupado || !renomeandoAqui.nome.trim()}
                         data-testid={`salvar-nome-${funil.id}`}
+                        className="rounded-full px-5"
                       >
                         {t("Salvar")}
                       </Button>
@@ -568,14 +580,14 @@ export function FunisClient({
                       data-testid={`abrir-${funil.id}`}
                     >
                       <span className="flex items-center gap-2">
-                        <span className="text-sm font-medium group-hover:underline">{funil.name}</span>
+                        <span className="text-sm font-semibold transition-colors group-hover:text-accent">{funil.name}</span>
                         {funil.is_default && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="rounded-full border-0 bg-accent-soft px-2 text-[11px] font-medium text-accent">
                             {t("Padrão")}
                           </Badge>
                         )}
                         {clientesLigado && funil.is_client_pipeline && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="rounded-full border-0 bg-accent-soft px-2 text-[11px] font-medium text-accent">
                             {t("Clientes")}
                           </Badge>
                         )}
@@ -587,7 +599,7 @@ export function FunisClient({
                   )}
                 </div>
 
-                <span className="shrink-0 text-xs text-muted-foreground">/{funil.slug}</span>
+                <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 font-mono text-xs text-muted-foreground">/{funil.slug}</span>
 
                 {/*
                   SEM `shrink-0`, que era a CAUSA: com ele o grupo exigia a
@@ -605,6 +617,7 @@ export function FunisClient({
                       onClick={() => setRenomeando({ id: funil.id, nome: funil.name })}
                       disabled={ocupado}
                       data-testid={`renomear-${funil.id}`}
+                      className="rounded-full hover:bg-muted/50 hover:text-accent"
                     >
                       <PencilSimple size={16} className="mr-1" aria-hidden /> {t("Renomear")}
                     </Button>
@@ -615,6 +628,7 @@ export function FunisClient({
                         onClick={() => aplicar(funil.id, { is_default: true })}
                         disabled={ocupado}
                         data-testid={`padrao-${funil.id}`}
+                        className="rounded-full hover:bg-muted/50 hover:text-accent"
                       >
                         <Check size={16} className="mr-1" aria-hidden /> {t("Tornar padrão")}
                       </Button>
@@ -634,6 +648,7 @@ export function FunisClient({
                         }
                         disabled={ocupado}
                         data-testid={`clientes-${funil.id}`}
+                        className="rounded-full hover:bg-muted/50 hover:text-accent"
                       >
                         <Check size={16} className="mr-1" aria-hidden />{" "}
                         {funil.is_client_pipeline
@@ -650,6 +665,7 @@ export function FunisClient({
                       }}
                       disabled={ocupado}
                       data-testid={`arquivar-${funil.id}`}
+                      className="rounded-full hover:bg-error-bg hover:text-error-fg"
                     >
                       <Archive size={16} className="mr-1" aria-hidden /> {t("Arquivar")}
                     </Button>
@@ -658,13 +674,13 @@ export function FunisClient({
               </div>
 
               {erroDaLinha && (
-                <p className="text-sm leading-relaxed text-destructive" data-testid={`erro-${funil.id}`}>
+                <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg leading-relaxed" data-testid={`erro-${funil.id}`}>
                   {erroDaLinha}
                 </p>
               )}
 
               {arquivandoAqui && (
-                <Card className="space-y-3 p-4" data-testid={`arquivar-painel-${funil.id}`}>
+                <Card className="ds-entra space-y-3 rounded-xl border-border/60 bg-muted/40 p-4 shadow-none" data-testid={`arquivar-painel-${funil.id}`}>
                   {arquivandoAqui.erro ? (
                     // A recusa da rota, INTEIRA: é ela que diz qual formulário ou
                     // automação está no caminho, e o que fazer antes de tentar de novo.
@@ -685,6 +701,7 @@ export function FunisClient({
                       onClick={() => pedirArquivamento(funil.id, false)}
                       disabled={ocupado}
                       data-testid={`arquivar-confirmar-${funil.id}`}
+                      className="rounded-full px-5"
                     >
                       {t("Arquivar")}
                     </Button>
@@ -699,6 +716,7 @@ export function FunisClient({
                       onClick={() => pedirArquivamento(funil.id, true)}
                       disabled={ocupado}
                       data-testid={`excluir-${funil.id}`}
+                      className="rounded-full hover:bg-error-bg hover:text-error-fg"
                     >
                       {t("Excluir de vez")}
                     </Button>
@@ -725,17 +743,17 @@ export function FunisClient({
         Com a regra desligada, o rodapé é a PORTA para ela: diz onde se liga.
       */}
       {clientesLigado ? (
-        <p className="mt-4 text-xs text-muted-foreground" data-testid="funis-rodape-clientes">
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground" data-testid="funis-rodape-clientes">
           {t(
             "Quem já tem atendimento marcado entra pelo funil de clientes. Sem um funil marcado, entra pelo padrão.",
           )}
         </p>
       ) : (
-        <p className="mt-4 text-xs text-muted-foreground" data-testid="funis-rodape-clientes">
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground" data-testid="funis-rodape-clientes">
           {t(
             "Para separar quem já é cliente, ligue “Clientes pela agenda” em Configurações › Tipos de agendamento. Enquanto estiver desligado, todo contato novo entra pelo funil padrão.",
           )}{" "}
-          <Link href="/app/settings/tenant/agenda" className="underline" data-testid="funis-rodape-ligar">
+          <Link href="/app/settings/tenant/agenda" className="font-medium text-accent underline-offset-4 hover:underline" data-testid="funis-rodape-ligar">
             {t("Abrir Tipos de agendamento")}
           </Link>
         </p>

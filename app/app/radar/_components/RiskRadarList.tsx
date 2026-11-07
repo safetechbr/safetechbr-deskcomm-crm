@@ -27,6 +27,9 @@ const RISK_META: Record<
   em_voo: { label: "Em voo", variant: "info" },
 };
 
+const CONTADOR =
+  "inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface px-3 py-1 text-xs font-medium tabular-nums shadow-xs";
+
 function coldFor(hours: number, t: (texto: string) => string): string {
   if (hours < 48) return `${t("parado há")} ${hours}h`;
   return `${t("parado há")} ${Math.round(hours / 24)}d`;
@@ -60,10 +63,10 @@ export function RiskRadarList() {
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
+      <div className="space-y-3">
+        <Skeleton className="h-20 w-full rounded-xl" />
+        <Skeleton className="h-20 w-full rounded-xl" />
+        <Skeleton className="h-20 w-full rounded-xl" />
       </div>
     );
   }
@@ -78,10 +81,12 @@ export function RiskRadarList() {
   if (!data || (data.total === 0 && semPasso.length === 0 && vencidas.length === 0 && esperandoRevisao.length === 0)) {
     return (
       <div
-        className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center"
+        className="ds-entra flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center"
         data-testid="radar-empty"
       >
-        <CheckCircle size={28} className="text-success-fg/70" aria-hidden />
+        <span className="mb-1 flex size-12 items-center justify-center rounded-full bg-success-bg text-success-fg">
+          <CheckCircle size={24} weight="duotone" aria-hidden />
+        </span>
         <p className="text-sm font-medium">{t("Nenhuma demanda em risco")}</p>
         <p className="text-xs text-muted-foreground">
           {t("Toda demanda aberta teve atividade recente ou já tem um retorno agendado.")}
@@ -97,26 +102,29 @@ export function RiskRadarList() {
           viola o invariante 5. Esta é a lista que responde "e daí?". */}
       {semPasso.length > 0 ? (
         <section
-          className="rounded-lg border border-warning-border bg-warning-bg/40 p-3"
+          className="ds-entra rounded-xl border border-border/60 bg-surface p-4 shadow-xs"
           data-testid="radar-sem-proximo-passo"
         >
-          <p className="text-sm font-medium">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
+              <Warning size={15} weight="bold" aria-hidden />
+            </span>
             {semPasso.length}{" "}
             {semPasso.length === 1
               ? t("demanda aberta sem próximo passo")
               : t("demandas abertas sem próximo passo")}
           </p>
-          <p className="mb-2 text-xs text-muted-foreground">
+          <p className="mb-3 mt-1 pl-9 text-xs text-muted-foreground">
             {t(
               "Ninguém marcou o que acontece a seguir. Cada uma é alguém esperando sem que nada esteja combinado.",
             )}
           </p>
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col divide-y divide-border/60 pl-9">
             {semPasso.slice(0, 8).map((d) => (
-              <li key={d.id} className="flex items-baseline justify-between gap-3 text-xs max-md:items-center">
+              <li key={d.id} className="flex items-baseline justify-between gap-3 py-1.5 text-xs max-md:items-center">
                 <Link
                   href={destinoDaDemandaSemPasso(d)}
-                  className="truncate hover:underline max-md:block max-md:min-w-0 max-md:flex-1 max-md:py-3.5"
+                  className="truncate font-medium transition-colors hover:text-accent max-md:block max-md:min-w-0 max-md:flex-1 max-md:py-3.5"
                   data-testid="radar-sem-passo-link"
                 >
                   {d.contact_name ?? t("Contato sem nome")}
@@ -135,22 +143,25 @@ export function RiskRadarList() {
           paralela, não misturada nos itens do radar). */}
       {vencidas.length > 0 ? (
         <section
-          className="rounded-lg border border-warning-border bg-warning-bg/40 p-3"
+          className="ds-entra rounded-xl border border-border/60 bg-surface p-4 shadow-xs"
           data-testid="radar-propostas-vencidas"
         >
-          <p className="text-sm font-medium">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
+              <Warning size={15} weight="bold" aria-hidden />
+            </span>
             {vencidas.length}{" "}
             {vencidas.length === 1
               ? t("proposta vencida sem retomada")
               : t("propostas vencidas sem retomada")}
           </p>
-          <p className="mb-2 text-xs text-muted-foreground">
+          <p className="mb-3 mt-1 pl-9 text-xs text-muted-foreground">
             {t("O cliente recebeu e não decidiu. Retome antes que esfrie de vez.")}
           </p>
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col divide-y divide-border/60 pl-9">
             {vencidas.slice(0, 8).map((p) => (
-              <li key={p.proposal_id} className="flex items-baseline justify-between gap-3 text-xs max-md:items-center">
-                <Link href={`/app/proposals/${p.proposal_id}`} className="truncate hover:underline max-md:block max-md:min-w-0 max-md:flex-1 max-md:py-3.5">
+              <li key={p.proposal_id} className="flex items-baseline justify-between gap-3 py-1.5 text-xs max-md:items-center">
+                <Link href={`/app/proposals/${p.proposal_id}`} className="truncate font-medium transition-colors hover:text-accent max-md:block max-md:min-w-0 max-md:flex-1 max-md:py-3.5">
                   {p.numero != null && p.ano != null ? `${String(p.numero).padStart(4, "0")}/${p.ano}` : t("Proposta sem número")}
                 </Link>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
@@ -167,22 +178,25 @@ export function RiskRadarList() {
           não misturada nos itens do radar). */}
       {esperandoRevisao.length > 0 ? (
         <section
-          className="rounded-lg border border-warning-border bg-warning-bg/40 p-3"
+          className="ds-entra rounded-xl border border-border/60 bg-surface p-4 shadow-xs"
           data-testid="radar-propostas-esperando-revisao"
         >
-          <p className="text-sm font-medium">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-warning-bg text-warning-fg">
+              <Warning size={15} weight="bold" aria-hidden />
+            </span>
             {esperandoRevisao.length}{" "}
             {esperandoRevisao.length === 1
               ? t("proposta esperando revisão")
               : t("propostas esperando revisão")}
           </p>
-          <p className="mb-2 text-xs text-muted-foreground">
+          <p className="mb-3 mt-1 pl-9 text-xs text-muted-foreground">
             {t("Rascunhos que a IA terminou e ninguém revisou. Confira antes de enviar.")}
           </p>
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col divide-y divide-border/60 pl-9">
             {esperandoRevisao.slice(0, 8).map((p) => (
-              <li key={p.proposal_id} className="flex items-baseline justify-between gap-3 text-xs max-md:items-center">
-                <Link href={`/app/proposals/${p.proposal_id}`} className="truncate hover:underline max-md:block max-md:min-w-0 max-md:flex-1 max-md:py-3.5">
+              <li key={p.proposal_id} className="flex items-baseline justify-between gap-3 py-1.5 text-xs max-md:items-center">
+                <Link href={`/app/proposals/${p.proposal_id}`} className="truncate font-medium transition-colors hover:text-accent max-md:block max-md:min-w-0 max-md:flex-1 max-md:py-3.5">
                   {p.titulo ?? t("Proposta sem título")}
                 </Link>
                 <span className="shrink-0 truncate text-muted-foreground">
@@ -194,19 +208,22 @@ export function RiskRadarList() {
         </section>
       ) : null}
 
-      <div className="flex flex-wrap gap-2" data-testid="radar-counts">
-        <Badge variant="error">
+      <div className="ds-entra flex flex-wrap gap-2" data-testid="radar-counts">
+        <span className={CONTADOR}>
+          <span className="size-2 rounded-full bg-error" aria-hidden />
           {data.counts.critico} {t("crítico")}
-        </Badge>
-        <Badge variant="warning">
+        </span>
+        <span className={CONTADOR}>
+          <span className="size-2 rounded-full bg-warning" aria-hidden />
           {data.counts.em_risco} {t("em risco")}
-        </Badge>
-        <Badge variant="info">
+        </span>
+        <span className={CONTADOR}>
+          <span className="size-2 rounded-full bg-info" aria-hidden />
           {data.counts.em_voo} {t("em voo")}
-        </Badge>
+        </span>
       </div>
 
-      <ul className="divide-y divide-border rounded-lg border border-border">
+      <ul className="ds-entra divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs">
         {data.items.map((lead) => (
           <RadarRow key={lead.id} lead={lead} />
         ))}
@@ -264,14 +281,14 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
     <li
       data-testid="radar-item"
       data-risk={lead.risk}
-      className="flex items-start gap-2 pr-3 transition-colors hover:bg-accent/50 max-md:flex-wrap"
+      className="group flex items-start gap-2 pr-4 transition-colors hover:bg-muted/50 max-md:flex-wrap"
     >
-      <Link href={href} className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3">
-        <Badge variant={meta.variant} className="mt-0.5 shrink-0">
+      <Link href={href} className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3.5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/30">
+        <Badge variant={meta.variant} className="mt-0.5 shrink-0 rounded-full">
           {t(meta.label)}
         </Badge>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{lead.title}</p>
+          <p className="truncate text-sm font-medium transition-colors group-hover:text-accent">{lead.title}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             {lead.contact_name ? <span className="truncate">{lead.contact_name}</span> : null}
             <span className="inline-flex items-center gap-1">
@@ -307,11 +324,12 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
             : "max-md:hidden"
         }`}
       >
-        {lead.agenda?.appointment_id ? <Link className="text-xs underline max-md:inline-flex max-md:min-h-11 max-md:items-center" href={`/app/agenda?compromisso=${lead.agenda.appointment_id}`}>{t("Ver compromisso")}</Link> : null}
+        {lead.agenda?.appointment_id ? <Link className="rounded-full px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft max-md:inline-flex max-md:min-h-11 max-md:items-center" href={`/app/agenda?compromisso=${lead.agenda.appointment_id}`}>{t("Ver compromisso")}</Link> : null}
         {canClaim ? (
           <Button
             size="sm"
             variant="outline"
+            className="rounded-full hover:border-accent/40 hover:text-accent"
             disabled={claim.isPending}
             onClick={handleClaim}
             data-testid="radar-claim"
@@ -319,7 +337,7 @@ function RadarRow({ lead }: { lead: AtRiskLead }) {
             {t("Assumir")}
           </Button>
         ) : null}
-        <ArrowRight size={16} className="text-muted-foreground max-md:hidden" aria-hidden />
+        <ArrowRight size={16} className="text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent max-md:hidden" aria-hidden />
       </div>
     </li>
   );

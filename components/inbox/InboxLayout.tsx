@@ -886,7 +886,7 @@ export function InboxLayout({
     <div
       ref={gradeRef}
       className={cn(
-        "grid relative h-[calc(100dvh-var(--faixas-de-cima,0px)-3.5rem-var(--space-6)-max(var(--space-6),var(--rodape-ocupado,0px)))] w-full grid-cols-1 md:grid-cols-[300px_1fr]",
+        "grid relative overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs h-[calc(100dvh-var(--faixas-de-cima,0px)-3.5rem-var(--space-6)-max(var(--space-6),var(--rodape-ocupado,0px)))] w-full grid-cols-1 md:grid-cols-[300px_1fr]",
         // Recolhido (issue #3004), a terceira trilha vira o trilho estreito do
         // botão de expandir e a conversa fica com o que era da ficha. Duas
         // listas em vez de uma classe com valor em variável: o Tailwind precisa
@@ -935,7 +935,7 @@ export function InboxLayout({
       <div
         ref={listaRef}
         className={cn(
-          "h-full min-h-0 flex-col border-r border-border md:flex",
+          "h-full min-h-0 flex-col border-r border-border/60 md:flex",
           colunas.lista,
         )}
       >
@@ -1004,7 +1004,7 @@ export function InboxLayout({
           conversa, e só aparece quando há uma.
         */}
         {selectedId && (
-          <div className="flex items-center gap-1 border-b border-border px-1 py-1 md:hidden">
+          <div className="flex items-center gap-1 border-b border-border/60 px-1 py-1 md:hidden">
             <Button
               variant="ghost"
               size="sm"
@@ -1048,7 +1048,7 @@ export function InboxLayout({
               botaoBuscaRef={botaoBuscaRef}
             />
             {buscaAberta && (
-              <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
+              <div className="flex items-center gap-2 border-b border-border/60 px-4 py-1.5">
                 <MagnifyingGlass size={16} className="shrink-0 text-muted-foreground" aria-hidden />
                 <input
                   type="search"
@@ -1152,8 +1152,10 @@ export function InboxLayout({
             {t("Conversa não encontrada ou fora do seu acesso.")}
           </div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <ChatCircle size={36} weight="thin" className="text-text-subtle" aria-hidden />
+          <div className="ds-entra flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+            <span className="mb-1 flex size-14 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden>
+              <ChatCircle size={28} weight="duotone" />
+            </span>
             <p className="text-sm font-medium text-text-muted">{t("Selecione uma conversa")}</p>
             <p className="text-xs text-text-muted">{t("Ou navegue com J e K")}</p>
           </div>
@@ -1199,7 +1201,7 @@ export function InboxLayout({
           >
             <span
               aria-hidden
-              className="w-px bg-border transition-colors group-hover:bg-primary group-focus-visible:bg-primary"
+              className="w-px bg-transparent transition-colors duration-200 group-hover:bg-accent/60 group-focus-visible:bg-accent"
             />
           </span>
           {faixa?.temFicha && !painelRecolhido && (
@@ -1221,7 +1223,7 @@ export function InboxLayout({
             >
               <span
                 aria-hidden
-                className="w-px bg-border transition-colors group-hover:bg-primary group-focus-visible:bg-primary"
+                className="w-px bg-transparent transition-colors duration-200 group-hover:bg-accent/60 group-focus-visible:bg-accent"
               />
             </span>
           )}

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { useContactList } from "@/hooks/contacts/useContactList";
 import { useT } from "@/hooks/i18n/useT";
+import { CaretRight, EnvelopeSimple, MagnifyingGlass, Phone, UsersThree } from "@/lib/ui/icons";
 import {
   resumoDaNegociacao,
   ROTULO_DO_STATUS_DA_NEGOCIACAO,
@@ -81,41 +82,55 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
             {t("Todos os clientes cadastrados e o histórico de cada um na loja.")}
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="rounded-full">
           <Link href="/app/clientes/novo">{t("Adicionar Cliente")}</Link>
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         {[
           { id: "total", rotulo: t("Total de clientes"), valor: clientes.length },
           { id: "email", rotulo: t("Com e-mail"), valor: comEmail },
           { id: "telefone", rotulo: t("Com telefone"), valor: comTelefone },
-        ].map((k) => (
-          <div key={k.id} className="rounded-xl border p-4" data-testid={`cartao-${k.id}`}>
-            <div className="text-xs text-muted-foreground">{k.rotulo}</div>
-            <div className="mt-1 text-2xl font-semibold">{k.valor}</div>
+        ].map((k, i) => (
+          <div
+            key={k.id}
+            className="ds-entra rounded-xl border border-border/60 bg-surface p-5 shadow-xs"
+            style={{ animationDelay: `${i * 50}ms` }}
+            data-testid={`cartao-${k.id}`}
+          >
+            <div className="text-xs font-medium text-muted-foreground">{k.rotulo}</div>
+            <div className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">{k.valor}</div>
           </div>
         ))}
       </div>
 
-      <Input
-        value={entrada}
-        onChange={(e) => setEntrada(e.target.value)}
-        placeholder={t("Buscar por nome, telefone ou e-mail")}
-        className="max-w-sm"
-        aria-label={t("Buscar")}
-      />
+      <label className="relative block max-w-sm">
+        <MagnifyingGlass
+          aria-hidden
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          value={entrada}
+          onChange={(e) => setEntrada(e.target.value)}
+          placeholder={t("Buscar por nome, telefone ou e-mail")}
+          className="h-10 rounded-full border-border/80 bg-surface pl-9 pr-4 shadow-xs focus-visible:border-accent/50 focus-visible:ring-accent/20"
+          aria-label={t("Buscar")}
+        />
+      </label>
 
       {q.isLoading ? (
         <p className="text-sm text-muted-foreground">{t("Carregando…")}</p>
       ) : clientes.length === 0 ? (
-        <div className="rounded-xl border p-10 text-center text-sm text-muted-foreground">
+        <div className="ds-entra flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/80 bg-surface p-10 text-center text-sm text-muted-foreground">
+          <span className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <UsersThree aria-hidden weight="duotone" className="size-6" />
+          </span>
           {busca ? t("Nenhum cliente encontrado para essa busca.") : t("Nenhum cliente cadastrado ainda.")}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {clientes.map((c) => {
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {clientes.map((c, i) => {
             const nome = nomeDe(c, t);
             const n = porCliente.get(c.id)?.length ?? 0;
             return (
@@ -123,36 +138,49 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                 key={c.id}
                 type="button"
                 onClick={() => setAberto(c)}
-                className="rounded-xl border p-4 text-left transition hover:bg-muted/50"
+                className="ds-entra ds-elevavel group rounded-xl border border-border/60 bg-surface p-4 text-left shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
+                style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 data-testid={`cliente-${c.id}`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
                     {iniciais(nome)}
                   </span>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{nome}</div>
                     <div className="text-xs text-muted-foreground">
                       {t("Cliente desde")} {new Date(c.created_at).toLocaleDateString("pt-BR")}
                     </div>
                   </div>
+                  <CaretRight
+                    aria-hidden
+                    className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-accent"
+                  />
                 </div>
-                <dl className="mt-3 space-y-1 text-sm">
+                <dl className="mt-4 space-y-1.5 border-t border-border/50 pt-3 text-sm">
                   {c.phone_number && (
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">{t("Telefone")}</dt>
-                      <dd>{c.phone_number}</dd>
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="flex items-center gap-1.5 text-muted-foreground">
+                        <Phone aria-hidden className="size-3.5" />
+                        {t("Telefone")}
+                      </dt>
+                      <dd className="tabular-nums">{c.phone_number}</dd>
                     </div>
                   )}
                   {c.email && (
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-muted-foreground">{t("E-mail")}</dt>
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="flex items-center gap-1.5 text-muted-foreground">
+                        <EnvelopeSimple aria-hidden className="size-3.5" />
+                        {t("E-mail")}
+                      </dt>
                       <dd className="truncate">{c.email}</dd>
                     </div>
                   )}
-                  <div className="flex justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <dt className="text-muted-foreground">{t("Negociações")}</dt>
-                    <dd>{n}</dd>
+                    <dd>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums">{n}</span>
+                    </dd>
                   </div>
                 </dl>
               </button>
@@ -162,7 +190,7 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
       )}
 
       {q.hasNextPage && (
-        <Button variant="outline" onClick={() => void q.fetchNextPage()} disabled={q.isFetchingNextPage}>
+        <Button variant="outline" className="rounded-full" onClick={() => void q.fetchNextPage()} disabled={q.isFetchingNextPage}>
           {t("Carregar mais")}
         </Button>
       )}
@@ -175,7 +203,7 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                 <DialogTitle>{nomeDe(aberto, t)}</DialogTitle>
                 <DialogDescription>{t("Ficha do cliente")}</DialogDescription>
               </DialogHeader>
-              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+              <dl className="grid gap-3 rounded-xl bg-muted/60 p-4 text-sm sm:grid-cols-2">
                 <Info rotulo={t("Telefone")} valor={aberto.phone_number} />
                 <Info rotulo={t("E-mail")} valor={aberto.email} />
                 <Info rotulo={t("Data de nascimento")} valor={dataCivil(aberto.birthdate)} />
@@ -184,13 +212,13 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
               <section className="space-y-2" data-testid="historico-do-cliente">
                 <h3 className="font-semibold">{t("Histórico")}</h3>
                 {historico.length === 0 ? (
-                  <p className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
+                  <p className="rounded-xl border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
                     {t("Nenhuma compra ou venda registrada para este cliente.")}
                   </p>
                 ) : (
                   <ul className="space-y-2">
                     {historico.map((h) => (
-                      <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
+                      <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface p-3 text-sm shadow-xs">
                         <div>
                           <div className="font-medium">
                             {h.tipo === "venda" ? t("Comprou") : t("Vendeu")}{" "}
@@ -201,7 +229,7 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span>{formatarPreco(resumoDaNegociacao(h).total_cents)}</span>
+                          <span className="font-semibold tabular-nums">{formatarPreco(resumoDaNegociacao(h).total_cents)}</span>
                           <span className={`rounded-full px-2 py-0.5 text-xs ${COR_DO_STATUS[h.status]}`}>
                             {t(ROTULO_DO_STATUS_DA_NEGOCIACAO[h.status])}
                           </span>
@@ -211,7 +239,7 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                   </ul>
                 )}
               </section>
-              <Button asChild variant="outline" className="justify-self-start">
+              <Button asChild variant="outline" className="justify-self-start rounded-full">
                 <Link href={`/app/contacts/${aberto.id}`}>{t("Abrir ficha completa")}</Link>
               </Button>
             </>

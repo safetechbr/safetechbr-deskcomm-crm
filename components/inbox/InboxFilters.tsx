@@ -390,7 +390,7 @@ export function InboxFilters({ value, onChange }: Props) {
   }, [searchInput]);
 
   return (
-    <div className="border-b border-border bg-background">
+    <div className="border-b border-border/60 bg-transparent">
       <div className="space-y-2 px-3 pt-3 pb-2">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
@@ -426,7 +426,7 @@ export function InboxFilters({ value, onChange }: Props) {
               "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               value.onlyUnread
                 ? "border-accent bg-accent text-accent-foreground"
-                : "border-border bg-transparent text-text-muted hover:bg-surface-elevated",
+                : "border-border/80 bg-transparent text-text-muted hover:bg-foreground/[0.04] hover:text-text",
             )}
           >
             {t("Não lidos")}
@@ -443,7 +443,7 @@ export function InboxFilters({ value, onChange }: Props) {
               "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               value.onlyGroups
                 ? "border-accent bg-accent text-accent-foreground"
-                : "border-border bg-transparent text-text-muted hover:bg-surface-elevated",
+                : "border-border/80 bg-transparent text-text-muted hover:bg-foreground/[0.04] hover:text-text",
             )}
           >
             {t("Grupos")}

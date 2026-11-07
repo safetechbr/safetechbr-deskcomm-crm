@@ -1,3 +1,4 @@
+import { CalendarBlank as IconeDoTitulo } from "@/lib/ui/icons";
 import { tituloDaAgenda } from "@/lib/agenda/apresentacao";
 import { redirect } from "next/navigation";
 
@@ -98,13 +99,18 @@ export default async function TiposDeAgendamentoPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{tituloDaAgenda(org?.settings) ?? t("Agendamentos")}</h1>
         <p className="mt-1 text-sm text-text-muted">
           {t(
             "O que se pode marcar, quanto dura e quem atende. É isto que a tela de marcar e o agente de IA oferecem ao cliente.",
           )}
         </p>
+      </div>
       </header>
       <TiposDeAgendamentoClient
         tituloDaAgenda={tituloDaAgenda(org?.settings)}

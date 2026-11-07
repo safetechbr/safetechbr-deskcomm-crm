@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, PencilSimple, Trash, DragHandle } from "@/lib/ui/icons";
+import { Plus, PencilSimple, Trash, DragHandle, Lightning, Microphone } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import {
@@ -167,26 +167,39 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
   if (isLoading) {
     return (
       <div className="space-y-2">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-20 w-full rounded-xl" />
+        <Skeleton className="h-20 w-full rounded-xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex sm:justify-end">
-        <Button type="button" onClick={openNew} className="w-full sm:w-auto">
+      <div className="ds-entra flex sm:justify-end" style={{ animationDelay: "50ms" }}>
+        <Button type="button" onClick={openNew} className="w-full rounded-full px-4 sm:w-auto">
           <Plus /> {t("Nova resposta rápida")}
         </Button>
       </div>
       {!templates?.length ? (
-        <p className="text-sm text-muted-foreground">{t("Nenhuma resposta rápida ainda.")}</p>
+        <div
+          className="ds-entra flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-surface p-8 text-center shadow-xs"
+          style={{ animationDelay: "100ms" }}
+        >
+          <span className="flex size-10 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Lightning className="size-5" weight="duotone" aria-hidden />
+          </span>
+          <p className="text-sm text-muted-foreground">{t("Nenhuma resposta rápida ainda.")}</p>
+        </div>
       ) : (
         <DragDropContext onDragEnd={aoSoltar}>
           <Droppable droppableId="respostas-rapidas">
             {(provided) => (
-              <ul ref={provided.innerRef} {...provided.droppableProps} className="space-y-2">
+              <ul
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="ds-entra space-y-2"
+                style={{ animationDelay: "100ms" }}
+              >
                 {lista.map((template, indice) => {
                   // Só o que a RLS deixa escrever pode ser arrastado: mover uma
                   // resposta COMPARTILHADA exige manager+, e o `agent` que
@@ -203,7 +216,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
                         <li
                           ref={provido.innerRef}
                           {...provido.draggableProps}
-                          className={`flex items-start justify-between gap-4 rounded-md border bg-card p-4 ${
+                          className={`group flex items-start justify-between gap-4 rounded-xl border border-border/60 bg-surface p-4 shadow-xs transition-shadow hover:shadow-sm ${
                             instantaneo.isDragging ? "shadow-md ring-1 ring-accent/40" : ""
                           }`}
                         >
@@ -212,19 +225,22 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
                               <span
                                 {...provido.dragHandleProps}
                                 aria-label={t("Arrastar para reordenar")}
-                                className="mt-0.5 shrink-0 cursor-grab text-muted-foreground"
+                                className="mt-0.5 shrink-0 cursor-grab rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-accent"
                               >
                                 <DragHandle />
                               </span>
                             )}
                             <div className="min-w-0 space-y-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-medium">{template.title}</span>
                                 <Badge variant={template.owner_user_id ? "neutral" : "default"}>
                                   {t(template.owner_user_id ? "Pessoal" : "Compartilhado")}
                                 </Badge>
                                 {ehRecursoDeAudio(template) && (
-                                  <Badge variant="neutral">🎧 {t("Áudio")}</Badge>
+                                  <Badge variant="neutral" className="gap-1">
+                                    <Microphone className="size-3.5" weight="duotone" aria-hidden />
+                                    {t("Áudio")}
+                                  </Badge>
                                 )}
                                 {/* A resposta rápida que leva imagem do próprio operador
                                     (#2526) se anuncia na lista: sem isto, quem usa o menu
@@ -251,6 +267,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
                                 type="button"
                                 variant="ghost"
                                 size="icon"
+                                className="rounded-full hover:bg-muted/50 hover:text-accent"
                                 aria-label={t("Editar resposta rápida")}
                                 onClick={() => openEdit(template)}
                               >
@@ -262,6 +279,7 @@ export function TemplatesClient({ canShare, currentUserId }: Props) {
                                     type="button"
                                     variant="ghost"
                                     size="icon"
+                                    className="rounded-full hover:bg-error-bg hover:text-error-fg"
                                     aria-label={t("Excluir resposta rápida")}
                                   >
                                     <Trash />

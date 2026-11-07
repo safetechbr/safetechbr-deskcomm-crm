@@ -1763,6 +1763,7 @@ export const DICIONARIO: Traducoes = {
   // "Kanban" saiu do menu (a tela virou "Funis"); "Etapas do funil" é o nome novo
   // da tela de configuração, que antes disputava "Funis" com ela.
   Funis: { es: "Embudos" },
+  "Central de conversas": { es: "Central de conversaciones" },
   "Etapas do funil": { es: "Etapas del embudo" },
   "Tipos de agendamento": { es: "Tipos de cita" },
   Automação: { es: "Automatización" },
@@ -13905,6 +13906,14 @@ export const DICIONARIO: Traducoes = {
   "A autorização não foi concluída. Tente conectar novamente e aceite as permissões necessárias.": { es: "La autorización no se completó. Intenta conectar de nuevo y acepta los permisos necesarios." },
   "Autorização concluída. Confira a conta na lista e ative o atendimento, quando disponível.": { es: "Autorización completada. Revisa la cuenta en la lista y activa la atención cuando esté disponible." },
   "Vincular o provedor": { es: "Vincular el proveedor" },
+  "Crie sua conta no Zernio.": { es: "Crea tu cuenta en Zernio." },
+  "É onde suas redes sociais ficam ligadas.": { es: "Es donde se vinculan tus redes sociales." },
+  "Sincronize suas redes sociais.": { es: "Sincroniza tus redes sociales." },
+  "No painel, conecte Instagram, Facebook, LinkedIn e as demais contas.": { es: "En el panel, conecta Instagram, Facebook, LinkedIn y las demás cuentas." },
+  "Abrir o painel": { es: "Abrir el panel" },
+  "Gere a chave de API.": { es: "Genera la clave de API." },
+  "Clique em Create API key e copie na hora: ela não é mostrada de novo.": { es: "Haz clic en Create API key y cópiala al instante: no se muestra de nuevo." },
+  "Ir para as chaves de API": { es: "Ir a las claves de API" },
   "A chave fica cifrada no servidor e não é exibida novamente.": { es: "La clave se guarda cifrada en el servidor y no se vuelve a mostrar." },
   "Buscar perfis": { es: "Buscar perfiles" },
   "Perfil da empresa": { es: "Perfil de la empresa" },

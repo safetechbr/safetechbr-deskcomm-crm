@@ -19,12 +19,12 @@ export function SearchTrigger() {
       <Button
         variant="outline"
         size="sm"
-        className="gap-2 text-muted-foreground"
+        className="h-9 gap-2 rounded-full border-border/80 bg-card px-3.5 font-normal text-muted-foreground shadow-xs transition-[border-color,box-shadow] duration-base hover:border-border-strong hover:bg-card hover:text-foreground hover:shadow-sm md:w-full md:justify-start"
         onClick={() => setOpen(true)}
       >
-        <MagnifyingGlass size={14} aria-hidden />
+        <MagnifyingGlass size={15} aria-hidden />
         <span className="max-md:sr-only">{t("Buscar...")}</span>
-        <kbd className="ml-2 hidden md:inline rounded-md border bg-muted px-1.5 py-0.5 text-[10px]">⌘K</kbd>
+        <kbd className="ml-auto hidden rounded-md border border-border/80 bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium tracking-wide md:inline">⌘K</kbd>
       </Button>
       <CommandPalette open={open} onOpenChange={setOpen} />
     </>

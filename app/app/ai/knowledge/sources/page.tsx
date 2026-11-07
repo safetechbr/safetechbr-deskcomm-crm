@@ -1,3 +1,4 @@
+import { BookOpen as IconeDoTitulo } from "@/lib/ui/icons";
 import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -60,13 +61,18 @@ export default async function AcervoPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <header className="space-y-1">
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("O que o agente sabe")}</h1>
         <p className="text-sm text-text-muted">
           {t(
             "O material do seu negócio que os assistentes consultam antes de responder. Cada assistente escolhe, na tela dele, o que pode ler daqui.",
           )}
         </p>
+      </div>
       </header>
 
       <AcervoClient

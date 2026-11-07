@@ -167,24 +167,32 @@ export function CompaniesListClient() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">{t("Empresas")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("Cadastro B2B com CNPJ e enriquecimento via BrasilAPI.")}
-          </p>
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-6 p-4 md:p-6">
+      <div className="ds-entra flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Buildings size={22} weight="duotone" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">{t("Empresas")}</h1>
+            <p className="text-sm text-muted-foreground">
+              {t("Cadastro B2B com CNPJ e enriquecimento via BrasilAPI.")}
+            </p>
+          </div>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button className="rounded-full px-5" onClick={() => setCreateOpen(true)}>
           <Plus className="mr-2 size-4" />
           {t("Nova empresa")}
         </Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <MagnifyingGlass className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+      <div className="ds-entra relative w-full max-w-sm" style={{ animationDelay: "50ms" }}>
+        <MagnifyingGlass
+          className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
         <Input
-          className="pl-8"
+          className="h-10 rounded-full border-border/80 bg-surface pl-10 pr-4 shadow-xs focus-visible:border-accent/50 focus-visible:ring-accent/20"
           placeholder={t("Buscar por nome ou CNPJ")}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
@@ -192,7 +200,10 @@ export function CompaniesListClient() {
         />
       </div>
 
-      <Card className="overflow-hidden">
+      <Card
+        className="ds-entra overflow-hidden rounded-2xl border-border/60 bg-surface shadow-xs"
+        style={{ animationDelay: "100ms" }}
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -207,22 +218,31 @@ export function CompaniesListClient() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-muted-foreground">
+                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
                   {t("Carregando…")}
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                  <Buildings className="mx-auto mb-2 size-8 opacity-40" />
+                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <span className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+                    <Buildings size={24} weight="duotone" aria-hidden />
+                  </span>
                   {t("Nenhuma empresa ainda.")}
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((c) => (
-                <TableRow key={c.id}>
+              rows.map((c, i) => (
+                <TableRow
+                  key={c.id}
+                  className="ds-entra transition-colors hover:bg-muted/40"
+                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                >
                   <TableCell>
-                    <Link className="font-medium underline-offset-2 hover:underline" href={`/app/companies/${c.id}`}>
+                    <Link
+                      className="rounded-xs font-medium underline-offset-2 transition-colors hover:text-accent hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
+                      href={`/app/companies/${c.id}`}
+                    >
                       {c.trade_name || c.legal_name || "—"}
                     </Link>
                   </TableCell>
@@ -277,6 +297,7 @@ export function CompaniesListClient() {
                 <Button
                   type="button"
                   variant="outline"
+                  className="shrink-0 rounded-full hover:bg-muted/50 hover:text-accent"
                   onClick={() => void consultar()}
                   disabled={consulting || !cnpj.trim()}
                 >
@@ -356,22 +377,22 @@ export function CompaniesListClient() {
             {aviso ? (
               <p
                 role="status"
-                className="rounded-md border border-warning/40 bg-warning-bg p-3 text-sm text-warning-fg"
+                className="rounded-xl border border-warning/40 bg-warning-bg px-4 py-3 text-sm text-warning-fg"
               >
                 {aviso}
               </p>
             ) : null}
             {error ? (
-              <p className="text-sm text-destructive" role="alert">
+              <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg" role="alert">
                 {error}
               </p>
             ) : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+            <Button variant="ghost" className="rounded-full" onClick={() => setCreateOpen(false)}>
               {t("Cancelar")}
             </Button>
-            <Button onClick={() => void create()} disabled={saving || (!legalName && !tradeName && !cnpj)}>
+            <Button className="rounded-full px-5" onClick={() => void create()} disabled={saving || (!legalName && !tradeName && !cnpj)}>
               {saving ? t("Salvando…") : t("Criar")}
             </Button>
           </DialogFooter>

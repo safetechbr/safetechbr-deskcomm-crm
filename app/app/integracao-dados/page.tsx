@@ -10,6 +10,7 @@
  * a RLS da tabela base se aplica à view `security_invoker`, então nem aqui há
  * como vazar a conexão de outra organização.
  */
+import { TreeStructure as IconeDoTitulo } from "@/lib/ui/icons";
 import { redirect } from "next/navigation";
 
 import { ListaDeConexoes } from "./_components/ListaDeConexoes";
@@ -44,7 +45,11 @@ export default async function IntegracaoDeDadosPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Dados externos", idioma)}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           {traduzir(
@@ -52,6 +57,7 @@ export default async function IntegracaoDeDadosPage() {
             idioma,
           )}
         </p>
+      </div>
       </header>
       <ListaDeConexoes initialData={conexoes} canWrite={canWrite} />
     </div>

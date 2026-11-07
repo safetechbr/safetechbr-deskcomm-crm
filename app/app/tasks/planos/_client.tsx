@@ -164,7 +164,7 @@ export function PlanosDeTarefa() {
       </div>
 
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="ds-entra">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Planos de tarefa")}</h1>
           <p className="text-sm text-muted-foreground">
             {t(

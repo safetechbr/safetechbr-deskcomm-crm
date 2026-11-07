@@ -1,5 +1,6 @@
 "use client";
 
+import { Lightning as IconeDoTitulo } from "@/lib/ui/icons";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 
 /**
@@ -139,7 +140,11 @@ export function ExecucoesDeIa() {
 
   return (
     <div className="mx-auto w-full max-w-5xl p-6" data-testid="execucoes-de-ia">
-      <header className="mb-6">
+      <header className="ds-entra flex items-start gap-3 mb-6">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Execuções de IA")}</h1>
         <div className="mt-2 flex gap-3 text-sm"><span aria-current="page" className="font-medium">{t("Execuções")}</span><a href="/app/ai/runs?tab=roteamento" className="underline">{t("Roteamento")}</a></div>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
@@ -147,6 +152,7 @@ export function ExecucoesDeIa() {
             "Tudo que a inteligência artificial fez por aqui — e, quando algo falhou, o que aconteceu e o que fazer.",
           )}
         </p>
+      </div>
       </header>
 
       {/* O resumo responde "está tudo bem?" antes da lista. */}

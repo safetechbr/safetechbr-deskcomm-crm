@@ -198,3 +198,18 @@ it("ressincroniza o webhook do canal social pela origem atual, sem desconectar",
     }),
   );
 });
+
+it("guia o cliente até a chave: criar conta, sincronizar redes e gerar a chave", async () => {
+  h.get.mockResolvedValue({ data: { configured: false, label: "", networks: [], accounts: [] } });
+  mount();
+  const conta = await screen.findByRole("link", { name: "Criar conta" });
+  expect(conta).toHaveAttribute("href", "https://zernio.com/signup");
+  expect(screen.getByRole("link", { name: "Abrir o painel" })).toHaveAttribute(
+    "href",
+    "https://zernio.com/dashboard",
+  );
+  expect(screen.getByRole("link", { name: "Ir para as chaves de API" })).toHaveAttribute(
+    "href",
+    "https://zernio.com/dashboard/api-keys",
+  );
+});

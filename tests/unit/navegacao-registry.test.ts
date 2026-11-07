@@ -280,4 +280,19 @@ describe("searchable", () => {
     const hrefs = searchable(AGENT.platform, AGENT.role).map((d) => d.href);
     expect(hrefs).not.toContain("/app/audit");
   });
+
+  it("as Ações rápidas ganham atalhos sem tirar os originais do lugar", () => {
+    // Atalho é PORTA A MAIS para uma tela que mora em outro menu: o item
+    // original continua no grupo dele, e o atalho fica fora do NAV_CATALOG
+    // (o href segue único — ⌘K e hub não duplicam).
+    const grupos = sidebarGroups(true, null);
+    const rapidas = grupos.find((g) => g.group.id === "acoes_rapidas")!.items;
+    const hrefs = rapidas.map((i) => i.href);
+    const i = hrefs.indexOf("/app/nova-venda");
+    expect(hrefs.slice(i + 1, i + 4)).toEqual(["/app/vendas/historico", "/app/estoque", "/app/inbox"]);
+    expect(rapidas.find((d) => d.href === "/app/inbox")?.label).toBe("Central de conversas");
+    expect(grupos.find((g) => g.group.id === "vendas")?.items.map((d) => d.href)).toContain("/app/vendas/historico");
+    expect(grupos.find((g) => g.group.id === "estoque")?.items.map((d) => d.href)).toContain("/app/estoque");
+    expect(grupos.find((g) => g.group.id === "crm")?.items.find((d) => d.href === "/app/kanban")?.label).toBe("Funis");
+  });
 });

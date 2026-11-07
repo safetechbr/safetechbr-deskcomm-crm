@@ -155,7 +155,7 @@ export function StageColumn({
         coluna de etapa não vira painel. De `md` para cima volta o `w-80` de
         sempre, onde a graça é justamente ver várias etapas ao mesmo tempo.
       */
-      className="bg-surface-muted/40 flex min-h-full w-[85vw] max-w-80 shrink-0 snap-center flex-col rounded-lg border border-border md:w-80"
+      className="flex min-h-full w-[85vw] max-w-80 shrink-0 snap-center flex-col rounded-xl border border-border/60 bg-muted md:w-80"
       data-etapa-do-quadro={stage.id}
     >
       {/* Cabeçalho e total PRESOS no alto do quadro enquanto os cards rolam: com
@@ -170,11 +170,11 @@ export function StageColumn({
           lados), o contorno de cima cobre exatamente a borda da coluna e viaja
           junto com o cabeçalho preso. */}
       <div
-        className="sticky top-0 z-10 -mx-px -mt-px rounded-t-lg border-x border-t border-border bg-background"
+        className="sticky top-0 z-10 -mx-px -mt-px rounded-t-xl border-x border-t border-border/60 bg-muted"
         data-cabecalho-da-etapa
       >
-        <div className="bg-surface-muted/40 rounded-t-lg">
-          <div className="group/etapa flex items-center gap-2 border-b border-border px-3 py-2.5">
+        <div className="rounded-t-xl">
+          <div className="group/etapa flex items-center gap-2 px-3.5 pt-3 pb-2">
             {/* "Selecionar a etapa inteira" é o gesto que faz a ação em lote valer a
             pena: sem ele, mover trinta cards deixa de ser trinta arrastes e vira
             trinta cliques com modificador. Fica no cabeçalho porque é ali que a
@@ -224,15 +224,15 @@ export function StageColumn({
                 <NomeDaEtapaNoQuadro key={stage.name} nome={stage.name} onConfirmar={onRenomear} />
               </h2>
             ) : (
-              <h2 className="flex-1 truncate text-sm font-semibold text-text">{stage.name}</h2>
+              <h2 className="flex-1 truncate text-[13px] font-semibold tracking-[-0.01em] text-text">{stage.name}</h2>
             )}
-            <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-medium text-text-muted tabular-nums">
+            <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] font-semibold text-text-muted tabular-nums shadow-xs">
               {selecionadosAqui > 0 ? `${selecionadosAqui}/${leads.length}` : leads.length}
             </span>
           </div>
 
           {temTotal && (
-            <div className="border-b border-border px-3 py-1.5 text-[11px] text-text-muted tabular-nums">
+            <div className="px-3.5 pb-2 text-[11px] font-medium text-text-muted tabular-nums">
               {formatSomaPorMoeda(totais, formatValorDoNegocio, { primeira })}
               {ponderados !== null && (
                 <span className="ml-2">
@@ -251,8 +251,8 @@ export function StageColumn({
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={cn(
-              "flex flex-1 flex-col gap-2 p-2 transition-colors",
-              snapshot.isDraggingOver && "bg-accent/5",
+              "flex flex-1 flex-col gap-2 rounded-b-xl p-2 pt-1 transition-colors duration-base",
+              snapshot.isDraggingOver && "bg-accent/[0.06]",
             )}
           >
             {leads.map((lead, idx) => (
@@ -279,7 +279,7 @@ export function StageColumn({
             ))}
             {provided.placeholder}
             {leads.length === 0 && !snapshot.isDraggingOver && (
-              <div className="flex h-20 items-center justify-center text-[11px] text-text-muted">
+              <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-border-strong/70 text-[11px] text-text-muted">
                 {t("vazio")}
               </div>
             )}

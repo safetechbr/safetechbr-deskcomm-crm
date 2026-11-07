@@ -17,6 +17,7 @@
  * ir mais devagar que o número. O link está escrito na própria seção: mandar
  * alguém procurar é o mesmo defeito que criou esta tela.
  */
+import { Megaphone as IconeDoTitulo } from "@/lib/ui/icons";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -53,11 +54,16 @@ export function ConfiguracaoDeCampanhas() {
           {t("Campanhas")}
         </Link>
       </div>
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Configuração de campanhas")}</h1>
         <p className="text-sm text-muted-foreground">
           {t("O que vale para todas as campanhas, e não para uma só.")}
         </p>
+      </div>
       </header>
 
       <Padroes />

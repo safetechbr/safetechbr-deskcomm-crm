@@ -24,6 +24,7 @@
  * carrega o sintoma em português de gente — é o que liga uma linha de
  * configuração a algo que a pessoa já viu acontecer no negócio dela.
  */
+import { Plugs as IconeDoTitulo } from "@/lib/ui/icons";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -184,12 +185,17 @@ export function PainelDeProvedores() {
 
   return (
     <div className="mx-auto w-full max-w-5xl p-6" data-testid="painel-de-provedores">
-      <header className="mb-6">
+      <header className="ds-entra flex items-start gap-3 mb-6">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Provedores de IA")}</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           {t("Seu sistema usa inteligência artificial em")} {dados.pontos.length}{" "}
           {t("lugares diferentes. Aqui você vê qual está atendendo cada um — e troca, se quiser.")}
         </p>
+      </div>
       </header>
 
       {semChave && (

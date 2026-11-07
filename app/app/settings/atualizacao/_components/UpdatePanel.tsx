@@ -1,4 +1,5 @@
 "use client";
+import { ArrowCircleUp as IconeDoTitulo } from "@/lib/ui/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
@@ -942,10 +943,15 @@ function Layout({
   const t = useT();
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           {titulo ?? t("Atualização do sistema")}
         </h1>
+      </div>
       </header>
       {semSmtp ? <AvisoDeSmtp /> : null}
       <Card className="p-6">{children}</Card>

@@ -1,3 +1,4 @@
+import { ClockCounterClockwise as IconeDoTitulo } from "@/lib/ui/icons";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -21,11 +22,16 @@ export default async function AuditPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Audit Log")}</h1>
         <p className="text-sm text-muted-foreground">
           {traduzir("Histórico append-only de mutações na organização. Manager+.", idioma)}
         </p>
+      </div>
       </header>
       <AuditClient />
     </div>

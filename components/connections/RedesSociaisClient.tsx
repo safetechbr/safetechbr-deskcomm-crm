@@ -25,6 +25,34 @@ import { useT } from "@/hooks/i18n/useT";
 import { ChannelAiAccess } from "./ChannelAiAccess";
 import { RenomearConexao } from "./RenomearConexao";
 
+/**
+ * Passo a passo para quem ainda não tem a chave. A ORDEM importa: a chave só
+ * serve depois de a conta existir e de as redes estarem sincronizadas nela.
+ * Só `signup` e `dashboard/api-keys` foram confirmados na documentação do
+ * Zernio; o passo 2 abre o painel porque o caminho exato da tela de contas
+ * exige login e não pôde ser verificado.
+ */
+const PASSOS_DO_PROVEDOR = [
+  {
+    titulo: "Crie sua conta no Zernio.",
+    texto: "É onde suas redes sociais ficam ligadas.",
+    link: "Criar conta",
+    href: "https://zernio.com/signup",
+  },
+  {
+    titulo: "Sincronize suas redes sociais.",
+    texto: "No painel, conecte Instagram, Facebook, LinkedIn e as demais contas.",
+    link: "Abrir o painel",
+    href: "https://zernio.com/dashboard",
+  },
+  {
+    titulo: "Gere a chave de API.",
+    texto: "Clique em Create API key e copie na hora: ela não é mostrada de novo.",
+    link: "Ir para as chaves de API",
+    href: "https://zernio.com/dashboard/api-keys",
+  },
+] as const;
+
 type Account = {
   id: string;
   platform: string;
@@ -245,6 +273,30 @@ export function RedesSociaisClient() {
       {((state && !state.configured) || editing) && (
         <Card className="space-y-4 p-4">
           <h3 className="font-semibold">{t("Vincular o provedor")}</h3>
+          <ol className="space-y-2 rounded-md border bg-muted/40 p-3 text-sm">
+            {PASSOS_DO_PROVEDOR.map((passo, i) => (
+              <li key={passo.href} className="flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent"
+                >
+                  {i + 1}
+                </span>
+                <span>
+                  <span className="font-medium">{t(passo.titulo)}</span>{" "}
+                  <span className="text-muted-foreground">{t(passo.texto)}</span>{" "}
+                  <a
+                    href={passo.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-accent underline underline-offset-2"
+                  >
+                    {t(passo.link)}
+                  </a>
+                </span>
+              </li>
+            ))}
+          </ol>
           <div className="space-y-2">
             <Label htmlFor="social-api-key">{t("Chave de API")}</Label>
             <Input

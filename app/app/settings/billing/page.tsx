@@ -39,7 +39,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <div className="flex h-full flex-col gap-6 p-6">
       <header>
         {/* Mesmo nome do item de menu (catalogo.ts), ligada ou não. */}
-        <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Plano e cobrança", idioma)}</h1>
+        <h1 className="ds-entra text-2xl font-semibold tracking-tight">{traduzir("Plano e cobrança", idioma)}</h1>
         <p className="text-sm text-muted-foreground">
           {traduzir("Planos, faturas e cobrança.", idioma)}
         </p>

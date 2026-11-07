@@ -65,9 +65,11 @@ export default async function KanbanPickerPage() {
   const t = (texto: string) => traduzir(texto, idioma);
 
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
-      <header className="flex items-center gap-3">
-        <Kanban size={28} className="text-muted-foreground" weight="duotone" />
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-6 p-4 md:p-6">
+      <header className="ds-entra flex items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <Kanban size={22} weight="duotone" aria-hidden />
+        </span>
         {/* Era "Pipelines" — nome de quem construiu o sistema, não de quem
             vende. O comentário anterior aqui listava o preço de trocá-lo
             (`rbac-roles.spec.ts` e `invite-lifecycle.spec.ts`) e dizia que

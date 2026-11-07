@@ -31,6 +31,22 @@ import {
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 import { formatarKm, formatarPreco, tituloDoVeiculo, type Veiculo } from "@/lib/veiculos/regras";
 import { nomeDoContato, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import {
+  CaretLeft,
+  CheckCircle,
+  ClockCounterClockwise,
+  FileText,
+  MagnifyingGlass,
+  Plus,
+  Receipt,
+  Storefront,
+  Trash,
+  UserCircle,
+} from "@/lib/ui/icons";
+
+/** Campo do PDV: o mesmo desenho dos inputs do app, um pouco mais compacto (a tela é densa). */
+const CAMPO =
+  "h-9 w-full rounded-full border border-border/80 bg-surface px-3.5 text-sm shadow-xs transition-colors focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20 disabled:opacity-70";
 
 export interface VeiculoDoPdv extends Veiculo {
   placa: string | null;
@@ -135,7 +151,7 @@ function Campo({
         value={valor ?? ""}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
+        className={`mt-1 ${CAMPO}`}
         data-testid={testid}
       />
     </label>
@@ -169,7 +185,7 @@ function CampoDinheiro({
   return (
     <label className={`block text-xs ${extra ?? ""}`}>
       <span className="text-muted-foreground">{rotulo}</span>
-      <div className="mt-1 flex h-9 items-center rounded-md border bg-background px-2 text-sm">
+      <div className="mt-1 flex h-9 items-center rounded-full border border-border/80 bg-surface px-3.5 text-sm shadow-xs transition-colors focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/20">
         <span className="mr-1 text-muted-foreground">R$</span>
         <input
           inputMode="decimal"
@@ -184,7 +200,7 @@ function CampoDinheiro({
             }
           }}
           onBlur={() => setTexto(formatar(ultimo.current))}
-          className="h-full w-full bg-transparent outline-hidden"
+          className="h-full w-full bg-transparent tabular-nums outline-hidden"
           data-testid={testid}
         />
       </div>
@@ -201,18 +217,34 @@ function Coluna({
   titulo,
   atalho,
   rodape,
+  icone: Icone,
+  indice = 0,
   children,
 }: {
   titulo: string;
   atalho?: string;
   rodape?: React.ReactNode;
+  icone: React.ComponentType<{ className?: string; weight?: "duotone"; "aria-hidden"?: boolean }>;
+  indice?: number;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border bg-card">
-      <header className="flex items-center justify-between border-b px-4 py-2.5">
-        <h2 className="text-xs font-semibold tracking-wider uppercase">{titulo}</h2>
-        {atalho ? <kbd className="rounded-sm border px-1.5 text-[10px] text-muted-foreground">{atalho}</kbd> : null}
+    <section
+      className="ds-entra flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs"
+      style={{ animationDelay: `${indice * 60}ms` }}
+    >
+      <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Icone className="size-4" weight="duotone" aria-hidden />
+          </span>
+          <h2 className="truncate text-sm font-semibold tracking-tight">{titulo}</h2>
+        </div>
+        {atalho ? (
+          <kbd className="rounded-full border border-border/80 bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
+            {atalho}
+          </kbd>
+        ) : null}
       </header>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">{children}</div>
       {rodape}
@@ -288,23 +320,24 @@ function ColunaCliente({
 
   const docPreenchido = (c.documento ?? "").replace(/\D/g, "").length > 0;
   return (
-    <Coluna atalho="F2" titulo={r.tipo === "venda" ? t("Cliente (comprador)") : t("Cliente (vendedor)")}>
+    <Coluna atalho="F2" icone={UserCircle} indice={0} titulo={r.tipo === "venda" ? t("Cliente (comprador)") : t("Cliente (vendedor)")}>
       <fieldset disabled={travado} className="space-y-3">
         <div className="relative">
+          <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder={t("Buscar contato por nome ou telefone…")}
-            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            className={`${CAMPO} pl-9`}
             data-testid="pdv-busca-contato"
           />
           {busca.trim().length >= 2 && achados.length > 0 ? (
-            <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-md border bg-popover shadow-sm">
+            <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-border/60 bg-surface p-1 shadow-md">
               {achados.map((ct) => (
                 <li key={ct.id}>
                   <button
                     type="button"
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60"
                     onClick={() => {
                       setR((x) => ({
                         ...x,
@@ -329,9 +362,9 @@ function ColunaCliente({
           ) : null}
         </div>
         {r.contact_id ? (
-          <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs">
-            <span>{t("Vinculado a um contato do CRM.")}</span>
-            <button type="button" className="underline" onClick={() => setR((x) => ({ ...x, contact_id: null }))}>
+          <div className="flex items-center justify-between rounded-xl bg-accent-soft px-3 py-2 text-xs text-accent">
+            <span className="flex items-center gap-1.5"><CheckCircle className="size-4" weight="duotone" aria-hidden />{t("Vinculado a um contato do CRM.")}</span>
+            <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => setR((x) => ({ ...x, contact_id: null }))}>
               {t("Desvincular")}
             </button>
           </div>
@@ -345,13 +378,13 @@ function ColunaCliente({
               value={c.documento ?? ""}
               onChange={(e) => set("documento", e.target.value)}
               onBlur={(e) => set("documento", formatarDocumento(e.target.value))}
-              className={`mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm ${
-                docPreenchido && !documentoValido(c.documento) ? "border-destructive" : ""
+              className={`mt-1 ${CAMPO} ${
+                docPreenchido && !documentoValido(c.documento) ? "border-error" : ""
               }`}
               data-testid="pdv-cliente-documento"
             />
             {docPreenchido && !documentoValido(c.documento) ? (
-              <span className="text-destructive">{t("Documento inválido.")}</span>
+              <span className="mt-1 block text-error-fg">{t("Documento inválido.")}</span>
             ) : null}
           </label>
           <Campo rotulo={t("RG")} valor={c.rg} onChange={(x) => set("rg", x)} />
@@ -361,15 +394,15 @@ function ColunaCliente({
           <Campo rotulo={t("E-mail")} tipo="email" valor={c.email} onChange={(x) => set("email", x)} extra="col-span-2" />
         </div>
 
-        <div className="border-t pt-3">
-          <div className="mb-2 text-xs font-medium">{t("Endereço")}</div>
+        <div className="border-t border-border/60 pt-3">
+          <div className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("Endereço")}</div>
           <div className="grid grid-cols-3 gap-2">
             <label className="block text-xs">
               <span className="text-muted-foreground">{t("CEP")}</span>
               <input
                 value={c.cep ?? ""}
                 onChange={(e) => set("cep", e.target.value)}
-                className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
+                className={`mt-1 ${CAMPO}`}
               />
             </label>
             <Campo rotulo={t("Rua")} valor={c.endereco} onChange={(x) => set("endereco", x)} extra="col-span-2" />
@@ -432,10 +465,10 @@ function ColunaVeiculo({
 
   if (r.tipo === "compra") {
     return (
-      <Coluna titulo={t("Veículo comprado")}>
+      <Coluna icone={Storefront} indice={1} titulo={t("Veículo comprado")}>
         <fieldset disabled={travado} className="space-y-3">
           <FichaDoVeiculo v={r.veiculo} onChange={(v) => setR((x) => ({ ...x, veiculo: v }))} prefixo="pdv-compra" />
-          <div className="grid grid-cols-2 gap-2 border-t pt-3">
+          <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
             <CampoDinheiro
               rotulo={t("Valor pago ao cliente")}
               cents={r.valor_cents}
@@ -470,10 +503,10 @@ function ColunaVeiculo({
   };
 
   return (
-    <Coluna atalho="F3" titulo={t("Veículos")}>
+    <Coluna atalho="F3" icone={Storefront} indice={1} titulo={t("Veículos")}>
       <fieldset disabled={travado} className="space-y-3">
         {escolhido ? (
-          <div className="overflow-hidden rounded-md border" data-testid="pdv-veiculo-escolhido">
+          <div className="ds-entra overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs" data-testid="pdv-veiculo-escolhido">
             <div className="aspect-[16/9] bg-muted">
               {capa(escolhido) ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -488,12 +521,12 @@ function ColunaVeiculo({
                   .join(" · ")}
               </div>
               <div className="text-xs text-muted-foreground">
-                {t("Preço de tabela")}: {formatarPreco(escolhido.preco_cents, escolhido.moeda)}
+                {t("Preço de tabela")}: <span className="font-semibold text-accent tabular-nums">{formatarPreco(escolhido.preco_cents, escolhido.moeda)}</span>
               </div>
               {!travado ? (
                 <button
                   type="button"
-                  className="text-xs underline"
+                  className="mt-1 rounded-full px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
                   onClick={() => setR((x) => ({ ...x, veiculo_id: null, veiculo: { ...VEICULO_VAZIO } }))}
                 >
                   {t("Trocar de veículo")}
@@ -503,17 +536,23 @@ function ColunaVeiculo({
           </div>
         ) : (
           <>
+            <div className="relative">
+            <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder={t("Buscar no estoque por modelo, código ou placa…")}
-              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              className={`${CAMPO} pl-9`}
               data-testid="pdv-busca-veiculo"
             />
+            </div>
             {lista.length === 0 ? (
-              <p className="rounded-md border p-4 text-center text-sm text-muted-foreground">
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
+                <span className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+                  <Storefront className="size-6" weight="duotone" aria-hidden />
+                </span>
                 {t("Nenhum veículo disponível no estoque.")}
-              </p>
+              </div>
             ) : (
               <ul className="grid grid-cols-1 gap-2 xl:grid-cols-2">
                 {lista.map((v) => (
@@ -521,7 +560,7 @@ function ColunaVeiculo({
                     <button
                       type="button"
                       onClick={() => escolher(v)}
-                      className="flex h-full w-full flex-col overflow-hidden rounded-md border text-left hover:border-orange-500"
+                      className="ds-elevavel flex h-full w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-surface text-left shadow-xs transition-colors hover:border-accent/50"
                       data-testid={`pdv-estoque-${v.codigo}`}
                     >
                       <div className="aspect-[16/9] w-full bg-muted">
@@ -535,7 +574,7 @@ function ColunaVeiculo({
                         <div className="text-xs text-muted-foreground">
                           {[v.codigo, v.km != null ? formatarKm(v.km) : null].filter(Boolean).join(" · ")}
                         </div>
-                        <div className="font-semibold text-orange-500">{formatarPreco(v.preco_cents, v.moeda)}</div>
+                        <div className="font-semibold text-accent tabular-nums">{formatarPreco(v.preco_cents, v.moeda)}</div>
                       </div>
                     </button>
                   </li>
@@ -545,7 +584,7 @@ function ColunaVeiculo({
           </>
         )}
 
-        <div className="grid grid-cols-2 gap-2 border-t pt-3">
+        <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
           <CampoDinheiro
             rotulo={t("Preço de venda")}
             cents={r.valor_cents}
@@ -559,10 +598,11 @@ function ColunaVeiculo({
           />
         </div>
 
-        <div className="border-t pt-3">
+        <div className="border-t border-border/60 pt-3">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input
               type="checkbox"
+              className="size-4 accent-accent"
               checked={Boolean(r.troca)}
               onChange={(e) => setR((x) => ({ ...x, troca: e.target.checked ? { ...TROCA_VAZIA } : null }))}
               data-testid="pdv-tem-troca"
@@ -570,7 +610,7 @@ function ColunaVeiculo({
             {t("Cliente dá um veículo na troca")}
           </label>
           {r.troca ? (
-            <div className="mt-3 space-y-2 rounded-md bg-muted/50 p-3">
+            <div className="ds-entra mt-3 space-y-2 rounded-xl border border-border/60 bg-muted/50 p-3">
               <FichaDoVeiculo
                 v={r.troca}
                 onChange={(v) => setR((x) => ({ ...x, troca: v }))}
@@ -596,6 +636,7 @@ function ColunaVeiculo({
                   onChange={(e) =>
                     setR((x) => ({ ...x, troca: x.troca ? { ...x.troca, entra_no_estoque: e.target.checked } : null }))
                   }
+                  className="size-4 accent-accent"
                 />
                 {t("Colocar a troca no estoque ao concluir (como reservado)")}
               </label>
@@ -663,12 +704,12 @@ function ColunaPagamento({
     const parcelada = FORMAS_PARCELADAS.includes(p.forma);
     const comBanco = FORMAS_COM_BANCO.includes(p.forma);
     return (
-      <li key={i} className="space-y-2 rounded-md border bg-background/50 p-3" data-testid={`pdv-pagamento-${i}`}>
+      <li key={i} className="ds-entra space-y-2 rounded-xl border border-border/60 bg-surface p-3 shadow-xs" data-testid={`pdv-pagamento-${i}`}>
         <div className="flex items-center justify-between gap-2">
           <select
             value={p.forma}
             onChange={(e) => mudar(i, { forma: e.target.value as FormaDePagamento })}
-            className="h-8 flex-1 rounded-md border bg-background px-2 text-sm font-medium"
+            className="h-8 flex-1 rounded-full border border-border/80 bg-surface px-3 text-sm font-medium shadow-xs focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
           >
             {formas.map((f) => (
               <option key={f} value={f}>
@@ -679,9 +720,10 @@ function ColunaPagamento({
           {!travado ? (
             <button
               type="button"
-              className="text-xs text-destructive"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-error-fg transition-colors hover:bg-error-bg"
               onClick={() => setR((x) => ({ ...x, pagamentos: x.pagamentos.filter((_, j) => j !== i) }))}
             >
+              <Trash className="size-3.5" aria-hidden />
               {t("Remover")}
             </button>
           ) : null}
@@ -739,28 +781,29 @@ function ColunaPagamento({
     faltas.length > 0
       ? { texto: t("Aguardando itens"), cor: "bg-muted text-muted-foreground" }
       : resumo.saldo_cents > 0
-        ? { texto: `${t("Falta")} ${formatarPreco(resumo.saldo_cents)}`, cor: "bg-amber-500/20 text-amber-600" }
-        : { texto: t("Pronto para finalizar"), cor: "bg-emerald-500/20 text-emerald-600" };
+        ? { texto: `${t("Falta")} ${formatarPreco(resumo.saldo_cents)}`, cor: "bg-warning-bg text-warning-fg" }
+        : { texto: t("Pronto para finalizar"), cor: "bg-success-bg text-success-fg" };
 
   return (
-    <Coluna titulo={venda ? t("Pagamento") : t("Como a loja paga")} rodape={rodape}>
+    <Coluna icone={Receipt} indice={2} titulo={venda ? t("Pagamento") : t("Como a loja paga")} rodape={rodape}>
       <fieldset disabled={travado} className="space-y-4">
         {grupos.map((g) => {
           const doGrupo = r.pagamentos.map((p, i) => ({ p, i })).filter(({ p }) => g.formas.includes(p.forma));
           return (
             <div key={g.id} className="space-y-2" data-testid={`pdv-grupo-${g.id}`}>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold">{t(g.rotulo)}</span>
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(g.rotulo)}</span>
                 <div className="flex flex-wrap justify-end gap-1">
                   {g.disponiveis.map((f) => (
                     <button
                       key={f}
                       type="button"
                       onClick={() => adicionar(f)}
-                      className="rounded-md border border-dashed px-2.5 py-1 text-xs hover:bg-muted"
+                      className="inline-flex items-center gap-1 rounded-full border border-dashed border-border/80 px-2.5 py-1 text-xs transition-colors hover:border-accent/50 hover:bg-accent-soft hover:text-accent"
                       data-testid={`pdv-forma-${f}`}
                     >
-                      + {t(ROTULO_DA_FORMA[f])}
+                      <Plus className="size-3" aria-hidden />
+                      {t(ROTULO_DA_FORMA[f])}
                     </button>
                   ))}
                 </div>
@@ -771,26 +814,29 @@ function ColunaPagamento({
         })}
 
         {venda ? (
-          <div className="flex items-center justify-between rounded-md border px-3 py-2 text-xs">
+          <div className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2 text-xs">
             <span className="font-semibold">{t("Troca")}</span>
-            <span className={r.troca ? "font-semibold" : "text-muted-foreground"}>
+            <span className={r.troca ? "font-semibold tabular-nums" : "text-muted-foreground"}>
               {r.troca ? formatarPreco(resumo.troca_liquida_cents) : t("Sem troca")}
             </span>
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 divide-x rounded-md border text-center">
+        <div className="grid grid-cols-2 divide-x divide-border/60 rounded-xl border border-border/60 bg-muted/40 text-center">
           <div className="p-2">
             <div className="text-[10px] tracking-wider text-muted-foreground uppercase">{t("Pago")}</div>
-            <div className="text-sm font-semibold">{formatarPreco(resumo.pagamentos_cents)}</div>
+            <div className="text-sm font-semibold tabular-nums">{formatarPreco(resumo.pagamentos_cents)}</div>
           </div>
           <div className="p-2">
             <div className="text-[10px] tracking-wider text-muted-foreground uppercase">{t("Troco")}</div>
-            <div className="text-sm font-semibold">{formatarPreco(troco)}</div>
+            <div className="text-sm font-semibold tabular-nums">{formatarPreco(troco)}</div>
           </div>
         </div>
 
-        <div className={`rounded-md px-3 py-2 text-center text-xs font-medium ${situacao.cor}`}>{situacao.texto}</div>
+        <div className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-center text-xs font-medium transition-colors ${situacao.cor}`}>
+          {faltas.length === 0 && resumo.saldo_cents <= 0 ? <CheckCircle className="size-4" weight="duotone" aria-hidden /> : null}
+          {situacao.texto}
+        </div>
 
         <label className="block text-xs">
           <span className="text-muted-foreground">{venda ? t("Observações da Venda") : t("Observações da Compra")}</span>
@@ -798,7 +844,7 @@ function ColunaPagamento({
             value={r.observacoes ?? ""}
             onChange={(e) => setR((x) => ({ ...x, observacoes: e.target.value }))}
             rows={3}
-            className="mt-1 w-full rounded-md border bg-background px-2 py-1 text-sm"
+            className="mt-1 w-full rounded-xl border border-border/80 bg-surface px-3.5 py-2 text-sm shadow-xs transition-colors focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
           />
         </label>
       </fieldset>
@@ -822,24 +868,29 @@ function Historico({
   const lista = negociacoes.filter((n) => filtro === "all" || n.tipo === filtro);
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div className="flex gap-1 self-start rounded-full border border-border/80 bg-muted p-1">
         {(["all", "venda", "compra"] as const).map((f) => (
           <button
             key={f}
             type="button"
             onClick={() => setFiltro(f)}
-            className={`rounded-full border px-3 py-1 text-xs ${filtro === f ? "bg-primary text-primary-foreground" : ""}`}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filtro === f ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
           >
             {f === "all" ? t("Todas") : f === "venda" ? t("Vendas") : t("Compras")}
           </button>
         ))}
       </div>
       {lista.length === 0 ? (
-        <p className="rounded-md border p-6 text-center text-sm text-muted-foreground">{t("Nenhuma negociação ainda.")}</p>
+        <div className="ds-entra flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/80 bg-surface p-10 text-center text-sm text-muted-foreground">
+          <span className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Receipt className="size-6" weight="duotone" aria-hidden />
+          </span>
+          {t("Nenhuma negociação ainda.")}
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="ds-entra overflow-x-auto rounded-xl border border-border/60 bg-surface shadow-xs">
           <table className="w-full text-sm">
-            <thead className="bg-muted text-left text-xs text-muted-foreground">
+            <thead className="bg-muted/50 text-left text-xs tracking-wide text-muted-foreground uppercase">
               <tr>
                 <th className="px-3 py-2">#</th>
                 <th className="px-3 py-2">{t("Tipo")}</th>
@@ -853,18 +904,30 @@ function Historico({
             </thead>
             <tbody>
               {lista.map((n) => (
-                <tr key={n.id} className="border-t" data-testid={`pdv-historico-${n.numero}`}>
-                  <td className="px-3 py-2 font-mono">{String(n.numero).padStart(4, "0")}</td>
+                <tr key={n.id} className="border-t border-border/60 transition-colors hover:bg-muted/50" data-testid={`pdv-historico-${n.numero}`}>
+                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{String(n.numero).padStart(4, "0")}</td>
                   <td className="px-3 py-2">{n.tipo === "venda" ? t("Venda") : t("Compra")}</td>
-                  <td className="px-3 py-2">{n.cliente?.nome || "—"}</td>
+                  <td className="px-3 py-2 font-medium">{n.cliente?.nome || "—"}</td>
                   <td className="px-3 py-2">{tituloDoVeiculoDaNegociacao(n.veiculo) || "—"}</td>
-                  <td className="px-3 py-2 text-right">{formatarPreco(resumoDaNegociacao(n).total_cents, n.moeda)}</td>
-                  <td className="px-3 py-2">{t(ROTULO_DO_STATUS_DA_NEGOCIACAO[n.status])}</td>
+                  <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatarPreco(resumoDaNegociacao(n).total_cents, n.moeda)}</td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        n.status === "concluida"
+                          ? "bg-success-bg text-success-fg"
+                          : n.status === "cancelada"
+                            ? "bg-error-bg text-error-fg"
+                            : "bg-warning-bg text-warning-fg"
+                      }`}
+                    >
+                      {t(ROTULO_DO_STATUS_DA_NEGOCIACAO[n.status])}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {new Date(n.concluida_em ?? n.created_at).toLocaleDateString(tagDeIdioma)}
                   </td>
                   <td className="space-x-2 whitespace-nowrap px-3 py-2 text-right">
-                    <button type="button" className="text-xs underline" onClick={() => abrir(n)}>
+                    <button type="button" className="rounded-full px-2 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft" onClick={() => abrir(n)}>
                       {n.status === "rascunho" ? t("Continuar") : t("Ver")}
                     </button>
                     {n.status !== "cancelada" ? (
@@ -872,7 +935,7 @@ function Historico({
                         href={`/api/v1/pdv/negociacoes/${n.id}/contrato`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs underline"
+                        className="rounded-full px-2 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
                       >
                         {t("Contrato")}
                       </a>
@@ -1005,28 +1068,28 @@ export function PdvClient({
 
   const rodapeDoPagamento =
     aba !== "historico" ? (
-      <footer className="bg-orange-500 text-white" data-testid="pdv-rodape">
+      <footer className="bg-accent text-accent-foreground" data-testid="pdv-rodape">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div data-testid="pdv-saldo" className="min-w-0">
             <div className="text-[10px] tracking-wider uppercase opacity-90">{r.tipo === "venda" ? t("Total") : t("Valor da compra")}</div>
-            <div className="text-xl leading-tight font-bold">{formatarPreco(resumo.total_cents)}</div>
+            <div className="text-xl leading-tight font-bold tabular-nums">{formatarPreco(resumo.total_cents)}</div>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {aberta?.status === "rascunho" && podeNegociar ? (
-              <Button variant="ghost" size="sm" onClick={cancelar} disabled={salvando} className="text-white hover:bg-white/15 hover:text-white">
+              <Button variant="ghost" size="sm" onClick={cancelar} disabled={salvando} className="rounded-full text-accent-foreground hover:bg-white/15 hover:text-accent-foreground">
                 {t("Cancelar")}
               </Button>
             ) : null}
             {!travado ? (
               <>
-                <Button variant="ghost" size="sm" onClick={salvarRascunho} disabled={salvando} className="text-white hover:bg-white/15 hover:text-white" data-testid="pdv-salvar">
+                <Button variant="ghost" size="sm" onClick={salvarRascunho} disabled={salvando} className="rounded-full text-accent-foreground hover:bg-white/15 hover:text-accent-foreground" data-testid="pdv-salvar">
                   {t("Salvar rascunho")}
                 </Button>
                 <Button
                   onClick={finalizar}
                   disabled={salvando}
                   title={faltas.length > 0 ? faltas.map(t).join("\n") : undefined}
-                  className="rounded-full bg-white px-5 text-orange-600 hover:bg-white/90"
+                  className="rounded-full bg-white px-5 font-semibold text-accent shadow-xs hover:bg-white/90"
                   data-testid="pdv-finalizar"
                 >
                   {r.tipo === "venda" ? t("Finalizar") : t("Finalizar compra")}
@@ -1045,16 +1108,28 @@ export function PdvClient({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center gap-3 border-b bg-card px-4 py-2">
-        <a href="/app" className="text-sm text-muted-foreground hover:text-foreground">
-          ← {t("Voltar")}
+      <header className="ds-entra flex flex-wrap items-center gap-3 border-b border-border/60 bg-surface px-4 py-2.5">
+        <a
+          href="/app"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent-soft hover:text-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
+        >
+          <CaretLeft className="size-4" aria-hidden />
+          {t("Voltar")}
         </a>
         <h1 className="text-sm font-bold tracking-wider uppercase">{titulo}</h1>
-        <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-emerald-600 uppercase">
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase ${
+            aberta?.status === "cancelada"
+              ? "bg-error-bg text-error-fg"
+              : aberta?.status === "rascunho"
+                ? "bg-warning-bg text-warning-fg"
+                : "bg-success-bg text-success-fg"
+          }`}
+        >
           {aberta ? t(ROTULO_DO_STATUS_DA_NEGOCIACAO[aberta.status]) : t("Aberto")}
         </span>
         {aberta ? (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground tabular-nums">
             {r.tipo === "venda" ? t("Venda") : t("Compra")} #{String(aberta.numero).padStart(4, "0")}
           </span>
         ) : null}
@@ -1065,16 +1140,18 @@ export function PdvClient({
                 href={`/api/v1/pdv/negociacoes/${aberta.id}/contrato`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs underline"
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
               >
+                <FileText className="size-3.5" aria-hidden />
                 {aberta.status === "concluida" ? t("Imprimir contrato") : t("Prévia do contrato")}
               </a>
-              <button type="button" className="text-xs underline" onClick={() => nova(r.tipo)}>
+              <button type="button" className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft" onClick={() => nova(r.tipo)}>
+                <Plus className="size-3.5" aria-hidden />
                 {t("Nova negociação")}
               </button>
             </>
           ) : null}
-          <div className="flex rounded-lg border p-0.5" role="tablist">
+          <div className="flex gap-0.5 rounded-full border border-border/80 bg-muted p-1" role="tablist">
             {abas.map((a) => (
               <button
                 key={a.id}
@@ -1082,7 +1159,7 @@ export function PdvClient({
                 role="tab"
                 aria-selected={aba === a.id}
                 onClick={() => (a.id === "historico" ? setAba("historico") : a.id !== r.tipo || aberta ? nova(a.id) : setAba(a.id))}
-                className={`rounded-md px-3 py-1 text-xs font-medium ${aba === a.id ? "bg-orange-500 text-white" : "hover:bg-muted"}`}
+                className={`rounded-full px-3.5 py-1 text-xs font-medium transition-colors ${aba === a.id ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground hover:bg-surface hover:text-foreground"}`}
                 data-testid={`pdv-aba-${a.id}`}
               >
                 {a.rotulo}
@@ -1097,7 +1174,7 @@ export function PdvClient({
           <Historico negociacoes={negociacoes} abrir={abrir} />
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)] lg:overflow-hidden">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)] lg:overflow-hidden">
           <ColunaCliente r={r} setR={setR} travado={travado} />
           <ColunaVeiculo r={r} setR={setR} estoque={estoque} urlsDasCapas={urlsDasCapas} travado={travado} />
           <ColunaPagamento r={r} setR={setR} travado={travado} faltas={faltas} rodape={rodapeDoPagamento} />

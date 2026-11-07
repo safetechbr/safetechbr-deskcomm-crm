@@ -222,7 +222,7 @@ export function AvisoDaConexaoGoogle() {
       data-acao={faixa.acao ?? "nenhuma"}
       role="alert"
       className={cn(
-        "flex items-start gap-3 rounded-lg border p-3",
+        "flex items-start gap-3 rounded-xl border p-4 shadow-xs",
         "border-warning/40 bg-warning-bg",
       )}
     >
@@ -232,7 +232,7 @@ export function AvisoDaConexaoGoogle() {
         <p className="mt-0.5 text-xs leading-4 text-text-muted">{t(faixa.corpo)}</p>
       </div>
       {faixa.acao === "reconectar" && (
-        <Button variant="outline" size="sm" data-testid="reconectar" className="shrink-0">
+        <Button variant="outline" size="sm" data-testid="reconectar" className="shrink-0 rounded-full">
           {t("Conectar de novo")}
         </Button>
       )}
@@ -241,7 +241,7 @@ export function AvisoDaConexaoGoogle() {
         aria-label={t("Fechar aviso")}
         data-testid="fechar-aviso-google"
         onClick={() => setFaixa(null)}
-        className="shrink-0 rounded-sm p-1 text-text-muted transition-colors hover:bg-surface hover:text-text"
+        className="shrink-0 rounded-full p-1.5 text-text-muted transition-colors hover:bg-surface hover:text-text"
       >
         <X size={14} weight="bold" aria-hidden />
       </button>

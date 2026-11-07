@@ -16,6 +16,7 @@
  * Gate = manager+, que é o que a matriz da spec 13 §4 dá para
  * "atendimento/routing" — a mesma linha cobre as duas chaves.
  */
+import { ChatsCircle as IconeDoTitulo } from "@/lib/ui/icons";
 import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
@@ -73,7 +74,11 @@ export default async function AtendimentoSettingsPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           {traduzir("Distribuição de atendimento", idioma)}
         </h1>
@@ -83,6 +88,7 @@ export default async function AtendimentoSettingsPage() {
             idioma,
           )}
         </p>
+      </div>
       </header>
 
       <AtendimentoForm

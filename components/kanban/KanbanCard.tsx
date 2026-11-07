@@ -134,6 +134,10 @@ export function KanbanCard({
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
+          // `--i` escalona a entrada (`.ds-entra`, globals.css): cada card chega
+          // 40ms depois do anterior, até o oitavo. O estilo do dnd vem antes e
+          // segue intacto — é ele que posiciona o card durante o arraste.
+          style={{ ...provided.draggableProps.style, ["--i" as string]: index }}
           // O dnd marca o handle como role="button"; com o menu de ações dentro,
           // isso vira nested-interactive no axe. "group" mantém o foco e o
           // teclado do dnd (tabIndex e handlers continuam vindo do spread) sem
@@ -144,10 +148,10 @@ export function KanbanCard({
           // Tags saem do card (Lei A): ficam a um hover, sem ocupar altura.
           title={card.tags.length > 0 ? `Tags: ${card.tags.join(", ")}` : undefined}
           className={cn(
-            "group relative overflow-hidden rounded-md border border-border bg-surface",
-            "py-2 pl-3 pr-3 shadow-xs transition-colors",
+            "ds-entra ds-elevavel group relative overflow-hidden rounded-lg border border-border/70 bg-surface",
+            "py-2.5 pl-3 pr-3 shadow-xs",
             "hover:border-border-strong",
-            snapshot.isDragging && "rotate-1 shadow-md ring-1 ring-accent/40",
+            snapshot.isDragging && "rotate-[1.5deg] shadow-lg ring-1 ring-accent/30",
             isSelected && "ring-2 ring-accent",
           )}
         >

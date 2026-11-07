@@ -125,8 +125,8 @@ export function ModelosDeProposta() {
 
   if (propostasDesligadas) {
     return (
-      <div className="mx-auto w-full max-w-3xl space-y-3 p-6">
-        <h1 className="text-xl font-semibold">{t("Modelos de proposta")}</h1>
+      <div className="ds-entra mx-auto w-full max-w-3xl space-y-3 p-6">
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Modelos de proposta")}</h1>
         <p>
           {t("As propostas estão desligadas para esta organização. Para editar os modelos, ligue as propostas em Configurações › Propostas e salve.")}
         </p>

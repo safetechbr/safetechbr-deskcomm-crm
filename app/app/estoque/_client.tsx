@@ -8,6 +8,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
+import { ImageIcon, MagnifyingGlass } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 import { interpretarModeloFipe, marcasDoCatalogo, modelosDaMarca } from "@/lib/veiculos/catalogo";
@@ -131,18 +132,26 @@ export function EstoqueClient({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder={t("Buscar por modelo, marca ou código")}
-          className="h-9 w-72 rounded-md border bg-background px-3 text-sm"
-          data-testid="busca-estoque"
-        />
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative">
+          <span className="sr-only">{t("Buscar por modelo, marca ou código")}</span>
+          <MagnifyingGlass
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+            aria-hidden
+          />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder={t("Buscar por modelo, marca ou código")}
+            className="h-10 w-72 rounded-full border border-border/80 bg-surface pl-9 pr-4 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
+            data-testid="busca-estoque"
+          />
+        </label>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="h-9 rounded-md border bg-background px-2 text-sm"
+          className="h-10 rounded-full border border-border/80 bg-surface px-3 text-sm shadow-xs transition-colors duration-150 hover:bg-foreground/[0.03] focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
           data-testid="filtro-status"
         >
           <option value="todos">{t("Todos")}</option>
@@ -156,56 +165,71 @@ export function EstoqueClient({
       </div>
 
       {visiveis.length === 0 ? (
-        <p className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-          {t("Nenhum veículo encontrado.")}
-        </p>
+        <div className="ds-entra flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/80 bg-surface p-10 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden>
+            <MagnifyingGlass size={22} weight="duotone" />
+          </span>
+          <p className="text-sm text-muted-foreground">{t("Nenhum veículo encontrado.")}</p>
+        </div>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visiveis.map((v) => {
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visiveis.map((v, i) => {
             const capa = v.fotos[0] ? urlsDasFotos[v.fotos[0]] : undefined;
             const poucas = v.fotos.length < MINIMO_RECOMENDADO_DE_FOTOS;
             return (
-              <li key={v.id} className="overflow-hidden rounded-lg border bg-card" data-testid={`veiculo-${v.codigo}`}>
-                <div className="aspect-[4/3] bg-muted">
+              <li
+                key={v.id}
+                className="ds-entra ds-elevavel group overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs"
+                style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                data-testid={`veiculo-${v.codigo}`}
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
                   {capa ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={capa} alt={tituloDoVeiculo(v)} className="h-full w-full object-cover" />
+                    <img
+                      src={capa}
+                      alt={tituloDoVeiculo(v)}
+                      className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                    />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    <div className="flex h-full flex-col items-center justify-center gap-1.5 text-sm text-text-muted">
+                      <ImageIcon size={28} weight="duotone" aria-hidden />
                       {t("Sem foto")}
                     </div>
                   )}
+                  <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-medium text-text shadow-xs backdrop-blur-sm">
+                    {t(ROTULO_DO_STATUS[v.status as keyof typeof ROTULO_DO_STATUS] ?? v.status)}
+                  </span>
                 </div>
-                <div className="space-y-1 p-3 text-sm">
-                  <div className="font-medium">{tituloDoVeiculo(v)}</div>
+                <div className="space-y-1 p-4 text-sm">
+                  <div className="font-medium leading-snug">{tituloDoVeiculo(v)}</div>
                   <div className="text-muted-foreground">
                     {[v.km != null ? `${formatarKm(v.km)} km` : null, v.motor, v.cambio].filter(Boolean).join(" · ")}
                   </div>
-                  <div className="text-base font-semibold">{formatarPreco(v.preco_cents, v.moeda)}</div>
+                  <div className="pt-1 text-lg font-semibold tracking-tight text-accent">
+                    {formatarPreco(v.preco_cents, v.moeda)}
+                  </div>
                   <div className={poucas ? "text-xs text-warning-fg" : "text-xs text-muted-foreground"}>
                     {v.fotos.length} {t("foto(s)")}
                     {poucas ? ` — ${t("recomendado")}: ${MINIMO_RECOMENDADO_DE_FOTOS}+` : ""}
                   </div>
-                  <div className="flex items-center gap-2 pt-1">
-                    {podeEditar ? (
+                  {podeEditar ? (
+                    <div className="mt-2 flex items-center gap-2 border-t border-border/50 pt-3">
                       <select
                         value={v.status}
                         onChange={(e) => void mudarStatus(v, e.target.value)}
-                        className="h-8 rounded-md border bg-background px-2 text-xs"
+                        aria-label={t("Status")}
+                        className="h-8 rounded-full border border-border/80 bg-transparent px-2.5 text-xs transition-colors duration-150 hover:bg-foreground/[0.04]"
                       >
                         {STATUS_DO_VEICULO.map((s) => (
                           <option key={s} value={s}>{t(ROTULO_DO_STATUS[s])}</option>
                         ))}
                       </select>
-                    ) : (
-                      <span className="text-xs">{t(ROTULO_DO_STATUS[v.status as keyof typeof ROTULO_DO_STATUS] ?? v.status)}</span>
-                    )}
-                    {podeEditar ? (
-                      <Button size="sm" variant="outline" onClick={() => setEditando(v)}>
+                      <Button size="sm" variant="outline" className="ml-auto rounded-full" onClick={() => setEditando(v)}>
                         {t("Editar")}
                       </Button>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               </li>
             );

@@ -22,6 +22,7 @@
  * venda inteira da landing. `tests/e2e/qa-titulos-das-telas.spec.ts` mede isso
  * por ferramenta (`page.title()`), e esta rota entrou na lista dele.
  */
+import { ClipboardText as IconeDoTitulo } from "@/lib/ui/icons";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -48,7 +49,11 @@ export default async function AvisoDeCasoPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <header className="space-y-1">
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           {traduzir("Aviso no WhatsApp", idioma)}
         </h1>
@@ -58,6 +63,7 @@ export default async function AvisoDeCasoPage() {
             idioma,
           )}
         </p>
+      </div>
       </header>
       <AvisoNoWhatsApp />
     </div>

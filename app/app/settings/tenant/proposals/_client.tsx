@@ -51,8 +51,8 @@ export function ProposalsSettingsClient() {
   if (!cfg) return <div className="p-6">{t("Carregando…")}</div>;
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4 p-6">
-      <h1 className="text-xl font-semibold">{t("Propostas")}</h1>
+    <div className="ds-entra mx-auto w-full max-w-2xl space-y-4 p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">{t("Propostas")}</h1>
       {enabledSalvo ? (
         <p className="text-sm">
           <Link href="/app/settings/tenant/proposals/modelos" className="underline underline-offset-4">

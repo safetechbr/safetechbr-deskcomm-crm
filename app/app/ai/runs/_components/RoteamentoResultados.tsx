@@ -104,7 +104,7 @@ export function RoteamentoResultados() {
     <div className="mx-auto w-full max-w-5xl space-y-5 p-6" data-testid="resultados-roteamento">
       <header>
         <div className="mb-2 flex gap-3 text-sm"><Link href="/app/ai/runs" className="underline">{t("Execuções")}</Link><span aria-current="page" className="font-medium">{t("Roteamento")}</span></div>
-        <h1 className="text-2xl font-semibold">{t("Resultados do roteamento")}</h1>
+        <h1 className="ds-entra text-2xl font-semibold tracking-tight">{t("Resultados do roteamento")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("Compare os modos e revise decisões reais. Concordância entre IAs não é prova de acerto.")}</p>
         <p className="mt-1 text-xs text-muted-foreground">{t("A janela é a da sua IA de sempre. O Jev recebe só a mensagem atual.")}</p>
       </header>

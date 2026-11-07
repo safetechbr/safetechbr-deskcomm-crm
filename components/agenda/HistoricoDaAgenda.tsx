@@ -153,7 +153,7 @@ export function HistoricoDaAgenda({
       <div
         role="tablist"
         aria-label={t("Filtrar o histórico")}
-        className="flex flex-wrap items-center gap-0.5 rounded-md border border-border bg-surface p-0.5"
+        className="flex w-fit flex-wrap items-center gap-0.5 rounded-full border border-border/60 bg-surface p-1 shadow-xs"
       >
         {ABAS.map((a) => {
           const n = grupos[a.id].length;
@@ -166,11 +166,11 @@ export function HistoricoDaAgenda({
               aria-selected={aba === a.id}
               onClick={() => setAba(a.id)}
               className={cn(
-                "flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs transition-colors duration-fast ease-out",
+                "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors duration-fast ease-out",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500",
                 aba === a.id
-                  ? "bg-accent font-semibold text-accent-foreground"
-                  : "text-text-muted hover:bg-surface-elevated hover:text-text",
+                  ? "bg-accent font-semibold text-accent-foreground shadow-xs"
+                  : "text-text-muted hover:bg-muted/50 hover:text-text",
               )}
             >
               <span>{t(a.rotulo)}</span>
@@ -191,7 +191,7 @@ export function HistoricoDaAgenda({
         })}
       </div>
 
-      <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-surface">
+      <div className="mt-3 min-h-0 flex-1 overflow-auto rounded-xl border border-border/60 bg-surface shadow-xs">
         {daAba.length === 0 ? (
           <p data-testid="historico-vazio" className="p-8 text-center text-sm text-text-muted">
             {aba === "proximos" && t("Nada marcado daqui para a frente.")}
@@ -209,7 +209,7 @@ export function HistoricoDaAgenda({
                 <li
                   key={a.id}
                   data-testid={`linha-${a.id}`}
-                  className="flex items-center gap-3 border-b border-border px-3 py-2.5 last:border-b-0"
+                  className="flex items-center gap-3 border-b border-border/60 px-4 py-3 transition-colors duration-fast last:border-b-0 hover:bg-muted/50"
                 >
                   <span
                     aria-hidden
@@ -232,7 +232,7 @@ export function HistoricoDaAgenda({
                         escreveu. Só o fallback "Agendamento" é rótulo nosso, e
                         esse traduz. */}
                     <Link
-                      className="block truncate text-sm underline"
+                      className="block truncate text-sm font-medium text-accent hover:underline"
                       href={`/app/agenda?compromisso=${a.id}`}
                     >
                       {a.quemSeraAtendido ?? a.titulo}

@@ -48,6 +48,8 @@ import {
 } from "@/lib/ui/icons";
 
 import {
+  ATALHOS_DEPOIS_DE,
+  ATALHOS_RAPIDOS,
   NAV_CATALOG,
   NAV_GROUPS,
   type NavMetadata,
@@ -133,19 +135,34 @@ export function sidebarGroups(
   const visible = new Set<string>(
     destinosDaInterface(settings, isPlatformAdmin, role, modulos, capacidades).map((d) => d.href),
   );
-  return NAV_GROUPS.map((group) => ({
-    group,
-    items: NAV_DESTINATIONS.filter(
+  return NAV_GROUPS.map((group) => {
+    const items = NAV_DESTINATIONS.filter(
       (d) =>
         d.group === group.id &&
         sobeAoMenuLateral(d, !!settings?.destinos) &&
         visible.has(d.href),
-    ),
-  })).filter(
+    );
+    return { group, items: group.id === "acoes_rapidas" ? comAtalhos(items, visible) : items };
+  }).filter(
     (g) =>
       g.items.length > 0 ||
       (g.group.hub && NAV_DESTINATIONS.some((d) => d.group === g.group.id && visible.has(d.href))),
   );
+}
+
+/**
+ * Encaixa os ATALHOS_RAPIDOS logo depois de Nova venda. Cada atalho é cópia do
+ * destino original (mesmo href, ícone e permissão), só com o rótulo trocado
+ * quando o atalho pede — o original continua no seu menu.
+ */
+function comAtalhos(items: NavDestination[], visible: Set<string>): NavDestination[] {
+  const atalhos = ATALHOS_RAPIDOS.flatMap((a) => {
+    const original = NAV_DESTINATIONS.find((d) => d.href === a.href);
+    if (!original || !visible.has(original.href)) return [];
+    return [{ ...original, label: a.label ?? original.label, group: "acoes_rapidas" as const }];
+  });
+  const i = items.findIndex((d) => d.href === ATALHOS_DEPOIS_DE);
+  return i < 0 ? [...atalhos, ...items] : [...items.slice(0, i + 1), ...atalhos, ...items.slice(i + 1)];
 }
 
 /**

@@ -10,6 +10,7 @@
  * nome da tela do aviso de CASO, e dois destinos com o mesmo nome na busca da
  * navegação não dizem qual é qual.
  */
+import { Bell as IconeDoTitulo } from "@/lib/ui/icons";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -33,7 +34,11 @@ export default async function AvisoDeAgendamentoPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 p-6">
-      <header className="space-y-1">
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Aviso de agendamento", idioma)}</h1>
         <p className="text-sm text-muted-foreground">
           {traduzir(
@@ -41,6 +46,7 @@ export default async function AvisoDeAgendamentoPage() {
             idioma,
           )}
         </p>
+      </div>
       </header>
       <AvisoDeAgendamento />
     </div>

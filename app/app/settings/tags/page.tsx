@@ -25,6 +25,7 @@
  * as regras dos agentes. Mesmo gate do roteamento de filas — configuração, não
  * atendimento.
  */
+import { Tag as IconeDoTitulo } from "@/lib/ui/icons";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -96,13 +97,18 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
 
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto md:p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Tags")}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           {t(
             "As etiquetas que os agentes, o Inbox e o funil usam nesta organização. Renomear ou juntar corrige também as regras de agente que escrevem a etiqueta, na mesma operação.",
           )}
         </p>
+      </div>
       </header>
 
       <form method="get" className="flex max-w-xl items-center gap-2">

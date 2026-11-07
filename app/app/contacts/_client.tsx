@@ -1,7 +1,15 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useT } from "@/hooks/i18n/useT";
-import { Plus, DownloadSimple, MagnifyingGlass, UploadSimple, UsersThree, ArrowsClockwise } from "@/lib/ui/icons";
+import {
+  Plus,
+  DownloadSimple,
+  MagnifyingGlass,
+  UploadSimple,
+  UsersThree,
+  ArrowsClockwise,
+  IdentificationCard,
+} from "@/lib/ui/icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -55,6 +63,9 @@ const SOURCE_OPTIONS = [
 ];
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+
+const BOTAO_SECUNDARIO = "rounded-full hover:bg-muted/50 hover:text-accent";
+const FILTRO = "h-9 rounded-full px-4 hover:bg-muted/50 hover:text-accent";
 
 export function ContactsListClient() {
   const t = useT();
@@ -185,13 +196,18 @@ export function ContactsListClient() {
   );
 
   return (
-    <div className="space-y-4 md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Contatos")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("Customer 360 — busque, filtre e gerencie contatos.")}
-          </p>
+    <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
+      <header className="ds-entra flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <IdentificationCard size={22} weight="duotone" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">{t("Contatos")}</h1>
+            <p className="text-sm text-muted-foreground">
+              {t("Customer 360 — busque, filtre e gerencie contatos.")}
+            </p>
+          </div>
         </div>
         {/*
           A estrutura é a da main (o "Importar CSV" do PR #313). Os botões
@@ -211,11 +227,11 @@ export function ContactsListClient() {
             descobre olhando a lista, e a barra lateral não precisa crescer para
             um trabalho que se faz de vez em quando.
           */}
-          <Button variant="outline" onClick={() => setDuplicadosOpen(true)}>
+          <Button variant="outline" className={BOTAO_SECUNDARIO} onClick={() => setDuplicadosOpen(true)}>
             <UsersThree size={16} weight="bold" aria-hidden />
             <span>{t("Duplicados")}</span>
           </Button>
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
+          <Button variant="outline" className={BOTAO_SECUNDARIO} onClick={() => setImportOpen(true)}>
             <UploadSimple size={16} weight="bold" aria-hidden />
             <span>{t("Importar CSV")}</span>
           </Button>
@@ -226,7 +242,7 @@ export function ContactsListClient() {
             fora", e separá-los em cantos diferentes da tela faria cada um
             parecer um recurso que o outro não é.
           */}
-          <Button variant="outline" onClick={() => setSyncOpen(true)}>
+          <Button variant="outline" className={BOTAO_SECUNDARIO} onClick={() => setSyncOpen(true)}>
             <ArrowsClockwise size={16} weight="bold" aria-hidden />
             <span>{t("Sincronizar agenda")}</span>
           </Button>
@@ -240,7 +256,7 @@ export function ContactsListClient() {
           {podeExportar && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className={BOTAO_SECUNDARIO}>
                   <DownloadSimple size={16} weight="bold" aria-hidden />
                   <span>{t("Exportar")}</span>
                 </Button>
@@ -255,18 +271,21 @@ export function ContactsListClient() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button className="rounded-full px-5" onClick={() => setCreateOpen(true)}>
             <Plus size={16} weight="bold" aria-hidden />
             <span>{t("Novo contato")}</span>
           </Button>
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
+      <div
+        className="ds-entra flex flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-surface p-2 shadow-xs"
+        style={{ animationDelay: "50ms" }}
+      >
         <div className="relative w-full sm:w-72">
           <MagnifyingGlass
             size={16}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
           <Input
@@ -274,13 +293,13 @@ export function ContactsListClient() {
             placeholder={t("Buscar por nome, email ou telefone…")}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="h-9 w-full pl-8"
+            className="h-9 w-full rounded-full border-border/80 bg-surface pl-9 pr-4 shadow-xs focus-visible:border-accent/50 focus-visible:ring-accent/20"
           />
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" disabled={tagOptions.length === 0}>
+            <Button variant="outline" size="sm" className={FILTRO} disabled={tagOptions.length === 0}>
               {tags[0] ? <PontoDaEtiqueta tag={tags[0]} className="mr-2" /> : null}
               {/* Resumo, e não a lista inteira: o gatilho tem a largura do filtro de
                   origem ao lado. Uma etiqueta mostra o nome; duas mostram a
@@ -348,7 +367,7 @@ export function ContactsListClient() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className={FILTRO}>
               {t(SOURCE_OPTIONS.find((s) => s.value === source)?.label ?? "Origem")}
             </Button>
           </DropdownMenuTrigger>
@@ -367,6 +386,7 @@ export function ContactsListClient() {
         <Button
           variant={soPessoais ? "default" : "outline"}
           size="sm"
+          className={soPessoais ? "h-9 rounded-full px-4" : FILTRO}
           data-testid="filtro-pessoais"
           aria-pressed={soPessoais}
           onClick={() => setSoPessoais((v) => !v)}
@@ -376,7 +396,7 @@ export function ContactsListClient() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className={FILTRO}>
               {limit} {t("por página")}
             </Button>
           </DropdownMenuTrigger>
@@ -395,6 +415,7 @@ export function ContactsListClient() {
           <Button
             variant="ghost"
             size="sm"
+            className="h-9 rounded-full px-4 text-accent hover:bg-accent-soft hover:text-accent"
             onClick={() => {
               setSearchInput("");
               setSearch("");
@@ -429,23 +450,23 @@ export function ContactsListClient() {
       {q.isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
           ))}
         </div>
       ) : q.isError ? (
-        <Card className="p-6 text-center">
+        <Card className="ds-entra rounded-xl border-error/30 bg-error-bg p-6 text-center shadow-none">
           <p className="text-sm text-error-fg">{t("Erro ao carregar contatos.")}</p>
           <Button
             size="sm"
             variant="outline"
-            className="mt-2"
+            className="mt-3 rounded-full"
             onClick={() => q.refetch()}
           >
             {t("Tentar novamente")}
           </Button>
         </Card>
       ) : allContacts.length === 0 ? (
-        <Card className="p-2">
+        <Card className="ds-entra rounded-xl border-border/60 bg-surface p-2 shadow-xs">
           <EmptyContacts />
         </Card>
       ) : (
@@ -456,13 +477,16 @@ export function ContactsListClient() {
             <Button
               size="sm"
               variant="outline"
-              className="md:hidden"
+              className="self-start rounded-full md:hidden"
               onClick={() => selecao.selecionarTodos(allContacts.map((c) => c.id))}
             >
               {t("Selecionar todos os contatos visíveis")}
             </Button>
           )}
-          <Card className="overflow-hidden">
+          <Card
+            className="ds-entra overflow-hidden rounded-2xl border-border/60 bg-surface shadow-xs"
+            style={{ animationDelay: "100ms" }}
+          >
             <ContactsTable
               contacts={allContacts}
               orderBy={orderBy}
@@ -489,6 +513,7 @@ export function ContactsListClient() {
               <Button
                 variant="outline"
                 size="sm"
+                className="rounded-full px-5 hover:bg-muted/50 hover:text-accent"
                 onClick={() => q.fetchNextPage()}
                 disabled={q.isFetchingNextPage}
               >

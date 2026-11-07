@@ -13,6 +13,7 @@
  * mas só ganha o botão onde a tela de destino o aceita — link que morre em /403
  * ensina a não clicar. Atendente e leitor não veem: não decidem nada daqui.
  */
+import { PuzzlePiece as IconeDoTitulo } from "@/lib/ui/icons";
 import { redirect } from "next/navigation";
 
 import { LinhaDoRecurso } from "@/components/recursos-opcionais/LinhaDoRecurso";
@@ -79,7 +80,11 @@ export default async function RecursosOpcionaisPage() {
 
   return (
     <div className="flex h-full flex-col gap-8 overflow-y-auto p-6">
-      <header className="space-y-1">
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Recursos opcionais", idioma)}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           {traduzir(
@@ -87,6 +92,7 @@ export default async function RecursosOpcionaisPage() {
             idioma,
           )}
         </p>
+      </div>
       </header>
 
       <section className="space-y-3" aria-labelledby="recursos-modulos">

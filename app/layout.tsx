@@ -49,6 +49,15 @@ const atkinson = localFont({
   variable: "--font-atkinson",
 });
 
+// Plus Jakarta Sans: a voz da interface no redesenho M AUTO — geométrica, de
+// cantos suaves, com x-height alto que segura bem 13–14px em tela de operação.
+// Atkinson segue logo atrás na pilha (`--font-sans`) como rede de segurança.
+const jakarta = localFont({
+  src: [{ path: "./fonts/plus-jakarta-sans-200-800-latin.woff2", weight: "200 800", style: "normal" }],
+  display: "swap",
+  variable: "--font-jakarta",
+});
+
 const plexMono = localFont({
   src: [
     { path: "./fonts/ibm-plex-mono-400-latin-latin-ext.woff2", weight: "400", style: "normal" },
@@ -336,7 +345,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="pt-BR"
       data-theme="light"
       suppressHydrationWarning
-      className={`${atkinson.variable} ${plexMono.variable}`}
+      className={`${jakarta.variable} ${atkinson.variable} ${plexMono.variable}`}
     >
       <head>
         {/* Primeiro de tudo: a cor da instalação, antes do CSS e do script de tema. */}

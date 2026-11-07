@@ -1,3 +1,4 @@
+import { ChartBar as IconeDoTitulo } from "@/lib/ui/icons";
 import type { Metadata } from "next";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -21,13 +22,18 @@ export default async function MetricsPage() {
 
   return (
     <div className="flex h-full flex-col gap-6 md:p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Desempenho")}</h1>
         <p className="text-sm text-muted-foreground">
           {canCompare
             ? t("Atrito, funil e performance por atendente nos últimos 30 dias.")
             : t("Atrito, seu funil e sua performance nos últimos 30 dias.")}
         </p>
+      </div>
       </header>
 
       <MetricsClient canCompare={canCompare} currentUserId={user.id} />

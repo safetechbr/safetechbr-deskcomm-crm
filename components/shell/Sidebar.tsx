@@ -20,7 +20,8 @@ import { useFunisDoMenu } from "@/hooks/pipelines/useFunisDoMenu";
 const CHAVE_FUNIS_FECHADOS = "sidebar-funis-fechados";
 const HREF_DOS_FUNIS = "/app/kanban";
 
-const CHAVE_GRUPOS_FECHADOS = "sidebar-grupos-fechados";
+/** O único menu que abre expandido a cada carregamento. */
+const GRUPO_SEMPRE_ABERTO = "acoes_rapidas";
 
 interface SidebarContentProps {
   collapsed: boolean;
@@ -60,31 +61,20 @@ export function SidebarContent({
   const rodape = todos.find((g) => g.group.id === GRUPO_NO_RODAPE)?.group.hub;
 
   /**
-   * Grupo fechado é preferência POR NAVEGADOR, não por conta: começa vazio (tudo
-   * aberto) em toda renderização — servidor, primeira pintura do cliente e nos
-   * testes, que nunca clicam em nada — e só muda depois do mount, se o
-   * `localStorage` tiver algo salvo. Guardar o CONJUNTO DOS FECHADOS, e não dos
-   * abertos, é o que faz "sem preferência salva" já significar "tudo aberto".
+   * Menus abertos. Todo carregamento de página começa com SÓ as Ações rápidas
+   * abertas e os demais menus (Vendas, Contatos, CRM…) recolhidos — pedido do
+   * dono: a barra abre enxuta e as Ações rápidas, que são os atalhos do dia,
+   * ficam à vista. Abrir ou fechar vale até o próximo F5; não se grava nada,
+   * para que recarregar sempre devolva esse ponto de partida.
    */
-  const [gruposFechados, setGruposFechados] = useState<Set<string>>(() => new Set());
-  useEffect(() => {
-    try {
-      const salvo = window.localStorage.getItem(CHAVE_GRUPOS_FECHADOS);
-      if (salvo) setGruposFechados(new Set(JSON.parse(salvo) as string[]));
-    } catch {
-      // Storage bloqueado (aba privada) — fica tudo aberto, que é o padrão.
-    }
-  }, []);
+  const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(
+    () => new Set([GRUPO_SEMPRE_ABERTO]),
+  );
   function toggleGrupo(id: string) {
-    setGruposFechados((prev) => {
+    setGruposAbertos((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      try {
-        window.localStorage.setItem(CHAVE_GRUPOS_FECHADOS, JSON.stringify([...next]));
-      } catch {
-        // Clique continua funcionando nesta sessão; só não sobrevive a um F5.
-      }
       return next;
     });
   }
@@ -159,7 +149,7 @@ export function SidebarContent({
     <>
       <div
         className={cn(
-          "flex h-14 items-center border-b px-4",
+          "flex h-14 items-center px-4",
           collapsed ? "justify-center" : "justify-start",
         )}
       >
@@ -264,7 +254,7 @@ export function SidebarContent({
       {/* Issue #2722 — no trilho recolhido (64px) não cabe controle ao lado
           do símbolo: ele vira uma faixa imediatamente abaixo da marca. */}
       {showCollapseControl && collapsed && (
-        <div className="border-b px-2 py-1">
+        <div className="px-2 py-1">
           <BotaoDeRecolher
             collapsed
             isPending={isPending}
@@ -322,20 +312,20 @@ export function SidebarContent({
           const tituloId = `nav-grupo-${group.id}`;
           // Recolhido o sidebar inteiro (rail de 64px), o grupo sempre mostra
           // seus itens — não há onde desenhar cabeçalho nem seta para fechá-lo.
-          const aberto = collapsed || !gruposFechados.has(group.id);
+          const aberto = collapsed || gruposAbertos.has(group.id);
           return (
             <div key={group.id} className="space-y-1">
               {/* Colapsado, o sidebar tem 64px: seis rótulos ali seriam ilegíveis.
                   Vira um filete separador, que preserva o agrupamento sem texto. */}
               {collapsed ? (
-                <div aria-hidden className="mx-2 border-t first:hidden" />
+                <div aria-hidden className="mx-3 border-t border-border/70 first:hidden" />
               ) : (
                 <h2 id={tituloId}>
                   <button
                     type="button"
                     onClick={() => toggleGrupo(group.id)}
                     aria-expanded={aberto}
-                    className="flex w-full items-center justify-between rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                    className="flex w-full items-center justify-between rounded-md px-3 py-1 text-[11px] font-semibold uppercase leading-4 tracking-[0.08em] text-text-subtle transition-colors hover:text-foreground"
                   >
                     {t(group.label)}
                     <CaretDown
@@ -359,7 +349,10 @@ export function SidebarContent({
                   {items.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                     const Icon = item.icon;
-                    const ehFunis = item.href === HREF_DOS_FUNIS && !collapsed;
+                    // O atalho "CRM principal" das Ações rápidas é só porta: a lista dos
+                    // funis fica no item original, dentro do menu CRM.
+                    const ehFunis =
+                      item.href === HREF_DOS_FUNIS && !collapsed && group.id !== GRUPO_SEMPRE_ABERTO;
                     return (
                       <li key={item.href}>
                         <div className="relative">
@@ -370,10 +363,10 @@ export function SidebarContent({
                           aria-current={isActive ? "page" : undefined}
                           onClick={onNavigate}
                           className={cn(
-                            "relative flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-colors",
+                            "relative flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-[background-color,color,box-shadow] duration-base ease-out-slow",
                             isActive
-                              ? "bg-accent text-accent-foreground"
-                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                              ? "bg-accent font-medium text-accent-foreground shadow-sm"
+                              : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
                             collapsed && "justify-center px-2",
                           )}
                         >
@@ -393,7 +386,7 @@ export function SidebarContent({
                             onClick={toggleFunis}
                             aria-expanded={!funisFechados}
                             aria-label={funisFechados ? t("Mostrar funis") : t("Esconder funis")}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-subtle hover:bg-accent/50 hover:text-foreground"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-subtle hover:bg-foreground/[0.05] hover:text-foreground"
                           >
                             <CaretDown
                               size={12}
@@ -405,7 +398,7 @@ export function SidebarContent({
                         )}
                         </div>
                         {ehFunis && !funisFechados && funis.length > 0 && (
-                          <ul className="mt-1 space-y-1 border-l pl-2 ml-5" aria-label={t("Funis")}>
+                          <ul className="mt-1 ml-5 space-y-1 border-l border-border/70 pl-2" aria-label={t("Funis")}>
                             {funis.map((f) => {
                               const href = `/app/pipelines/${f.id}`;
                               const ativo = pathname === href || pathname.startsWith(href + "/");
@@ -417,10 +410,10 @@ export function SidebarContent({
                                     aria-current={ativo ? "page" : undefined}
                                     title={f.name}
                                     className={cn(
-                                      "flex items-center rounded-md px-2 py-1 text-sm transition-colors",
+                                      "flex items-center rounded-md px-2 py-1 text-sm transition-[background-color,color,box-shadow] duration-base ease-out-slow",
                                       ativo
-                                        ? "bg-accent text-accent-foreground"
-                                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                                        ? "bg-accent font-medium text-accent-foreground shadow-sm"
+                                        : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
                                     )}
                                   >
                                     <span className="truncate">{f.name}</span>
@@ -441,10 +434,10 @@ export function SidebarContent({
                         aria-current={pathname === group.hub.href ? "page" : undefined}
                         onClick={onNavigate}
                         className={cn(
-                          "flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-colors",
+                          "flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-[background-color,color,box-shadow] duration-base ease-out-slow",
                           pathname === group.hub.href
-                            ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                            ? "bg-accent font-medium text-accent-foreground shadow-sm"
+                            : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
                           collapsed && "justify-center px-2",
                         )}
                       >
@@ -459,7 +452,7 @@ export function SidebarContent({
           );
         })}
       </nav>
-      <div className="border-t p-2">
+      <div className="border-t border-border/70 p-2">
         {rodape && (
           <Link
             href={rodape.href}
@@ -467,10 +460,10 @@ export function SidebarContent({
             aria-current={pathname.startsWith(rodape.href) ? "page" : undefined}
             onClick={onNavigate}
             className={cn(
-              "mb-1 flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-colors",
+              "mb-1 flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-[background-color,color,box-shadow] duration-base ease-out-slow",
               pathname.startsWith(rodape.href)
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                ? "bg-accent font-medium text-accent-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
               collapsed && "justify-center px-2",
             )}
           >
@@ -519,7 +512,7 @@ function BotaoDeRecolher({
       onClick={onClick}
       disabled={isPending}
       className={cn(
-        "flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+        "flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
         (collapsed || soIcone) && "justify-center px-2",
       )}
       aria-label={rotulo}
@@ -574,7 +567,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         // `duration-base` em vez do `duration-200` literal: 200ms é o mesmo
         // número, mas vindo de `--duration-base`. A Lei de movimento fecha a
         // tabela de durações, e número solto é o que a faz apodrecer.
-        "sticky top-[var(--faixas-de-cima,0px)] z-30 flex h-[calc(100dvh-var(--faixas-de-cima,0px))] shrink-0 flex-col border-r bg-card transition-[width] duration-base",
+        "sticky top-[var(--faixas-de-cima,0px)] z-30 flex h-[calc(100dvh-var(--faixas-de-cima,0px))] shrink-0 flex-col border-r border-border/60 bg-background transition-[width] duration-base",
         collapsed ? "w-16" : "w-60",
       )}
     >

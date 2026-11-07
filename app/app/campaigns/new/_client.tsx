@@ -15,6 +15,7 @@
  * A prévia do público fica ao lado do filtro, e não depois: o número que o
  * operador precisa ver antes de apertar é "quantas pessoas isto pega".
  */
+import { Megaphone as IconeDoTitulo } from "@/lib/ui/icons";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -151,11 +152,16 @@ export function NovaCampanha() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-6">
-      <header>
+      <header className="ds-entra flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <IconeDoTitulo size={22} weight="duotone" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Nova campanha")}</h1>
         <p className="text-sm text-muted-foreground">
           {t("Isto cria um rascunho. Nada é enviado antes de você preparar a lista e iniciar.")}
         </p>
+      </div>
       </header>
 
       <Card className="space-y-4 p-4">

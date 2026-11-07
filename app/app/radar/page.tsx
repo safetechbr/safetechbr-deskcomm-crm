@@ -19,10 +19,10 @@ export default async function RadarPage() {
   const t = (texto: string) => traduzir(texto, idioma);
 
   return (
-    <div className="flex h-full flex-col gap-6 md:p-6">
-      <header>
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-6 p-4 md:p-6">
+      <header className="ds-entra">
         <h1 className="text-2xl font-semibold tracking-tight">{t("Radar de risco")}</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
           {t(
             "Demandas abertas que esfriaram e precisam de você. Se o assistente já agendou um retorno, aparece como “em voo”; sem próximo passo, é risco de perder o cliente.",
           )}

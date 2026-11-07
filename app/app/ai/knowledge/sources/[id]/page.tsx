@@ -66,7 +66,7 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <header className="space-y-2">
         <VoltarAoAcervo rotulo={t("Voltar ao acervo")} />
-        <h1 className="text-2xl font-semibold tracking-tight" data-testid="material-nome">
+        <h1 className="ds-entra text-2xl font-semibold tracking-tight" data-testid="material-nome">
           {material.nome}
         </h1>
         <p className="text-sm text-text-muted">{meta ? t(meta.rotulo) : material.tipo}</p>

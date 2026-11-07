@@ -11,8 +11,12 @@ import { Label } from "@/components/ui/label";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useCreateContact } from "@/hooks/contacts/useCreateContact";
 import { useT } from "@/hooks/i18n/useT";
+import { CaretLeft, IdentificationCard, Phone } from "@/lib/ui/icons";
 import { PAIS_PADRAO, perfilDoPais } from "@/lib/legal/perfil-do-pais";
 import { contactCreateSchemaDoPais, type ContactCreate } from "@/lib/schemas/contacts";
+
+const CAMPO =
+  "h-10 rounded-full border-border/80 bg-surface px-4 shadow-xs focus-visible:border-accent/50 focus-visible:ring-accent/20";
 
 /**
  * ADICIONAR CLIENTE: o cadastro em tela cheia. Grava na MESMA tabela e pela
@@ -56,55 +60,81 @@ export function NovoClienteClient() {
 
   return (
     <form onSubmit={(e) => void salvar(e)} className="mx-auto max-w-3xl space-y-6 p-6" data-testid="novo-cliente">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("Adicionar Cliente")}</h1>
+      <div className="ds-entra">
+        <Link
+          href="/app/clientes"
+          className="inline-flex items-center gap-1 rounded-full text-sm text-muted-foreground transition-colors hover:text-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
+        >
+          <CaretLeft className="size-4" aria-hidden />
+          {t("Clientes")}
+        </Link>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight">{t("Adicionar Cliente")}</h1>
         <p className="text-sm text-muted-foreground">{t("Cadastre um cliente novo da loja.")}</p>
       </div>
 
-      <section className="space-y-4 rounded-xl border p-5">
-        <h2 className="font-semibold">{t("Informações Básicas")}</h2>
+      <section
+        className="ds-entra space-y-5 rounded-xl border border-border/60 bg-surface p-6 shadow-xs"
+        style={{ animationDelay: "50ms" }}
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex size-9 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <IdentificationCard className="size-5" weight="duotone" aria-hidden />
+          </span>
+          <h2 className="font-semibold">{t("Informações Básicas")}</h2>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
+          <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="c-nome">{t("Nome Completo")} *</Label>
-            <Input id="c-nome" value={v.name} onChange={campo("name")} />
+            <Input id="c-nome" className={CAMPO} value={v.name} onChange={campo("name")} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="c-cpf">{perfil.documento.rotulo}</Label>
-            <Input id="c-cpf" value={v.cpf} onChange={campo("cpf")} placeholder={perfil.documento.exemplo} />
+            <Input id="c-cpf" className={CAMPO} value={v.cpf} onChange={campo("cpf")} placeholder={perfil.documento.exemplo} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="c-nasc">{t("Data de Nascimento")}</Label>
-            <Input id="c-nasc" type="date" value={v.birthdate} onChange={campo("birthdate")} />
+            <Input id="c-nasc" className={CAMPO} type="date" value={v.birthdate} onChange={campo("birthdate")} />
           </div>
         </div>
       </section>
 
-      <section className="space-y-4 rounded-xl border p-5">
-        <h2 className="font-semibold">{t("Informações de Contato")}</h2>
+      <section
+        className="ds-entra space-y-5 rounded-xl border border-border/60 bg-surface p-6 shadow-xs"
+        style={{ animationDelay: "100ms" }}
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex size-9 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Phone className="size-5" weight="duotone" aria-hidden />
+          </span>
+          <div>
+            <h2 className="font-semibold">{t("Informações de Contato")}</h2>
+            <p className="text-xs text-muted-foreground">{t("Informe o telefone ou o e-mail.")}</p>
+          </div>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="c-tel">
               {perfil.codigo === PAIS_PADRAO ? t("Telefone (DDD + número)") : t("Telefone (E.164)")}
             </Label>
-            <Input id="c-tel" value={v.phone_number} onChange={campo("phone_number")} placeholder={perfil.telefoneExemplo} />
+            <Input id="c-tel" className={CAMPO} value={v.phone_number} onChange={campo("phone_number")} placeholder={perfil.telefoneExemplo} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="c-email">{t("E-mail")}</Label>
-            <Input id="c-email" type="email" value={v.email} onChange={campo("email")} placeholder="nome@exemplo.com" />
+            <Input id="c-email" className={CAMPO} type="email" value={v.email} onChange={campo("email")} placeholder="nome@exemplo.com" />
           </div>
         </div>
       </section>
 
       {erro && (
-        <p role="alert" className="text-sm text-error-fg">
+        <p role="alert" className="ds-entra rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg">
           {erro}
         </p>
       )}
-      <div className="flex justify-end gap-2">
-        <Button asChild variant="ghost" type="button">
+      <div className="ds-entra flex justify-end gap-2" style={{ animationDelay: "150ms" }}>
+        <Button asChild variant="ghost" type="button" className="rounded-full">
           <Link href="/app/clientes">{t("Cancelar")}</Link>
         </Button>
-        <Button type="submit" disabled={criar.isPending}>
+        <Button type="submit" disabled={criar.isPending} className="rounded-full px-6">
           {criar.isPending ? t("Salvando…") : t("Salvar Cliente")}
         </Button>
       </div>

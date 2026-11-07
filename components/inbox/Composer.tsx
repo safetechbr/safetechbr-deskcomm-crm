@@ -1038,7 +1038,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               // 16px abaixo do `md`: o Safari do iPhone AMPLIA a página ao focar
               // campo com fonte menor, e a conversa sai do quadro. 44px de alvo
               // até o `lg`, como o resto dos botões de toque.
-              "max-h-40 min-h-11 flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm lg:min-h-9",
+              "max-h-40 min-h-11 flex-1 resize-none rounded-xl border border-border/80 bg-background px-3 py-2 transition-[border-color,box-shadow] duration-150 focus-visible:border-accent/50 text-base md:text-sm lg:min-h-9",
               "placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden",
             )}
             disabled={mode === "note" ? isDisabled : respostaBarrada}

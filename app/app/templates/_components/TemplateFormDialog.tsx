@@ -340,13 +340,14 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>{t("Tipo de resposta rápida")}</Label>
-            <div className="flex gap-1">
+            <div className="flex w-fit gap-1 rounded-full border border-border/60 bg-surface p-1 shadow-xs">
               {TIPOS_DE_RECURSO.map((opcao) => (
                 <Button
                   key={opcao}
                   type="button"
                   variant={tipo === opcao ? "default" : "ghost"}
                   size="sm"
+                  className={`rounded-full px-4 font-medium ${tipo === opcao ? "shadow-xs" : "hover:bg-muted/50"}`}
                   onClick={() => setTipo(opcao)}
                 >
                   {opcao === "texto" ? t("Texto") : t("Áudio")}
@@ -442,7 +443,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
                       <img
                         src={urlDaGravada(midia)}
                         alt={t("Imagem da resposta rápida")}
-                        className="size-16 rounded-md border border-border object-cover"
+                        className="size-16 rounded-xl border border-border/60 object-cover shadow-xs"
                       />
                       <button
                         type="button"
@@ -459,7 +460,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
                       <img
                         src={urlsNovas[i]}
                         alt={t("Prévia da imagem")}
-                        className="size-16 rounded-md border border-border object-cover"
+                        className="size-16 rounded-xl border border-border/60 object-cover shadow-xs"
                       />
                       <button
                         type="button"
@@ -489,7 +490,7 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
                 />
                 <Label
                   htmlFor="tpl-midias"
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm shadow-xs transition-colors hover:bg-muted/50"
                 >
                   {t("Adicionar imagem")}
                 </Label>
@@ -533,10 +534,10 @@ export function TemplateFormDialog({ open, onOpenChange, canShare, template }: P
             </p>
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="ghost" className="rounded-full" onClick={() => onOpenChange(false)}>
               {t("Cancelar")}
             </Button>
-            <Button type="submit" disabled={pending || (tipo === "texto" && estourou)}>
+            <Button type="submit" className="rounded-full px-6" disabled={pending || (tipo === "texto" && estourou)}>
               {isEdit ? t("Salvar") : t("Criar resposta rápida")}
             </Button>
           </DialogFooter>

@@ -5,6 +5,15 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import {
+  ChartLineUp,
+  CheckCircle,
+  DownloadSimple,
+  FileText,
+  MagnifyingGlass,
+  Receipt,
+  WarningOctagon,
+} from "@/lib/ui/icons";
+import {
   FORMAS_DE_PAGAMENTO,
   resumoDaNegociacao,
   ROTULO_DA_FORMA,
@@ -19,9 +28,9 @@ import { formatarPreco } from "@/lib/veiculos/regras";
 type Ordem = "recente" | "antiga" | "maior" | "menor";
 
 const COR_DO_STATUS: Record<StatusDaNegociacao, string> = {
-  concluida: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  rascunho: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  cancelada: "bg-red-500/15 text-red-600 dark:text-red-400",
+  concluida: "bg-success-bg text-success-fg",
+  rascunho: "bg-warning-bg text-warning-fg",
+  cancelada: "bg-error-bg text-error-fg",
 };
 
 function dataDaNegociacao(n: Negociacao): string {
@@ -133,36 +142,60 @@ export function HistoricoDeVendasClient({
     URL.revokeObjectURL(url);
   };
 
-  const seletor = "h-9 rounded-md border bg-background px-3 text-sm";
+  const seletor =
+    "h-10 rounded-full border border-border/80 bg-surface px-4 text-sm shadow-xs transition-colors hover:border-border focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20";
 
   return (
     <div className="space-y-6 p-6" data-testid="historico-de-vendas">
-      <header>
-        <h1 className="text-2xl font-semibold">{titulo}</h1>
+      <header className="ds-entra">
+        <h1 className="text-2xl font-semibold tracking-tight">{titulo}</h1>
         <p className="text-sm text-muted-foreground">{subtitulo}</p>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Cartao rotulo={t("Total de negociações")} valor={String(cartoes.total)} testid="cartao-total" />
-        <Cartao rotulo={t("Concluídas")} valor={String(cartoes.concluidas)} tom="text-emerald-500" testid="cartao-concluidas" />
-        <Cartao rotulo={t("Canceladas")} valor={String(cartoes.canceladas)} tom="text-red-500" testid="cartao-canceladas" />
+        <Cartao indice={0} icone={Receipt} rotulo={t("Total de negociações")} valor={String(cartoes.total)} testid="cartao-total" />
         <Cartao
+          indice={1}
+          icone={CheckCircle}
+          rotulo={t("Concluídas")}
+          valor={String(cartoes.concluidas)}
+          tomDoIcone="bg-success-bg text-success-fg"
+          testid="cartao-concluidas"
+        />
+        <Cartao
+          indice={2}
+          icone={WarningOctagon}
+          rotulo={t("Canceladas")}
+          valor={String(cartoes.canceladas)}
+          tomDoIcone="bg-error-bg text-error-fg"
+          testid="cartao-canceladas"
+        />
+        <Cartao
+          indice={3}
+          icone={ChartLineUp}
           rotulo={t("Receita de vendas")}
           valor={formatarPreco(cartoes.receita)}
+          tom="text-accent"
           nota={cartoes.investido > 0 ? `${t("Compras")}: ${formatarPreco(cartoes.investido)}` : undefined}
           testid="cartao-receita"
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="search"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder={t("Buscar por cliente, telefone, veículo, placa ou número…")}
-          className="h-9 min-w-64 flex-1 rounded-md border bg-background px-3 text-sm"
-          aria-label={t("Buscar")}
-        />
+      <div className="ds-entra flex flex-wrap items-center gap-2" style={{ animationDelay: "200ms" }}>
+        <label className="relative min-w-64 flex-1">
+          <MagnifyingGlass
+            className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder={t("Buscar por cliente, telefone, veículo, placa ou número…")}
+            className={`${seletor} w-full pl-9`}
+            aria-label={t("Buscar")}
+          />
+        </label>
         <select className={seletor} value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} aria-label={t("Tipo")}>
           <option value="all">{t("Venda e compra")}</option>
           <option value="venda">{t("Vendas")}</option>
@@ -187,78 +220,113 @@ export function HistoricoDeVendasClient({
           <option value="menor">{t("Menor valor")}</option>
         </select>
         {filtrando ? (
-          <Button type="button" variant="ghost" size="sm" onClick={limpar}>{t("Limpar")}</Button>
+          <Button type="button" variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={limpar}>
+            {t("Limpar")}
+          </Button>
         ) : null}
-        <Button type="button" variant="outline" size="sm" onClick={exportar} disabled={lista.length === 0}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-10 gap-1.5 rounded-full border-border/80 bg-surface px-4 shadow-xs"
+          onClick={exportar}
+          disabled={lista.length === 0}
+        >
+          <DownloadSimple className="size-4" aria-hidden />
           {t("Exportar")}
         </Button>
       </div>
 
       {lista.length === 0 ? (
-        <p className="rounded-lg border p-10 text-center text-sm text-muted-foreground">
-          {negociacoes.length === 0
-            ? t("Nenhuma negociação ainda. Abra o PDV para registrar a primeira venda.")
-            : t("Nenhuma negociação com esses filtros.")}
-        </p>
+        <div
+          className="ds-entra flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/80 bg-surface px-6 py-14 text-center"
+          style={{ animationDelay: "250ms" }}
+        >
+          <span className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Receipt className="size-6" weight="duotone" aria-hidden />
+          </span>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {negociacoes.length === 0
+              ? t("Nenhuma negociação ainda. Abra o PDV para registrar a primeira venda.")
+              : t("Nenhuma negociação com esses filtros.")}
+          </p>
+          {filtrando ? (
+            <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={limpar}>
+              {t("Limpar")}
+            </Button>
+          ) : null}
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div
+          className="ds-entra overflow-x-auto rounded-xl border border-border/60 bg-surface shadow-xs"
+          style={{ animationDelay: "250ms" }}
+        >
           <table className="w-full text-sm">
-            <thead className="bg-muted text-left text-xs text-muted-foreground">
+            <thead className="border-b border-border/60 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">{t("Nº")}</th>
-                <th className="px-4 py-3">{t("Cliente")}</th>
-                <th className="px-4 py-3">{t("Veículo")}</th>
-                <th className="px-4 py-3">{t("Data")}</th>
-                <th className="px-4 py-3">{t("Pagamento")}</th>
-                <th className="px-4 py-3 text-right">{t("Total")}</th>
-                <th className="px-4 py-3">{t("Situação")}</th>
-                <th className="px-4 py-3 text-right">{t("Ações")}</th>
+                <th className="px-4 py-3 font-medium">{t("Nº")}</th>
+                <th className="px-4 py-3 font-medium">{t("Cliente")}</th>
+                <th className="px-4 py-3 font-medium">{t("Veículo")}</th>
+                <th className="px-4 py-3 font-medium">{t("Data")}</th>
+                <th className="px-4 py-3 font-medium">{t("Pagamento")}</th>
+                <th className="px-4 py-3 text-right font-medium">{t("Total")}</th>
+                <th className="px-4 py-3 font-medium">{t("Situação")}</th>
+                <th className="px-4 py-3 text-right font-medium">{t("Ações")}</th>
               </tr>
             </thead>
             <tbody>
               {lista.map((n) => (
-                <tr key={n.id} className="border-t align-top" data-testid={`historico-${n.numero}`}>
-                  <td className="px-4 py-3 font-mono text-xs">{String(n.numero).padStart(4, "0")}</td>
-                  <td className="px-4 py-3">
+                <tr
+                  key={n.id}
+                  className="border-t border-border/50 align-top transition-colors first:border-t-0 hover:bg-muted/50"
+                  data-testid={`historico-${n.numero}`}
+                >
+                  <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">{String(n.numero).padStart(4, "0")}</td>
+                  <td className="px-4 py-3.5">
                     <div className="font-medium">{n.cliente?.nome || t("Cliente não identificado")}</div>
                     {n.cliente?.telefone ? <div className="text-xs text-muted-foreground">{n.cliente.telefone}</div> : null}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] uppercase">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                          n.tipo === "venda" ? "bg-accent-soft text-accent" : "bg-muted text-muted-foreground"
+                        }`}
+                      >
                         {n.tipo === "venda" ? t("Venda") : t("Compra")}
                       </span>
                       <span>{tituloDoVeiculoDaNegociacao(n.veiculo) || "—"}</span>
                     </div>
-                    {n.veiculo?.placa ? <div className="text-xs text-muted-foreground">{n.veiculo.placa}</div> : null}
+                    {n.veiculo?.placa ? <div className="mt-0.5 text-xs text-muted-foreground">{n.veiculo.placa}</div> : null}
                     {n.troca?.modelo ? (
                       <div className="text-xs text-muted-foreground">{t("Troca")}: {tituloDoVeiculoDaNegociacao(n.troca)}</div>
                     ) : null}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                  <td className="whitespace-nowrap px-4 py-3.5 text-muted-foreground">
                     {new Date(dataDaNegociacao(n)).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
                   </td>
-                  <td className="px-4 py-3">{formasDe(n, t)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right font-semibold">
+                  <td className="px-4 py-3.5">{formasDe(n, t)}</td>
+                  <td className="whitespace-nowrap px-4 py-3.5 text-right font-semibold tabular-nums">
                     {formatarPreco(resumoDaNegociacao(n).total_cents, n.moeda)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${COR_DO_STATUS[n.status]}`}>
                       {t(ROTULO_DO_STATUS_DA_NEGOCIACAO[n.status])}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                  <td className="whitespace-nowrap px-4 py-3.5 text-right">
                     {n.status !== "cancelada" ? (
                       <a
                         href={`/api/v1/pdv/negociacoes/${n.id}/contrato`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs underline"
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
                       >
+                        <FileText className="size-3.5" aria-hidden />
                         {t("Contrato")}
                       </a>
                     ) : (
-                      "—"
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
                 </tr>
@@ -276,18 +344,33 @@ function Cartao({
   valor,
   nota,
   tom,
+  tomDoIcone,
+  icone: Icone,
+  indice,
   testid,
 }: {
   rotulo: string;
   valor: string;
   nota?: string;
   tom?: string;
+  tomDoIcone?: string;
+  icone: React.ComponentType<{ className?: string; weight?: "duotone"; "aria-hidden"?: boolean }>;
+  indice: number;
   testid: string;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-5" data-testid={testid}>
-      <div className="text-sm text-muted-foreground">{rotulo}</div>
-      <div className={`mt-2 text-3xl font-bold ${tom ?? ""}`}>{valor}</div>
+    <div
+      className="ds-entra rounded-xl border border-border/60 bg-surface p-5 shadow-xs"
+      style={{ animationDelay: `${indice * 50}ms` }}
+      data-testid={testid}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-muted-foreground">{rotulo}</div>
+        <span className={`flex size-8 items-center justify-center rounded-full ${tomDoIcone ?? "bg-accent-soft text-accent"}`}>
+          <Icone className="size-4" weight="duotone" aria-hidden />
+        </span>
+      </div>
+      <div className={`mt-2 text-3xl font-semibold tracking-tight tabular-nums ${tom ?? ""}`}>{valor}</div>
       {nota ? <div className="mt-1 text-xs text-muted-foreground">{nota}</div> : null}
     </div>
   );

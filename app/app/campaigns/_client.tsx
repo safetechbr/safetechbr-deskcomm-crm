@@ -30,19 +30,24 @@ export function ListaDeCampanhas() {
   const campanhas = useMemo(() => q.data?.pages.flatMap((p) => p.data) ?? [], [q.data]);
 
   return (
-    <div className="space-y-4 p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-6 p-4 md:p-6">
+      <header className="ds-entra flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <Megaphone size={22} weight="duotone" aria-hidden />
+          </span>
+          <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{t("Campanhas")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("Escolha o público, escreva a mensagem e acompanhe quem recebeu.")}
           </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-        <Button variant="outline" asChild>
+        <Button variant="outline" asChild className="rounded-full hover:bg-muted/50 hover:text-accent">
           <Link href="/app/campaigns/settings">{t("Configuração")}</Link>
         </Button>
-        <Button asChild>
+        <Button asChild className="rounded-full px-5">
           <Link href="/app/campaigns/new">
             <Plus size={16} weight="bold" aria-hidden />
             <span>{t("Nova campanha")}</span>
@@ -51,13 +56,16 @@ export function ListaDeCampanhas() {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-2">
+      <div
+        className="ds-entra flex flex-wrap items-center gap-3 self-start rounded-full border border-border/60 bg-surface py-1.5 pl-4 pr-1.5 shadow-xs"
+        style={{ animationDelay: "50ms" }}
+      >
         <label className="text-sm text-muted-foreground" htmlFor="filtro-status">
           {t("Situação")}
         </label>
         <select
           id="filtro-status"
-          className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
+          className="h-9 cursor-pointer rounded-full border border-border/80 bg-surface px-4 text-sm transition-colors hover:border-accent/40 focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
         >
@@ -73,18 +81,18 @@ export function ListaDeCampanhas() {
       {q.isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-16 w-full" />
+            <Skeleton key={i} className="h-[72px] w-full rounded-xl" />
           ))}
         </div>
       ) : q.isError ? (
-        <Card className="p-6 text-center">
+        <Card className="ds-entra rounded-xl border-error/30 bg-error-bg p-6 text-center shadow-none">
           <p className="text-sm text-error-fg">{t("Erro ao carregar as campanhas.")}</p>
-          <Button size="sm" variant="outline" className="mt-2" onClick={() => q.refetch()}>
+          <Button size="sm" variant="outline" className="mt-3 rounded-full" onClick={() => q.refetch()}>
             {t("Tentar novamente")}
           </Button>
         </Card>
       ) : campanhas.length === 0 ? (
-        <Card className="p-2">
+        <Card className="ds-entra rounded-xl border-border/60 bg-surface p-2 shadow-xs">
           <EmptyState
             icon={Megaphone}
             headline={t("Nenhuma campanha ainda.")}
@@ -96,34 +104,45 @@ export function ListaDeCampanhas() {
         </Card>
       ) : (
         <>
-          <Card className="divide-y divide-border">
-            {campanhas.map((c) => (
-              <Link
+          <ul className="flex flex-col gap-2">
+            {campanhas.map((c, i) => (
+              <li
                 key={c.id}
-                href={`/app/campaigns/${c.id}`}
-                className="flex flex-col gap-2 p-4 transition-colors hover:bg-surface-elevated sm:flex-row sm:items-center sm:justify-between"
+                className="ds-entra"
+                style={{ animationDelay: `${Math.min(i, 8) * 40 + 80}ms` }}
               >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{c.name}</p>
+              <Link
+                href={`/app/campaigns/${c.id}`}
+                className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-surface p-4 shadow-xs transition-shadow hover:shadow-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+                    <Megaphone size={18} weight="duotone" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                  <p className="truncate font-semibold transition-colors group-hover:text-accent">{c.name}</p>
                   <p className="text-sm text-muted-foreground">
                     {c.snapshot_eligible > 0
                       ? `${c.snapshot_eligible} ${t("contatos na lista")}`
                       : t("lista ainda não preparada")}
                     {c.snapshot_excluded > 0 ? ` · ${c.snapshot_excluded} ${t("fora")}` : ""}
                   </p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="text-sm text-muted-foreground">{quando(c, t, idioma)}</span>
+                  <span className="text-xs text-muted-foreground">{quando(c, t, idioma)}</span>
                   <EstadoDaCampanha status={c.status} />
                 </div>
               </Link>
+              </li>
             ))}
-          </Card>
+          </ul>
           {q.hasNextPage && (
             <div className="flex justify-center">
               <Button
                 variant="outline"
                 size="sm"
+                className="rounded-full px-5 hover:bg-muted/50 hover:text-accent"
                 onClick={() => q.fetchNextPage()}
                 disabled={q.isFetchingNextPage}
               >

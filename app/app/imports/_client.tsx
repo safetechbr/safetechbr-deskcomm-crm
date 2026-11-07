@@ -67,8 +67,8 @@ export function ImportsListClient() {
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6">
-      <div>
-        <h1 className="text-xl font-semibold">{t("Importações")}</h1>
+      <div className="ds-entra">
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Importações")}</h1>
         <p className="text-sm text-muted-foreground">
           {t("CSV ou XLSX com empresa, CNPJ, pessoa, cargo, telefone e e-mail.")}
         </p>
