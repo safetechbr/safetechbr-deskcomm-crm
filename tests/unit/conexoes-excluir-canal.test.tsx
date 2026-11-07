@@ -232,7 +232,7 @@ describe("diálogo de exclusão diz a verdade antes do clique", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Excluir" }));
 
     await waitFor(() =>
-      expect(deleteMock).toHaveBeenCalledWith("/api/v1/channel-sessions/canal-1"),
+      expect(deleteMock).toHaveBeenCalledWith("/api/v1/channel-sessions/canal-1", undefined),
     );
     await waitFor(() =>
       expect(toastSuccess).toHaveBeenCalledWith(

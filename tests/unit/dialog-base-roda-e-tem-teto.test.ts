@@ -105,7 +105,7 @@ describe("o override por diálogo continua valendo (twMerge)", () => {
     // então o twMerge do `cn` é o que garante que eles não brigam com a base.
     const componentes = path.resolve(__dirname, "../../components");
     const saida: string = execSync(
-      `grep -rlE "max-h-\\[8[5-9]dvh\\]|max-h-\\[9[0-9]dvh\\]" ${componentes} --include="*.tsx" || true`,
+      `grep -rlE "max-h-\\[8[5-9]dvh\\]|max-h-\\[9[0-9]dvh\\]" "${componentes}" --include="*.tsx" || true`,
       { encoding: "utf8" },
     );
     expect(saida.trim()).not.toBe("");

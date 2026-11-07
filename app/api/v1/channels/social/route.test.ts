@@ -150,7 +150,7 @@ it("disconnects under the trusted tenant and audits the outcome", async () => {
     remove_account: true,
   });
   expect(response.status).toBe(200);
-  expect(h.disconnect).toHaveBeenCalledWith({}, "trusted", "a".repeat(24), true);
+  expect(h.disconnect).toHaveBeenCalledWith({}, "trusted", "a".repeat(24), true, false);
   expect(h.audit).toHaveBeenCalledWith(
     expect.objectContaining({
       action: "channel.social_disconnected",

@@ -313,6 +313,51 @@ describe("DELETE /api/v1/channel-sessions/[id]", () => {
     expect(db.eventos).toEqual(["waha:logout", "waha:delete", "delete:channel_sessions"]);
   });
 
+  it("canal COM CONVERSAS + delete_conversations:true → apaga o histórico DEPOIS de revogar e some de vez", async () => {
+    authOk();
+    const db = makeDb({
+      rows: { conversations: [{ id: "c1", organization_id: ORG, channel_session_id: CANAL }] },
+    });
+    wahaOk(db);
+    const { DELETE } = await import("./route");
+    const req = new NextRequest(`http://localhost/api/v1/channel-sessions/${CANAL}`, {
+      method: "DELETE",
+      body: JSON.stringify({ delete_conversations: true }),
+      headers: { "content-type": "application/json" },
+    });
+    const res = await DELETE(req, ctx());
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.archived).toBe(false);
+    expect(db.eventos).toEqual([
+      "waha:logout",
+      "waha:delete",
+      "delete:messages",
+      "delete:voice_calls",
+      "delete:conversations",
+      "delete:channel_sessions",
+    ]);
+    for (const e of db.escritas.filter((e) => e.table !== "channel_sessions"))
+      expect(e.filtros).toContainEqual(["organization_id", ORG]);
+    expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "channel.deleted" }));
+  });
+
+  it("corpo ausente ou delete_conversations:false → não apaga histórico (arquiva)", async () => {
+    authOk();
+    const db = makeDb({
+      rows: { conversations: [{ id: "c1", organization_id: ORG, channel_session_id: CANAL }] },
+    });
+    wahaOk(db);
+    const { DELETE } = await import("./route");
+    const req = new NextRequest(`http://localhost/api/v1/channel-sessions/${CANAL}`, {
+      method: "DELETE",
+      body: JSON.stringify({ delete_conversations: false }),
+      headers: { "content-type": "application/json" },
+    });
+    await DELETE(req, ctx());
+    expect(db.escritas.map((e) => e.tipo)).toEqual(["update"]);
+  });
+
   it("canal COM CONVERSAS → arquiva, NÃO apaga, e emite channel.archived", async () => {
     authOk();
     const db = makeDb({

@@ -31,7 +31,7 @@ import { abrirManifestoDaRodada } from "./manifesto";
 import { exigirHttpLocal } from "./seguranca";
 import { type Acao, type Alvo, Modulo, chaveDoPasso } from "./licao";
 
-const RAIZ = path.dirname(new URL(import.meta.url).pathname);
+const RAIZ = path.dirname(decodeURIComponent(new URL(import.meta.url).pathname));
 const SAIDA = pastaDaSaida();
 const FOTOS = path.join(SAIDA, "capturas");
 const URL_BASE = exigirHttpLocal(process.env.CURSO_URL ?? "http://127.0.0.1:3460");
@@ -401,7 +401,7 @@ async function main() {
 
 if (
   process.argv[1] &&
-  path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)
+  path.resolve(process.argv[1]) === path.resolve(decodeURIComponent(new URL(import.meta.url).pathname))
 ) {
   main().catch((e) => {
     console.error(

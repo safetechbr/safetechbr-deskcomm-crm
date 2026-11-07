@@ -54,6 +54,8 @@ const inputSchema = z.discriminatedUnion("action", [
       action: z.literal("disconnect"),
       account_id: z.string().regex(/^[a-f0-9]{24}$/),
       remove_account: z.boolean(),
+      // Opt-in: também apaga as conversas/mensagens deste canal (padrão: mantém).
+      delete_conversations: z.boolean().optional(),
     })
     .strict(),
   z.object({ action: z.literal("unlink") }).strict(),
@@ -174,6 +176,7 @@ export async function POST(req: Request) {
         auth.org.orgId,
         body.account_id,
         body.remove_account,
+        body.delete_conversations === true,
       );
     } else if (body.action === "unlink") {
       result = await desvincularPerfilSocial(db, auth.org.orgId);
@@ -238,7 +241,9 @@ export async function POST(req: Request) {
         body.action === "resync"
           ? { ...(result as object) }
           : {}),
-        ...(body.action === "disconnect" ? { account_id: body.account_id } : {}),
+        ...(body.action === "disconnect"
+          ? { account_id: body.account_id, conversas_excluidas: body.delete_conversations === true }
+          : {}),
       },
     });
     return ok(result, { requestId, headers });

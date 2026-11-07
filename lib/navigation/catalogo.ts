@@ -18,7 +18,7 @@ import type { CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
-export type NavGroupId = "acoes_rapidas" | "vendas" | "contatos" | "atendimento" | "crm" | "ia" | "canais" | "analise" | "organizacao";
+export type NavGroupId = "acoes_rapidas" | "vendas" | "contatos" | "estoque" | "atendimento" | "crm" | "ia" | "canais" | "analise" | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -96,6 +96,7 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: "acoes_rapidas", label: "Ações rápidas" },
   { id: "vendas", label: "Vendas" },
   { id: "contatos", label: "Contatos" },
+  { id: "estoque", label: "Estoque" },
   { id: "atendimento", label: "Atendimento" },
   { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
@@ -187,10 +188,10 @@ export const NAV_CATALOG = [
   },
   {
     href: "/app/estoque",
-    label: "Estoque",
+    label: "Ver estoque",
     description: "Veículos da loja com fotos e ficha, prontos para enviar ao cliente.",
     icon: "Storefront",
-    group: "atendimento",
+    group: "estoque",
     sidebar: true,
   },
   {

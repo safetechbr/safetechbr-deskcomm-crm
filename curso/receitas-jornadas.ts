@@ -18,7 +18,7 @@ export type Receita = z.infer<typeof Receita>;
 export type Historia = Nicho["jornadas"][number];
 export const chaveDaCena = (jornada: string, cena: string) => `demo-${jornada}--historia--${cena}`;
 export function lerHistorias() {
-  const pasta = path.join(path.dirname(new URL(import.meta.url).pathname), "demonstracoes");
+  const pasta = path.join(path.dirname(decodeURIComponent(new URL(import.meta.url).pathname)), "demonstracoes");
   return readdirSync(pasta).filter((f) => f.endsWith(".json")).sort()
     .flatMap((f) => Nicho.parse(JSON.parse(readFileSync(path.join(pasta, f), "utf8"))).jornadas);
 }

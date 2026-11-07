@@ -81,6 +81,24 @@ export function RedesSociaisClient() {
     null,
   );
   const [excluding, setExcluding] = useState<Orphaned | null>(null);
+  // Pergunta sim/não ao remover: padrão "não" (mantém as conversas).
+  const [apagarConversas, setApagarConversas] = useState(false);
+  const canalRemovendo = removing?.account.channel?.id;
+  const impactoRemocao = useQuery({
+    queryKey: ["social-removal-impact", canalRemovendo],
+    enabled: !!canalRemovendo,
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: async () =>
+      (
+        await apiClient.get<{
+          data: { deletion_impact?: { history: { conversations: number; messages: number } } };
+        }>(`/api/v1/channel-sessions/${canalRemovendo}?impact=1`)
+      ).data.deletion_impact?.history ?? null,
+  });
+  const conversasDoCanal = impactoRemocao.data?.conversations ?? 0;
+  const mensagensDoCanal = impactoRemocao.data?.messages ?? 0;
   const [confirmandoDesvincular, setConfirmandoDesvincular] = useState(false);
   const load = () => query.refetch();
   async function togglePausado(account: Account) {
@@ -517,7 +535,15 @@ export function RedesSociaisClient() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <AlertDialog open={!!removing} onOpenChange={(open) => !open && setRemoving(null)}>
+          <AlertDialog
+            open={!!removing}
+            onOpenChange={(open) => {
+              if (!open) {
+                setRemoving(null);
+                setApagarConversas(false);
+              }
+            }}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
@@ -535,6 +561,40 @@ export function RedesSociaisClient() {
                       )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              {conversasDoCanal > 0 && (
+                <fieldset className="space-y-1 rounded-md border border-destructive/40 p-3 text-sm">
+                  <legend className="px-1 font-medium">
+                    {t("Também excluir as conversas deste canal?")}
+                  </legend>
+                  <p className="text-xs text-muted-foreground">
+                    {`${conversasDoCanal} ${t(conversasDoCanal === 1 ? "conversa" : "conversas")}${
+                      mensagensDoCanal > 0
+                        ? ` ${t("e")} ${mensagensDoCanal} ${t(mensagensDoCanal === 1 ? "mensagem" : "mensagens")}`
+                        : ""
+                    }. ${t("Isso não pode ser desfeito.")}`}
+                  </p>
+                  <div className="flex gap-4 pt-1">
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="apagar-conversas-social"
+                        checked={!apagarConversas}
+                        onChange={() => setApagarConversas(false)}
+                      />
+                      {t("Não, manter o histórico")}
+                    </label>
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="apagar-conversas-social"
+                        checked={apagarConversas}
+                        onChange={() => setApagarConversas(true)}
+                      />
+                      {t("Sim, excluir tudo")}
+                    </label>
+                  </div>
+                </fieldset>
+              )}
               <AlertDialogFooter>
                 <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
                 <AlertDialogAction
@@ -544,6 +604,9 @@ export function RedesSociaisClient() {
                       action: "disconnect",
                       account_id: removing.account.id,
                       remove_account: removing.removeAccount,
+                      ...(apagarConversas && conversasDoCanal > 0
+                        ? { delete_conversations: true }
+                        : {}),
                     })
                   }
                 >

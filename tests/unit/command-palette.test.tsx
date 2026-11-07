@@ -142,7 +142,7 @@ describe("CommandPalette", () => {
     // O catálogo começa por Prospecção (CRM): agrupar pela 1ª aparição punha
     // CRM no topo, e a seta andava pela lista plana, pulando de seção.
     const opcoes = screen.getAllByRole("option");
-    expect(opcoes[0]?.getAttribute("data-href")).toBe("/app/inbox");
+    expect(opcoes[0]?.getAttribute("data-href")).toBe("/app/nova-venda");
     await user.keyboard("{ArrowDown}{Enter}");
     expect(push).toHaveBeenCalledWith(opcoes[1]?.getAttribute("data-href"));
   });

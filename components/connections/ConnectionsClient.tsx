@@ -795,6 +795,8 @@ function ExcluirCanalDialog({
 }) {
   const t = useT();
   const [excluindo, setExcluindo] = useState(false);
+  // Pergunta sim/não: padrão "não" (mantém o histórico, como sempre foi).
+  const [apagarConversas, setApagarConversas] = useState(false);
   const {
     data: impact,
     isPending,
@@ -815,12 +817,17 @@ function ExcluirCanalDialog({
   const excluir = async () => {
     setExcluindo(true);
     try {
+      const querApagar = apagarConversas && (impact?.history.conversations ?? 0) > 0;
       const res = await apiClient.delete<{
         data: { id: string; archived: boolean; impact: ChannelDeletionImpact };
-      }>(`/api/v1/channel-sessions/${canal.id}`);
-      const conversas = res.data.impact.history.conversations;
+      }>(`/api/v1/channel-sessions/${canal.id}`, querApagar ? { delete_conversations: true } : undefined);
+      const conversas = querApagar ? 0 : res.data.impact.history.conversations;
       toast.success(
-        !res.data.archived
+        querApagar
+          ? res.data.archived
+            ? t("Canal removido e conversas excluídas. Parte da configuração continua guardada.")
+            : t("Canal e conversas excluídos.")
+          : !res.data.archived
           ? t("Canal excluído.")
           : conversas > 0
             ? `${t("Canal removido.")} ${contar(conversas, "conversa continua", "conversas continuam", t)} ${t("no inbox.")}`
@@ -854,10 +861,53 @@ function ExcluirCanalDialog({
                 </p>
               ) : (
                 <ul className="list-disc space-y-1 pl-5">
-                  {frasesDoImpacto(impact, t).map((frase) => (
+                  {frasesDoImpacto(
+                    // Com "Sim, excluir tudo" o histórico deixa de ser promessa de "continua no inbox".
+                    apagarConversas
+                      ? { ...impact, history: { ...impact.history, conversations: 0, messages: 0 } }
+                      : impact,
+                    t,
+                  ).map((frase) => (
                     <li key={frase}>{frase}</li>
                   ))}
                 </ul>
+              )}
+              {impact && impact.history.conversations > 0 && (
+                <fieldset className="space-y-1 rounded-md border border-destructive/40 p-3">
+                  <legend className="px-1 text-sm font-medium text-foreground">
+                    {t("Também excluir as conversas deste canal?")}
+                  </legend>
+                  <p className="text-xs">
+                    {`${[
+                      contar(impact.history.conversations, "conversa", "conversas", t),
+                      contar(impact.history.messages, "mensagem", "mensagens", t),
+                    ]
+                      .filter(Boolean)
+                      .join(` ${t("e")} `)}. ${t("Isso não pode ser desfeito.")}`}
+                  </p>
+                  <div className="flex gap-4 pt-1 text-sm text-foreground">
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="apagar-conversas"
+                        checked={!apagarConversas}
+                        disabled={excluindo}
+                        onChange={() => setApagarConversas(false)}
+                      />
+                      {t("Não, manter o histórico")}
+                    </label>
+                    <label className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="apagar-conversas"
+                        checked={apagarConversas}
+                        disabled={excluindo}
+                        onChange={() => setApagarConversas(true)}
+                      />
+                      {t("Sim, excluir tudo")}
+                    </label>
+                  </div>
+                </fieldset>
               )}
               <p>{t("Para usar este número de novo, será preciso conectá-lo outra vez.")}</p>
             </div>

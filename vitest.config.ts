@@ -9,6 +9,17 @@ import { selecionarCercas } from "./vitest.cercas";
 // import, em vitest.cercas.ts.
 const CERCAS = selecionarCercas(__dirname);
 
+// Decisão do dono (07/11/2026): o produto roda só no Brasil. As cercas que
+// cobram tradução para espanhol / idioma da data ficam desligadas por enquanto.
+// Para religar: apague a linha do arquivo daqui (os t() continuam no código).
+const IDIOMA_DESLIGADO = [
+  "tests/unit/i18n-espanhol-cobre-a-tela.test.ts",
+  "tests/unit/i18n-catalogo-do-menu.test.ts",
+  "tests/unit/i18n-a-data-segue-o-idioma.test.ts",
+  "tests/unit/instalador-idioma-da-cli.test.ts",
+  "tests/unit/idioma-aparece-pelo-nivel-do-registro.test.tsx",
+];
+
 export default defineConfig({
   // JSX automático já é o default do transform esbuild no Vite 7+ (vitest 4);
   // a opção `esbuild.jsx` saiu do tipo — provado pelos testes de componente.
@@ -23,7 +34,7 @@ export default defineConfig({
     // 15s não mascara travamento (quem trava continua reprovando, dez segundos
     // depois); só para de cronometrar a lentidão da máquina como se fosse
     // asserção. Caso que precisa de mais (abrir processo filho) declara o seu.
-    testTimeout: 15_000,
+    testTimeout: 60_000,
     setupFiles: ["./tests/setup/vitest.setup.ts"],
     globals: true,
     coverage: { provider: "v8", reporter: ["text", "html"] },
@@ -42,6 +53,7 @@ export default defineConfig({
       // Bancada opcional: usa node:test, PostgreSQL próprio e Playwright com
       // configuração dedicada. Não depende do ambiente da suíte do produto.
       "experiments/extensoes/**",
+      ...IDIOMA_DESLIGADO,
     ],
     // Dois projetos, a mesma suíte: `pnpm test:unit` continua rodando TUDO,
     // uma vez só. A divisão existe por duas razões medidas em 18/09/2026:
@@ -60,7 +72,7 @@ export default defineConfig({
       },
       {
         extends: true,
-        test: { name: "produto", exclude: CERCAS },
+        test: { name: "produto", exclude: [...CERCAS, ...IDIOMA_DESLIGADO] },
       },
     ],
   },

@@ -47,8 +47,8 @@ export async function GET(
     buffer = await renderContratoPdf({
       negociacao,
       loja: {
-        razaoSocial: o.legal_name || o.display_name || "Loja",
-        nomeFantasia: marca.appName || o.display_name || o.legal_name || "Loja",
+        razaoSocial: [o.legal_name, o.display_name].find(Boolean) ?? "Loja",
+        nomeFantasia: [marca.appName, o.display_name, o.legal_name].find(Boolean) ?? "Loja",
         cnpj: o.cnpj ?? null,
         logoUrl: marca.logoUrl,
         cidade: null,

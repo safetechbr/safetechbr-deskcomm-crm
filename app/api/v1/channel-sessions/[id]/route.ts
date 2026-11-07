@@ -32,6 +32,7 @@ import { sincronizarAvisoDePausa } from "@/lib/channels/central-de-pausa";
 import { desfazerWebhookDoNumero } from "@/lib/channels/meta/webhook-override";
 import { numeroObservadoDaSessao } from "@/lib/channels/numero-observado";
 import { apagarAssinaturaSocial } from "@/lib/channels/social/store";
+import { apagarHistoricoDoCanal } from "@/lib/channels/apagar-historico";
 import { isChannelStatus } from "@/lib/schemas/channels";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -314,7 +315,7 @@ export async function GET(
  * Admin only. organization_id vem da sessão — nunca do path/body.
  */
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const supportDenied = await requireSupportWrite();
@@ -344,8 +345,15 @@ export async function DELETE(
     .maybeSingle();
   if (!session) return fail("not_found", t("Canal não encontrado."), 404, { requestId });
 
-  const impact = await loadDeletionImpact(activeOrg.orgId, id);
-  const arquivar = impact.outcome === "archive";
+  // Opt-in explícito do operador: "também excluir as conversas deste canal".
+  // Só vale com `delete_conversations: true` no corpo; qualquer outra coisa
+  // (corpo vazio, inválido, false) mantém o arquivamento que preserva o histórico.
+  const corpo = (await req.json().catch(() => null)) as { delete_conversations?: unknown } | null;
+  const apagarConversas = corpo?.delete_conversations === true;
+
+  const impactoInicial = await loadDeletionImpact(activeOrg.orgId, id);
+  let impact = impactoInicial;
+  let arquivar = impact.outcome === "archive";
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {
@@ -498,6 +506,25 @@ export async function DELETE(
     patch.webhook_path_token = randomUUID().replace(/-/g, "");
   }
 
+  // O histórico só é apagado DEPOIS da revogação no provider (se ela falhar a
+  // rota já saiu acima e nada foi perdido). Recalcula o desfecho: sem mais nada
+  // pendurado a linha é apagada de vez; se sobrar configuração, arquiva.
+  let historicoApagado: Awaited<ReturnType<typeof apagarHistoricoDoCanal>> | null = null;
+  if (apagarConversas) {
+    try {
+      historicoApagado = await apagarHistoricoDoCanal(createAdminClient(), activeOrg.orgId, id);
+    } catch {
+      return fail(
+        "internal_error",
+        t("Não foi possível excluir as conversas do canal. Nada foi apagado por completo; tente novamente."),
+        500,
+        { requestId },
+      );
+    }
+    impact = await loadDeletionImpact(activeOrg.orgId, id);
+    arquivar = impact.outcome === "archive";
+  }
+
   if (arquivar) {
     const { error: archErr } = await supabase
       .from("channel_sessions")
@@ -568,10 +595,14 @@ export async function DELETE(
       avisos_fechados: avisosFechados,
       webhook_override: webhookOverride,
       social_webhook: socialWebhook,
-      ...impact.history,
-      ...impact.configuration,
+      conversas_excluidas: historicoApagado,
+      ...impactoInicial.history,
+      ...impactoInicial.configuration,
     },
   });
 
-  return ok({ id, archived: arquivar, impact }, { requestId });
+  return ok(
+    { id, archived: arquivar, impact: impactoInicial, history_deleted: historicoApagado },
+    { requestId },
+  );
 }

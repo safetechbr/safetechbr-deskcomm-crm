@@ -17,6 +17,7 @@ import {
 } from "@/lib/pdv/regras";
 import type { Contact } from "@/lib/types/contacts";
 import { formatarPreco } from "@/lib/veiculos/regras";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 const COR_DO_STATUS: Record<StatusDaNegociacao, string> = {
   concluida: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
@@ -25,7 +26,7 @@ const COR_DO_STATUS: Record<StatusDaNegociacao, string> = {
 };
 
 function nomeDe(c: Contact, t: (s: string) => string): string {
-  return c.name?.trim() || c.display_name?.trim() || c.phone_number || c.email || t("Sem nome");
+  return rotuloDoContato(c, t);
 }
 
 function iniciais(nome: string): string {

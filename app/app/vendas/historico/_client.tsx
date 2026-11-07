@@ -225,7 +225,7 @@ export function HistoricoDeVendasClient({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">
+                      <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] uppercase">
                         {n.tipo === "venda" ? t("Venda") : t("Compra")}
                       </span>
                       <span>{tituloDoVeiculoDaNegociacao(n.veiculo) || "—"}</span>

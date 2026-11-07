@@ -30,6 +30,7 @@ import {
 } from "@/lib/pdv/regras";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 import { formatarKm, formatarPreco, tituloDoVeiculo, type Veiculo } from "@/lib/veiculos/regras";
+import { nomeDoContato, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 
 export interface VeiculoDoPdv extends Veiculo {
   placa: string | null;
@@ -310,7 +311,7 @@ function ColunaCliente({
                         contact_id: ct.id,
                         cliente: {
                           ...x.cliente,
-                          nome: ct.name || ct.display_name || x.cliente.nome,
+                          nome: nomeDoContato(ct) ?? x.cliente.nome,
                           telefone: ct.phone_number || x.cliente.telefone,
                           email: ct.email || x.cliente.email,
                         },
@@ -319,7 +320,7 @@ function ColunaCliente({
                       setAchados([]);
                     }}
                   >
-                    <div className="font-medium">{ct.name || ct.display_name || t("Sem nome")}</div>
+                    <div className="font-medium">{rotuloDoContato(ct, t)}</div>
                     <div className="text-xs text-muted-foreground">{ct.phone_number ?? ct.email ?? ""}</div>
                   </button>
                 </li>

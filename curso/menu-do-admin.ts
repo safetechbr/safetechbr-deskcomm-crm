@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-const ARQUIVO = path.join(path.dirname(new URL(import.meta.url).pathname), "..", "components", "admin", "AdminSidebar.tsx");
+const ARQUIVO = path.join(path.dirname(decodeURIComponent(new URL(import.meta.url).pathname)), "..", "components", "admin", "AdminSidebar.tsx");
 
 export type ItemDoAdmin = { href: string; rotulo: string };
 

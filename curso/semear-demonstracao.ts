@@ -522,7 +522,7 @@ export async function semearBase(): Promise<Contexto> {
       `excluir ${x.slug}`,
     );
   }
-  const saida = path.join(path.dirname(new URL(import.meta.url).pathname), "saida");
+  const saida = path.join(path.dirname(decodeURIComponent(new URL(import.meta.url).pathname)), "saida");
   await voltarAoEstadoDeFabrica(org, saida);
   semErro(
     await db
@@ -1010,7 +1010,7 @@ async function rodar() {
   if (!modulo || modulo === "inbox") return;
   if (!/^[a-z0-9-]+$/.test(modulo)) throw new Error(`módulo inválido: ${modulo}`);
   const arquivo = path.join(
-    path.dirname(new URL(import.meta.url).pathname),
+    path.dirname(decodeURIComponent(new URL(import.meta.url).pathname)),
     "semear",
     `${modulo}.ts`,
   );
@@ -1023,7 +1023,7 @@ async function rodar() {
 // só roda quando chamado direto; as sementes de módulo importam os ajudantes daqui
 if (
   process.argv[1] &&
-  path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)
+  path.resolve(process.argv[1]) === path.resolve(decodeURIComponent(new URL(import.meta.url).pathname))
 ) {
   rodar().catch((e) => {
     console.error(e);

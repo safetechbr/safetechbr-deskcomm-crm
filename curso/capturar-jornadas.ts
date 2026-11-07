@@ -336,7 +336,7 @@ async function main() {
 }
 if (
   process.argv[1] &&
-  path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)
+  path.resolve(process.argv[1]) === path.resolve(decodeURIComponent(new URL(import.meta.url).pathname))
 ) {
   main().catch(() => {
     console.error(

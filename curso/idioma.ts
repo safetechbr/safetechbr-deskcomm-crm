@@ -6,7 +6,7 @@ import type { Alvo } from "./licao";
 
 import { idiomaDaCaptura } from "./configuracao";
 export { idiomaDaCaptura, pastaDaSaida, commitDaFoto, type IdiomaDaCaptura } from "./configuracao";
-const raiz = path.dirname(new URL(import.meta.url).pathname);
+const raiz = path.dirname(decodeURIComponent(new URL(import.meta.url).pathname));
 
 function catalogo(nome: string): Record<string, string> {
   const arquivo = path.join(raiz, nome);

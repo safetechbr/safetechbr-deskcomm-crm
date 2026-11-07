@@ -88,6 +88,6 @@ async function main() {
     console.info("Fonte fictícia local preparada; senha aleatória somente cifrada na bancada.");
   } finally { await admin.end(); }
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(decodeURIComponent(new URL(import.meta.url).pathname))) {
   main().catch(() => { console.error("Preparação recusada. Confira destino local, ownership da fixture e configuração privada; nenhum segredo é exibido."); process.exitCode = 1; });
 }

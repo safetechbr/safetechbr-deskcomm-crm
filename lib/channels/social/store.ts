@@ -7,6 +7,7 @@ import { lerLimiteEstourado } from "@/lib/cobranca/limites";
 import { fecharAvisoDePausaDoCanalArquivado } from "@/lib/channels/central-de-pausa";
 import { resolverSaudeDaConexaoRemovida } from "@/lib/channels/health";
 import { logger } from "@/lib/logger";
+import { apagarHistoricoDoCanal } from "@/lib/channels/apagar-historico";
 import { inboxSupported, SOCIAL_PROVIDER } from "./catalog";
 import { listSocialAccounts, socialRequest, SocialError } from "./client";
 
@@ -500,6 +501,7 @@ export async function disconnectSocialAccount(
   org: string,
   accountId: string,
   removeAccount: boolean,
+  deleteConversations = false,
 ) {
   const integration = await readSocialIntegration(db, org);
   if (!integration) throw new SocialError("Configure a integração primeiro.", 422);
@@ -527,6 +529,13 @@ export async function disconnectSocialAccount(
       account_removed: removeAccount && listed,
       avisos_fechados: "sem_mudanca" as const,
     };
+  if (deleteConversations) {
+    try {
+      await apagarHistoricoDoCanal(db, org, channel.id);
+    } catch {
+      throw new SocialError("Não foi possível excluir as conversas do canal. Tente novamente.", 500);
+    }
+  }
   const now = new Date().toISOString();
   const { error } = await db
     .from("channel_sessions")

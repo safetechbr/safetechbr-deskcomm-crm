@@ -23,7 +23,7 @@ import { Nicho, validarJornadas } from "./jornada";
 import { menuDoAdmin } from "./menu-do-admin";
 import { pastaDaSaida } from "./configuracao";
 
-const RAIZ = path.dirname(new URL(import.meta.url).pathname);
+const RAIZ = path.dirname(decodeURIComponent(new URL(import.meta.url).pathname));
 const SAIDA = pastaDaSaida();
 const ler = (f: string) => readFileSync(path.join(RAIZ, f), "utf8");
 
