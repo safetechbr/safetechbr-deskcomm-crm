@@ -365,6 +365,7 @@ export function SidebarContent({
                         <div className="relative">
                         <Link
                           href={item.href}
+                          {...(item.novaAba ? { target: "_blank", rel: "noopener" } : {})}
                           title={collapsed ? t(item.label) : undefined}
                           aria-current={isActive ? "page" : undefined}
                           onClick={onNavigate}

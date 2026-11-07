@@ -18,7 +18,7 @@ import type { CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
-export type NavGroupId = "atendimento" | "crm" | "ia" | "canais" | "analise" | "organizacao";
+export type NavGroupId = "acoes_rapidas" | "vendas" | "contatos" | "atendimento" | "crm" | "ia" | "canais" | "analise" | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -46,6 +46,11 @@ export interface NavMetadata {
   /** Ausente = só no hub. `true` = uso diário, sobe para o sidebar. */
   sidebar?: boolean;
   healthDot?: boolean;
+  /**
+   * Abre numa aba própria, em tela cheia, fora do shell do app (PDV). A porta
+   * continua sendo o `href` de `app/app/…`; a tela de lá redireciona.
+   */
+  novaAba?: boolean;
   /**
    * Contador de pendências ao lado do rótulo. `casos`: casos em que a IA espera
    * uma pessoa (`awaiting_human`) — quem desenha é `ContadorDeCasos`. `fila`:
@@ -88,6 +93,9 @@ export interface NavMetadata {
  * mesma conversa para a sexta tela.
  */
 export const NAV_GROUPS: NavGroup[] = [
+  { id: "acoes_rapidas", label: "Ações rápidas" },
+  { id: "vendas", label: "Vendas" },
+  { id: "contatos", label: "Contatos" },
   { id: "atendimento", label: "Atendimento" },
   { id: "crm", label: "CRM", hub: { href: "/app/crm", label: "Ver tudo em CRM" } },
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
@@ -183,6 +191,49 @@ export const NAV_CATALOG = [
     description: "Veículos da loja com fotos e ficha, prontos para enviar ao cliente.",
     icon: "Storefront",
     group: "atendimento",
+    sidebar: true,
+  },
+  {
+    // Atalho do PDV, com o nome de ação: é a mesma tela, por outra porta.
+    href: "/app/nova-venda",
+    label: "Nova venda",
+    description: "Atalho para o PDV: abre uma venda nova em tela cheia.",
+    icon: "Lightning",
+    group: "acoes_rapidas",
+    sidebar: true,
+    novaAba: true,
+  },
+  {
+    href: "/app/pdv",
+    label: "PDV",
+    description: "Venda e compra de veículos: cliente, carro, troca, pagamento e contrato.",
+    icon: "ShoppingCart",
+    group: "vendas",
+    sidebar: true,
+    novaAba: true,
+  },
+  {
+    href: "/app/vendas/historico",
+    label: "Histórico de Vendas",
+    description: "Todas as vendas e compras de veículos do PDV, com totais, busca e contrato.",
+    icon: "ClockCounterClockwise",
+    group: "vendas",
+    sidebar: true,
+  },
+  {
+    href: "/app/clientes",
+    label: "Clientes",
+    description: "Todos os clientes cadastrados e o histórico de compras e vendas de cada um.",
+    icon: "Users",
+    group: "contatos",
+    sidebar: true,
+  },
+  {
+    href: "/app/clientes/novo",
+    label: "Adicionar Cliente",
+    description: "Cadastra um cliente novo: nome, CPF, nascimento, telefone e e-mail.",
+    icon: "UserPlus",
+    group: "contatos",
     sidebar: true,
   },
   {

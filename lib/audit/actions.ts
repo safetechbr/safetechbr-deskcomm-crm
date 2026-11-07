@@ -811,6 +811,11 @@ export const AUDIT_ACTIONS = [
   "veiculo.video_set",
   "veiculo.video_removed",
   "veiculo.presented",
+  // O PDV da loja de carros (migration 9031): venda/compra de veículo.
+  "negociacao_veiculo.created",
+  "negociacao_veiculo.updated",
+  "negociacao_veiculo.concluded",
+  "negociacao_veiculo.cancelled",
 
   // As tarefas do CRM (migration 0210). Tarefa é combinado de trabalho entre
   // pessoas do time — quem a criou, quem mudou o prazo e quem a apagou é
