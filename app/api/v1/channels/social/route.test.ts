@@ -31,6 +31,8 @@ vi.mock("@/lib/channels/social/store", () => ({
   desvincularPerfilSocial: h.unlink,
   socialChannels: h.channels,
   connectSocialInbox: vi.fn(),
+  provisionarPerfilGerenciado: vi.fn(),
+  chaveMestraSocial: () => null,
   disconnectSocialAccount: h.disconnect,
   ressincronizarAssinaturaSocial: h.resync,
 }));

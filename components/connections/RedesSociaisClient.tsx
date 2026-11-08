@@ -85,6 +85,8 @@ type Orphaned = {
 type State = {
   label: string;
   configured: boolean;
+  managed?: boolean;
+  managed_available?: boolean;
   networks: { id: string; label: string; inbox: boolean }[];
   accounts: Account[];
   orphaned_channels: Orphaned[];
@@ -193,6 +195,9 @@ export function RedesSociaisClient() {
         const found = result.data.profiles as { id: string; name: string }[];
         setProfiles(found);
         setProfile(found[0]?.id ?? "");
+      } else if (body.action === "provision") {
+        toast.success(t("Redes sociais ativadas."));
+        await load();
       } else if (body.action === "authorize") {
         window.location.assign(result.data.auth_url as string);
       } else if (body.action === "health") {
@@ -272,6 +277,25 @@ export function RedesSociaisClient() {
       )}
       {((state && !state.configured) || editing) && (
         <Card className="space-y-4 p-4">
+          {state?.managed_available && !state.configured && (
+            <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-sm">
+              <p className="font-medium">{t("Ativar redes sociais")}</p>
+              <p className="text-muted-foreground">
+                {t(
+                  "Sem chave de API: a plataforma cuida da conexão com o provedor e você só conecta as suas contas.",
+                )}
+              </p>
+              <Button
+                disabled={!!busy}
+                onClick={() => void perform("provision", { action: "provision" })}
+              >
+                {t("Ativar")}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                {t("Prefere usar a sua própria conta do provedor? Preencha a chave abaixo.")}
+              </p>
+            </div>
+          )}
           <h3 className="font-semibold">{t("Vincular o provedor")}</h3>
           <ol className="space-y-2 rounded-md border bg-muted/40 p-3 text-sm">
             {PASSOS_DO_PROVEDOR.map((passo, i) => (
@@ -558,9 +582,11 @@ export function RedesSociaisClient() {
             </AlertDialogContent>
           </AlertDialog>
           <div className="flex flex-wrap gap-2 self-start">
-            <Button variant="ghost" onClick={() => setEditing(!editing)}>
-              {t("Alterar credencial")}
-            </Button>
+            {!state?.managed && (
+              <Button variant="ghost" onClick={() => setEditing(!editing)}>
+                {t("Alterar credencial")}
+              </Button>
+            )}
             <Button
               variant="outline"
               disabled={!!busy}

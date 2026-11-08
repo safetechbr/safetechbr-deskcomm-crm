@@ -11,21 +11,80 @@ import { apagarHistoricoDoCanal } from "@/lib/channels/apagar-historico";
 import { inboxSupported, SOCIAL_PROVIDER } from "./catalog";
 import { listSocialAccounts, socialRequest, SocialError } from "./client";
 
+/** Chave mestra da plataforma (modo gerenciado). Só no servidor. */
+export function chaveMestraSocial(): string | null {
+  return process.env.ZERNIO_SOCIAL_PLATFORM_KEY?.trim() || null;
+}
 export async function readSocialIntegration(db: SupabaseClient, org: string) {
   const { data, error } = await db
     .from("channel_integrations")
-    .select("profile_id, credential_encrypted")
+    .select("profile_id, credential_encrypted, managed")
     .eq("organization_id", org)
     .maybeSingle();
   if (error) throw new SocialError("Não foi possível ler a integração.", 500);
   if (!data) return null;
+  if (data.managed) {
+    // Gerenciado: a chave vive no ambiente (rotação sem tocar no banco).
+    const mestra = chaveMestraSocial();
+    if (!mestra)
+      throw new SocialError("A chave da plataforma não está configurada neste servidor.", 422);
+    return { profileId: data.profile_id as string, key: mestra, managed: true };
+  }
   const key = await decryptWebhookSecret(db, data.credential_encrypted as string);
   if (!key)
     throw new SocialError(
       "A credencial não pôde ser aberta. Configure a integração novamente.",
       422,
     );
-  return { profileId: data.profile_id as string, key };
+  return { profileId: data.profile_id as string, key, managed: false };
+}
+/**
+ * Ativa o modo gerenciado: cria (ou reaproveita) o perfil da organização no
+ * Zernio com a chave mestra. A organização vem do chamador autenticado, nunca
+ * do corpo. Idempotente: se já existe integração, devolve-a; se o perfil já
+ * existe no provedor (retry/corrida), reaproveita pelo nome.
+ */
+export async function provisionarPerfilGerenciado(db: SupabaseClient, org: string) {
+  const mestra = chaveMestraSocial();
+  if (!mestra) throw new SocialError("O modo gerenciado não está disponível nesta instalação.", 422);
+  const { data: existing, error: readError } = await db
+    .from("channel_integrations")
+    .select("profile_id, managed")
+    .eq("organization_id", org)
+    .maybeSingle();
+  if (readError) throw new SocialError("Não foi possível ler a configuração atual.", 500);
+  if (existing) {
+    if (existing.managed) return { profileId: existing.profile_id as string, created: false };
+    throw new SocialError(
+      "Este CRM já usa uma chave própria. Desvincule o perfil antes de ativar o modo gerenciado.",
+      409,
+    );
+  }
+  const nome = `crm-${org}`;
+  const perfis = z.object({ profiles: z.array(z.object({ _id: z.string(), name: z.string() })) });
+  let profileId: string | undefined;
+  try {
+    const criado = z
+      .object({ profile: z.object({ _id: z.string() }) })
+      .parse(await socialRequest(mestra, "profiles", { name: nome, externalId: org }));
+    profileId = criado.profile._id;
+  } catch (error) {
+    // Pode ter sido criado por uma tentativa anterior: procura pelo nome.
+    const lista = perfis.safeParse(await socialRequest(mestra, "profiles"));
+    profileId = lista.success ? lista.data.profiles.find((p) => p.name === nome)?._id : undefined;
+    if (!profileId) throw error;
+  }
+  const encrypted = await encryptWebhookSecret(db, mestra);
+  if (!encrypted) throw new SocialError("Cifra indisponível; a integração não foi gravada.", 422);
+  const { error } = await db.from("channel_integrations").upsert({
+    organization_id: org,
+    profile_id: profileId,
+    credential_encrypted: encrypted,
+    managed: true,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new SocialError("Não foi possível salvar a integração.", 500);
+  return { profileId, created: true };
 }
 /**
  * Salva a chave do perfil e ressincroniza a cópia por canal (spec 22, D1).
@@ -62,6 +121,7 @@ export async function configureSocialIntegration(
     organization_id: org,
     profile_id: profileId,
     credential_encrypted: encrypted,
+    managed: false,
     updated_at: new Date().toISOString(),
   });
   if (error) throw new SocialError("Não foi possível salvar a integração.", 500);

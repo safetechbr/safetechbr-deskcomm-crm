@@ -821,6 +821,15 @@ export const NAV_CATALOG = [
     healthDot: true,
   },
   {
+    href: "/app/publicacoes",
+    label: "Publicações",
+    description: "Agende posts, carrosséis, Reels e Stories no Instagram e nas demais redes.",
+    icon: "CalendarBlank",
+    group: "canais",
+    minRole: "manager",
+    sidebar: true,
+  },
+  {
     // Não tinha link nenhum no app inteiro: só se chegava digitando a URL.
     href: "/app/integrations/nuvemshop",
     label: "Nuvemshop",

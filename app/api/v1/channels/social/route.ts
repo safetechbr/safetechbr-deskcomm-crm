@@ -19,6 +19,8 @@ import {
   readSocialIntegration,
   configureSocialIntegration,
   desvincularPerfilSocial,
+  provisionarPerfilGerenciado,
+  chaveMestraSocial,
   socialChannels,
   connectSocialInbox,
   disconnectSocialAccount,
@@ -59,6 +61,7 @@ const inputSchema = z.discriminatedUnion("action", [
     })
     .strict(),
   z.object({ action: z.literal("unlink") }).strict(),
+  z.object({ action: z.literal("provision") }).strict(),
 ]);
 function publicBase(): string {
   const url = new URL(env.NEXT_PUBLIC_APP_URL);
@@ -95,6 +98,8 @@ export async function GET() {
       {
         label: SOCIAL_PROVIDER_LABEL,
         configured: !!config,
+        managed: config?.managed ?? false,
+        managed_available: !!chaveMestraSocial(),
         profile_id: config?.profileId ?? null,
         networks: SOCIAL_NETWORKS,
         accounts: accounts
@@ -178,6 +183,9 @@ export async function POST(req: Request) {
         body.remove_account,
         body.delete_conversations === true,
       );
+    } else if (body.action === "provision") {
+      const r = await provisionarPerfilGerenciado(db, auth.org.orgId);
+      result = { configured: true, managed: true, created: r.created };
     } else if (body.action === "unlink") {
       result = await desvincularPerfilSocial(db, auth.org.orgId);
     } else {
