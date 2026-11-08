@@ -305,3 +305,11 @@ describe("a terceira aba do funil (Lista)", () => {
     expect(screen.queryByTestId("lista-do-funil")).toBeNull();
   });
 });
+
+
+it.each(["manager", "agent"] as const)("configuração das colunas no quadro segue o acesso de %s", (role) => {
+  render(<PipelinePageClient pipelineId="p-2" initialName="Suporte" role={role} funis={FUNIS} funilInicial={FUNIL_LEVE} etapasIniciais={ETAPAS} />);
+  const link = screen.queryByRole("link", { name: /Configurar colunas de/ });
+  if (role === "manager") expect(link).toHaveAttribute("href", "/app/settings/tenant/pipelines#etapas-p-2");
+  else expect(link).not.toBeInTheDocument();
+});

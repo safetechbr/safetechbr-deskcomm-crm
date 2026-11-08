@@ -121,3 +121,44 @@ export function variacaoPercentual(hoje: number, ontem: number): number | null {
   if (ontem <= 0) return null;
   return Math.round(((hoje - ontem) / ontem) * 1000) / 10;
 }
+
+export interface PontoDoMes {
+  dia: string;
+  receita_cents: number;
+  /** Faturamento somado do dia 1º até este dia. */
+  acumulada_cents: number;
+}
+
+export interface ResumoDoMes {
+  /** Do dia 1º do mês (fuso da loja) até hoje, um ponto por dia. */
+  serie: PontoDoMes[];
+  vendas: number;
+  receita_cents: number;
+}
+
+/**
+ * Análise do mês corrente: do dia 1º até hoje (não são "os últimos 30 dias").
+ * Só faturamento é calculável hoje; lucro e despesas dependem do Financeiro,
+ * então ficam de fora em vez de virarem número inventado.
+ */
+export function montarMes(negociacoes: Negociacao[], agora: Date): ResumoDoMes {
+  const hoje = diaDaLoja(agora);
+  const primeiro = `${hoje.slice(0, 8)}01`;
+  const ate = Number(hoje.slice(8, 10));
+  const porDia = new Map<string, number>();
+  let vendas = 0;
+  for (const n of negociacoes.filter(efetiva)) {
+    const dia = diaDaLoja(n.concluida_em ?? n.created_at);
+    if (dia < primeiro || dia > hoje) continue;
+    vendas += 1;
+    porDia.set(dia, (porDia.get(dia) ?? 0) + receitaDe(n));
+  }
+  let acumulada = 0;
+  const serie = Array.from({ length: ate }, (_, i) => {
+    const dia = somarDias(primeiro, i);
+    const receita_cents = porDia.get(dia) ?? 0;
+    acumulada += receita_cents;
+    return { dia, receita_cents, acumulada_cents: acumulada };
+  });
+  return { serie, vendas, receita_cents: acumulada };
+}

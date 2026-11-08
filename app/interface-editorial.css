@@ -50,7 +50,12 @@ html:root[data-interface="editorial"] body {
   --shadow-md: 0 8px 28px rgb(16 16 20 / 0.07);
   --shadow-lg: 0 18px 60px rgb(16 16 20 / 0.12);
   --shadow-xl: 0 28px 80px rgb(16 16 20 / 0.16);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  /* Sequência lida no CSS computado da referência PerIpsum em 08/11/2026.
+     O sistema operacional é prioritário; Inter é uma alternativa, não a
+     primeira fonte da lista. Não exige baixar uma fonte de site autenticado. */
+  --font-sans:
+    -apple-system, system-ui, "Inter Variable", Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
 }
 html:root[data-interface="editorial"][data-theme="dark"],
 html:root[data-interface="editorial"][data-theme="dark"] body {
@@ -79,6 +84,8 @@ html:root[data-interface="editorial"][data-theme="dark"] body {
 }
 html[data-interface="editorial"] body {
   font-family: var(--font-sans);
+  font-size: 15px;
+  letter-spacing: -0.4px;
 }
 html[data-interface="editorial"] :where(h1, h2, h3) {
   text-wrap: balance;
@@ -100,10 +107,14 @@ html[data-interface="editorial"] .app-sidebar {
   background: var(--color-surface);
   border-color: var(--color-border);
 }
-html[data-interface="editorial"] .app-sidebar nav a {
+html[data-interface="editorial"] .app-sidebar :is(nav a, a[href="/app/settings"]) {
   min-height: 36px;
   border-radius: 999px;
-  font-size: 13px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: -0.4px;
 }
 html[data-interface="editorial"] .app-sidebar nav a[aria-current="page"] {
   background: var(--color-accent);
@@ -111,8 +122,12 @@ html[data-interface="editorial"] .app-sidebar nav a[aria-current="page"] {
   box-shadow: none;
 }
 html[data-interface="editorial"] .app-sidebar nav h2 button {
-  font-size: 10px;
-  letter-spacing: 0.12em;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: -0.4px;
+  text-transform: none;
   padding-block: 8px;
 }
 html[data-interface="editorial"] .app-topbar {

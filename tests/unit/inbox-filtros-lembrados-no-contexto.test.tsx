@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const routeReplace = vi.hoisted(() => vi.fn());
+
 const contexto = vi.hoisted(() => ({
   org: "org-a" as string | null,
   pedidos: [] as { org: string | null; numero: string | null }[],
@@ -29,7 +31,7 @@ vi.mock("@/lib/supabase/browser", () => ({
 }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/app/inbox",
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ replace: routeReplace, push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
@@ -52,6 +54,7 @@ vi.mock("@/components/inbox/InboxFilters", () => ({
     value: { tab: string; channel_session_id?: string; onlyUnread?: boolean };
     onChange: (v: unknown) => void;
   }) => <>
+    <input aria-label="Estado da lista preservado" defaultValue="" />
     <output data-testid="filtros">{JSON.stringify(value)}</output>
     <button onClick={() => onChange({ ...value, channel_session_id: `numero-${contexto.org}`, onlyUnread: true })}>Lembrar número</button>
     <button onClick={() => onChange({ ...value, channel_session_id: undefined, onlyUnread: false })}>Desligar</button>
@@ -64,10 +67,14 @@ vi.mock("@/components/inbox/Composer", () => ({ Composer: () => null }));
 vi.mock("@/components/inbox/ConversationHeader", () => ({ ConversationHeader: () => null }));
 vi.mock("@/components/inbox/RetentionNotice", () => ({ RetentionNotice: () => null }));
 vi.mock("@/components/inbox/InboxKeyboardShortcuts", () => ({
-  InboxKeyboardShortcuts: () => null,
+  InboxKeyboardShortcuts: () => <span data-testid="atalhos-inbox" />,
 }));
 vi.mock("@/components/inbox/ShortcutsHelpDialog", () => ({ ShortcutsHelpDialog: () => null }));
 vi.mock("@/components/inbox/JanelaFechadaAviso", () => ({ JanelaFechadaAviso: () => null }));
+
+vi.mock("@/components/inbox/FunilNaCentral", () => ({
+  FunilNaCentral: ({ pipelineId }: { pipelineId: string | null }) => <div data-testid="quadro-central">{pipelineId ?? "principal"}</div>,
+}));
 
 import { InboxLayout } from "@/components/inbox/InboxLayout";
 
@@ -81,11 +88,15 @@ function montar() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const tela = () => <QueryClientProvider client={client}><InboxLayout /></QueryClientProvider>;
   const view = render(tela());
-  return { mudarOrg(org: string | null) { contexto.org = org; view.rerender(tela()); } };
+  return {
+    mudarOrg(org: string | null) { contexto.org = org; view.rerender(tela()); },
+    mudarUrl(url: string) { window.history.replaceState({}, "", url); view.rerender(tela()); },
+  };
 }
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  routeReplace.mockClear();
   contexto.org = "org-a";
   contexto.pedidos = [];
   localStorage.clear();
@@ -141,4 +152,76 @@ describe("os efeitos do Inbox preservam a memória do contexto", () => {
       Object.defineProperty(window, "localStorage", descriptor);
     }
   });
+});
+
+
+describe("navegação entre as seções da central", () => {
+  it("ir para Conversas preserva o ID aberto e os filtros de trabalho", async () => {
+    window.history.replaceState({}, "", "/app/inbox?filter=mine&id=conversa-1&tag=vip");
+    try {
+      montar();
+      await waitFor(() => expect(screen.getByTestId("filtros")).toHaveTextContent("numero-org-a"));
+      fireEvent.mouseDown(screen.getByRole("tab", { name: "Conversas" }), { button: 0, ctrlKey: false });
+      const destino = routeReplace.mock.calls.at(-1)?.[0] as string;
+      const params = new URL(destino, "http://localhost").searchParams;
+      expect(params.get("filter")).toBe("all");
+      expect(params.get("id")).toBe("conversa-1");
+      expect(params.get("tag")).toBe("vip");
+      expect(screen.getByTestId("filtros")).toHaveTextContent("numero-org-a");
+      expect(screen.getByTestId("filtros")).toHaveTextContent('"onlyUnread":true');
+    } finally {
+      window.history.replaceState({}, "", "/");
+    }
+  });
+});
+
+
+it("o funil ocupa a central sem desmontar o trabalho da lista nem ativar atalhos ocultos", async () => {
+  window.history.replaceState({}, "", "/app/inbox?filter=mine&id=conversa-1&tag=vip");
+  try {
+    const view = montar();
+    const input = screen.getByLabelText("Estado da lista preservado");
+    fireEvent.change(input, { target: { value: "trabalho em andamento" } });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Funil principal" }), { button: 0, ctrlKey: false });
+    const destino = routeReplace.mock.calls.at(-1)?.[0] as string;
+    expect(new URL(destino, "http://localhost").searchParams.get("id")).toBe("conversa-1");
+    view.mudarUrl(destino);
+    expect(await screen.findByTestId("quadro-central")).toHaveTextContent("principal");
+    expect(screen.queryByTestId("atalhos-inbox")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Estado da lista preservado")).toBe(input);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "A fazer" }), { button: 0, ctrlKey: false });
+    const retorno = routeReplace.mock.calls.at(-1)?.[0] as string;
+    const params = new URL(retorno, "http://localhost").searchParams;
+    expect(params.get("visao")).toBeNull();
+    expect(params.get("filter")).toBe("mine");
+    expect(params.get("id")).toBe("conversa-1");
+    expect(params.get("tag")).toBe("vip");
+    view.mudarUrl(retorno);
+    expect(screen.getByTestId("atalhos-inbox")).toBeInTheDocument();
+    expect(screen.getByLabelText("Estado da lista preservado")).toHaveValue("trabalho em andamento");
+  } finally { window.history.replaceState({}, "", "/"); }
+});
+
+
+it("alternar funil e conversas e trocar a empresa não repete chaves entre componentes irmãos", async () => {
+  const erros = vi.spyOn(console, "error").mockImplementation(() => {});
+  window.history.replaceState({}, "", "/app/inbox?filter=all&visao=funil");
+  try {
+    const view = montar();
+    await screen.findByTestId("quadro-central");
+    for (const org of ["org-a", "org-b", "org-a"]) {
+      view.mudarOrg(org);
+      view.mudarUrl("/app/inbox?filter=all");
+      view.mudarUrl("/app/inbox?filter=all&visao=funil");
+      expect(await screen.findByTestId("quadro-central")).toHaveTextContent("principal");
+      expect(screen.getAllByRole("tab", { name: "Funil principal" })).toHaveLength(1);
+      expect(screen.getAllByTestId("quadro-central")).toHaveLength(1);
+    }
+    expect(erros.mock.calls.filter((args) => args.some((arg) =>
+      typeof arg === "string" && arg.includes("Encountered two children with the same key")
+    ))).toEqual([]);
+  } finally {
+    window.history.replaceState({}, "", "/");
+    erros.mockRestore();
+  }
 });

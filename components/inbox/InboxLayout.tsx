@@ -26,6 +26,10 @@ import { useParticipacoesRealtime } from "@/hooks/inbox/useParticipacoesRealtime
 import { ConversationList } from "./ConversationList";
 import { BarraDeAcoesEmLote } from "./BarraDeAcoesEmLote";
 import { InboxFilters, type InboxFiltersValue, type InboxTab } from "./InboxFilters";
+import { NavegacaoDaCentral, type VisaoDaCentral } from "./NavegacaoDaCentral";
+import dynamic from "next/dynamic";
+
+const FunilNaCentral = dynamic(() => import("./FunilNaCentral").then((m) => m.FunilNaCentral));
 import { ChatThread } from "./ChatThread";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ConversationHeader } from "./ConversationHeader";
@@ -291,6 +295,28 @@ export function InboxLayout({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = parseFilterParam(searchParams.get("filter"));
+  const visaoDasConversas = tab === "unassigned" || tab === "mine" ? "tarefas" : "conversas";
+  const mostrandoFunil = searchParams.get("visao") === "funil";
+  const funilEscolhido = searchParams.get("funil");
+  const visaoDaCentral = mostrandoFunil
+    ? funilEscolhido
+      ? "outro-funil"
+      : "funil"
+    : visaoDasConversas;
+  function mudarVisaoDaCentral(visao: VisaoDaCentral, funilId?: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (visao === "funil" || visao === "outro-funil") {
+      params.set("visao", "funil");
+      if (funilId) params.set("funil", funilId);
+      else params.delete("funil");
+    } else {
+      params.delete("visao");
+      params.delete("funil");
+      if (visao !== visaoDasConversas)
+        params.set("filter", visao === "tarefas" ? "unassigned" : "all");
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
   const idNaUrl = searchParams.get("id");
   /**
    * `?tag=` é o destino do link de cada linha do relatório Por etiqueta
@@ -892,43 +918,58 @@ export function InboxLayout({
   // deixava. Margem de 2px não é margem, é sorte.
   return (
     <OpenConversationProvider conversationId={selectedId}>
-      <div
-        ref={gradeRef}
-        className={cn(
-          "relative grid h-[calc(100dvh-var(--faixas-de-cima,0px)-3.5rem-var(--space-6)-max(var(--space-6),var(--rodape-ocupado,0px)))] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs md:grid-cols-[300px_1fr]",
-          // Recolhido (issue #3004), a terceira trilha vira o trilho estreito do
-          // botão de expandir e a conversa fica com o que era da ficha. Duas
-          // listas em vez de uma classe com valor em variável: o Tailwind precisa
-          // do literal para gerar o CSS.
-          painelRecolhido
-            ? "xl:grid-cols-[272px_1fr_2.75rem] 2xl:grid-cols-[300px_1fr_2.75rem]"
-            : "xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]",
+      <div className="flex h-[calc(100dvh-var(--faixas-de-cima,0px)-4rem-var(--space-6)-max(var(--space-6),var(--rodape-ocupado,0px)))] min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs">
+        <NavegacaoDaCentral
+          key={`navegacao:${orgId}`}
+          visao={visaoDaCentral}
+          onChange={mudarVisaoDaCentral}
+          onSelectFunil={(id) => mudarVisaoDaCentral("outro-funil", id)}
+        />
+        {mostrandoFunil && (
+          <FunilNaCentral
+            key={`funil:${orgId}`}
+            pipelineId={funilEscolhido}
+            onPrincipalDefinido={() => mudarVisaoDaCentral("funil")}
+          />
         )}
-        style={estiloDaGrade}
-        /*
-         * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
-         * já publica (`LeadDossier`), e pela mesma razão: quando a entrega morre,
-         * nenhuma tela avisa. Foi o único achado que atravessou o dia intacto
-         * quando o realtime quebrou pela primeira vez, e voltou a morder agora.
-         *
-         * `divergencias` é o que a rede de segurança contou: refetch trouxe estado
-         * novo que o canal NÃO tinha entregue. Zero com o canal vivo; subindo é a
-         * assinatura de canal que assina e não entrega — o defeito que não grita.
-         *
-         * ⚠️ `data-realtime-status` vem do STATUS do canal, não de um objeto que
-         * existe sempre. A primeira versão desta linha derivava o valor de
-         * `listQ.seguranca`, que nunca é nulo — ela diria `ativo` inclusive com o
-         * canal morto. Controle decorativo é pior que controle nenhum: mente com
-         * cara de instrumento.
-         *
-         * Atributo de dado e não texto na tela de propósito: quem lê isto é o
-         * teste e quem depura, não o atendente. Pôr um aviso permanente na cara de
-         * quem atende seria ruído; esconder o sinal do todo é o que custou o dia.
-         */
-        data-realtime-status={listQ.realtimeStatus}
-        data-refetch-divergencias={listQ.seguranca?.divergencias ?? 0}
-      >
-        {/*
+        <div
+          ref={gradeRef}
+          className={cn(
+            "relative grid min-h-0 w-full flex-1 grid-cols-1 overflow-hidden md:grid-cols-[300px_1fr]",
+            mostrandoFunil && "hidden md:hidden",
+            // Recolhido (issue #3004), a terceira trilha vira o trilho estreito do
+            // botão de expandir e a conversa fica com o que era da ficha. Duas
+            // listas em vez de uma classe com valor em variável: o Tailwind precisa
+            // do literal para gerar o CSS.
+            painelRecolhido
+              ? "xl:grid-cols-[272px_1fr_2.75rem] 2xl:grid-cols-[300px_1fr_2.75rem]"
+              : "xl:grid-cols-[272px_1fr_296px] 2xl:grid-cols-[300px_1fr_320px]",
+          )}
+          style={estiloDaGrade}
+          /*
+           * O ESTADO DO TEMPO REAL, LEGÍVEL DE FORA — mesmo par que o dossiê do lead
+           * já publica (`LeadDossier`), e pela mesma razão: quando a entrega morre,
+           * nenhuma tela avisa. Foi o único achado que atravessou o dia intacto
+           * quando o realtime quebrou pela primeira vez, e voltou a morder agora.
+           *
+           * `divergencias` é o que a rede de segurança contou: refetch trouxe estado
+           * novo que o canal NÃO tinha entregue. Zero com o canal vivo; subindo é a
+           * assinatura de canal que assina e não entrega — o defeito que não grita.
+           *
+           * ⚠️ `data-realtime-status` vem do STATUS do canal, não de um objeto que
+           * existe sempre. A primeira versão desta linha derivava o valor de
+           * `listQ.seguranca`, que nunca é nulo — ela diria `ativo` inclusive com o
+           * canal morto. Controle decorativo é pior que controle nenhum: mente com
+           * cara de instrumento.
+           *
+           * Atributo de dado e não texto na tela de propósito: quem lê isto é o
+           * teste e quem depura, não o atendente. Pôr um aviso permanente na cara de
+           * quem atende seria ruído; esconder o sinal do todo é o que custou o dia.
+           */
+          data-realtime-status={listQ.realtimeStatus}
+          data-refetch-divergencias={listQ.seguranca?.divergencias ?? 0}
+        >
+          {/*
         NO CELULAR, UMA COISA POR VEZ.
 
         Antes as duas colunas caíam empilhadas em `grid-cols-1`: a lista inteira
@@ -941,49 +982,52 @@ export function InboxLayout({
         classe condicional é resolvida pelo CSS, na primeira pintura, e some no
         `md` — onde as duas colunas cabem juntas e a regra não se aplica.
       */}
-        <div
-          ref={listaRef}
-          className={cn("h-full min-h-0 flex-col border-r border-border/60 md:flex", colunas.lista)}
-        >
-          <BotaoIniciarConversa />
-          <InboxFilters value={filterValue} onChange={setFilterValue} />
-          {podeAgirEmLote && (
-            <BarraDeAcoesEmLote
-              quantidade={selecao.quantidade}
-              pendente={lote.isPending}
-              onFechar={() => rodarLote("close")}
-              onArquivar={() => rodarLote("archive")}
-              onMarcarComoLida={() => rodarLote("mark-read")}
-              onPausarIa={() => rodarLote("pause-ai")}
-              onDevolverAoAutomatico={() => rodarLote("reactivate-bot")}
-              onTransferir={(toUserId, reason) => rodarLote("transfer", toUserId, reason)}
-              onLimpar={selecao.limpar}
-            />
-          )}
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <ConversationList
-              listQuery={listQ}
-              filters={filters}
-              selectedId={selectedId}
-              onSelect={handleSelect}
-              onVisibleChange={handleVisibleChange}
-              onLimparFiltros={limparFiltrosAuxiliares}
-              selecionados={selecao.selecionados}
-              onAlternarSelecao={podeAgirEmLote ? selecao.alternar : undefined}
-              onSelecionarTodosVisiveis={
-                podeAgirEmLote
-                  ? () =>
-                      selecao.selecionarTodos(
-                        (listQ.data?.pages.flatMap((p) => p.data) ?? []).map((c) => c.id),
-                      )
-                  : undefined
-              }
-              podeMarcarExemplo={podeMarcarExemplo}
-            />
+          <div
+            ref={listaRef}
+            className={cn(
+              "h-full min-h-0 flex-col border-r border-border/60 md:flex",
+              colunas.lista,
+            )}
+          >
+            <BotaoIniciarConversa />
+            <InboxFilters value={filterValue} onChange={setFilterValue} visao={visaoDasConversas} />
+            {podeAgirEmLote && (
+              <BarraDeAcoesEmLote
+                quantidade={selecao.quantidade}
+                pendente={lote.isPending}
+                onFechar={() => rodarLote("close")}
+                onArquivar={() => rodarLote("archive")}
+                onMarcarComoLida={() => rodarLote("mark-read")}
+                onPausarIa={() => rodarLote("pause-ai")}
+                onDevolverAoAutomatico={() => rodarLote("reactivate-bot")}
+                onTransferir={(toUserId, reason) => rodarLote("transfer", toUserId, reason)}
+                onLimpar={selecao.limpar}
+              />
+            )}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <ConversationList
+                listQuery={listQ}
+                filters={filters}
+                selectedId={selectedId}
+                onSelect={handleSelect}
+                onVisibleChange={handleVisibleChange}
+                onLimparFiltros={limparFiltrosAuxiliares}
+                selecionados={selecao.selecionados}
+                onAlternarSelecao={podeAgirEmLote ? selecao.alternar : undefined}
+                onSelecionarTodosVisiveis={
+                  podeAgirEmLote
+                    ? () =>
+                        selecao.selecionarTodos(
+                          (listQ.data?.pages.flatMap((p) => p.data) ?? []).map((c) => c.id),
+                        )
+                    : undefined
+                }
+                podeMarcarExemplo={podeMarcarExemplo}
+              />
+            </div>
           </div>
-        </div>
 
-        {/*
+          {/*
         AS DUAS COLUNAS DECIDEM PELO MESMO DADO — `selectedId`, não o objeto.
 
         A da lista some quando há `selectedId`; se esta aparecesse só quando a
@@ -995,196 +1039,199 @@ export function InboxLayout({
         escondido — deixando o dono numa tela vazia, sem sequer o botão de
         voltar, porque ele morava dentro do ramo da conversa carregada.
       */}
-        <div
-          ref={conversaRef}
-          data-teclado-aberto={tecladoAberto ? "" : undefined}
-          className={cn("group/conversa h-full min-h-0 min-w-0 flex-col md:flex", colunas.conversa)}
-        >
-          {/*
+          <div
+            ref={conversaRef}
+            data-teclado-aberto={tecladoAberto ? "" : undefined}
+            className={cn(
+              "group/conversa h-full min-h-0 min-w-0 flex-col md:flex",
+              colunas.conversa,
+            )}
+          >
+            {/*
           A barra do celular vive FORA do ramo da conversa carregada: o caminho
           de volta tem de existir inclusive quando não há o que mostrar — é aí
           que ele é a única saída. A porta da ficha, essa sim, depende da
           conversa, e só aparece quando há uma.
         */}
-          {selectedId && (
-            <div className="flex items-center gap-1 border-b border-border/60 px-1 py-1 md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 px-2"
-                onClick={() => handleSelect(null)}
-              >
-                <CaretLeft size={16} />
-                {t("Conversas")}
-              </Button>
-              <div className="flex-1" />
-              {selectedConversation && (
-                <Sheet open={fichaAberta} onOpenChange={setFichaAberta}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-1 px-2 xl:hidden">
-                      <IdentificationCard size={16} />
-                      {t("Ficha")}
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-[min(22rem,90vw)] overflow-y-auto p-0">
-                    <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
-                    <CRMSidePanel
-                      conversation={selectedConversation}
-                      onBuscar={alternarBusca}
-                      buscaAberta={buscaAberta}
-                      botaoBuscaRef={botaoBuscaRef}
-                      onAbrirConversa={handleSelect}
-                    />
-                  </SheetContent>
-                </Sheet>
-              )}
-            </div>
-          )}
-          {selectedConversation ? (
-            <>
-              {/* `key`: trocar de conversa desmonta a confirmação de Fechar/Arquivar
-                aberta — senão o clique de dentro agiria sobre a conversa nova. */}
-              <ConversationHeader
-                key={selectedConversation.id}
-                conversation={selectedConversation}
-              />
-              {buscaAberta && (
-                <div className="flex items-center gap-2 border-b border-border/60 px-4 py-1.5">
-                  <MagnifyingGlass
-                    size={16}
-                    className="shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <input
-                    type="search"
-                    autoFocus
-                    className="min-w-0 flex-1 bg-transparent py-1 text-base outline-hidden placeholder:text-muted-foreground md:text-sm"
-                    aria-label={t("Buscar nas mensagens carregadas")}
-                    placeholder={t("Buscar nas mensagens carregadas")}
-                    value={busca.termo}
-                    onChange={(e) =>
-                      setBusca({ conversaId: busca.conversaId, termo: e.target.value })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") fecharBusca();
-                    }}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-11 shrink-0 px-0 lg:w-8"
-                    aria-label={t("Fechar busca")}
-                    onClick={fecharBusca}
-                  >
-                    <X size={16} aria-hidden />
-                  </Button>
-                </div>
-              )}
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <ChatThread
-                  conversationId={selectedConversation.id}
-                  searchTerm={buscaAberta ? busca.termo : ""}
-                  provider={selectedConversation.channel_sessions?.provider ?? null}
-                  onResponder={setRespondendo}
-                  onEncaminhar={setEncaminhando}
-                  // O cartão da passagem escolhe o gesto a partir de quem é o dono
-                  // da conversa: sem dono convida a assumir, com outro dono diz
-                  // quem atende. Sem estes dois campos ele cairia no estado mais
-                  // conservador e ficaria mudo justamente para quem mais precisa.
-                  dono={{
-                    userId: selectedConversation.assigned_to_user_id ?? null,
-                    nome: selectedConversation.assigned_to_user_name ?? null,
-                  }}
-                  contatoId={selectedConversation.contacts?.id ?? null}
-                />
+            {selectedId && (
+              <div className="flex items-center gap-1 border-b border-border/60 px-1 py-1 md:hidden">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 px-2"
+                  onClick={() => handleSelect(null)}
+                >
+                  <CaretLeft size={16} />
+                  {t("Conversas")}
+                </Button>
+                <div className="flex-1" />
+                {selectedConversation && (
+                  <Sheet open={fichaAberta} onOpenChange={setFichaAberta}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-1 px-2 xl:hidden">
+                        <IdentificationCard size={16} />
+                        {t("Ficha")}
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-[min(22rem,90vw)] overflow-y-auto p-0">
+                      <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
+                      <CRMSidePanel
+                        conversation={selectedConversation}
+                        onBuscar={alternarBusca}
+                        buscaAberta={buscaAberta}
+                        botaoBuscaRef={botaoBuscaRef}
+                        onAbrirConversa={handleSelect}
+                      />
+                    </SheetContent>
+                  </Sheet>
+                )}
               </div>
-              <RetentionNotice conversationId={selectedConversation.id} />
-              {selectedConversation.contacts?.id && (
-                <NumeroForaDoAr
-                  key={`numero:${selectedConversation.id}`}
-                  conversationId={selectedConversation.id}
-                  channelSessionId={selectedConversation.channel_session_id}
-                  contactId={selectedConversation.contacts.id}
-                  contactPhone={selectedConversation.contacts.phone_number ?? null}
-                  onAbrirConversa={handleSelect}
+            )}
+            {selectedConversation ? (
+              <>
+                {/* `key`: trocar de conversa desmonta a confirmação de Fechar/Arquivar
+                aberta — senão o clique de dentro agiria sobre a conversa nova. */}
+                <ConversationHeader
+                  key={selectedConversation.id}
+                  conversation={selectedConversation}
                 />
-              )}
-              {motivoDaJanela && (
-                <JanelaFechadaAviso
+                {buscaAberta && (
+                  <div className="flex items-center gap-2 border-b border-border/60 px-4 py-1.5">
+                    <MagnifyingGlass
+                      size={16}
+                      className="shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <input
+                      type="search"
+                      autoFocus
+                      className="min-w-0 flex-1 bg-transparent py-1 text-base outline-hidden placeholder:text-muted-foreground md:text-sm"
+                      aria-label={t("Buscar nas mensagens carregadas")}
+                      placeholder={t("Buscar nas mensagens carregadas")}
+                      value={busca.termo}
+                      onChange={(e) =>
+                        setBusca({ conversaId: busca.conversaId, termo: e.target.value })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") fecharBusca();
+                      }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-11 shrink-0 px-0 lg:w-8"
+                      aria-label={t("Fechar busca")}
+                      onClick={fecharBusca}
+                    >
+                      <X size={16} aria-hidden />
+                    </Button>
+                  </div>
+                )}
+                <div className="min-h-0 flex-1 overflow-hidden">
+                  <ChatThread
+                    conversationId={selectedConversation.id}
+                    searchTerm={buscaAberta ? busca.termo : ""}
+                    provider={selectedConversation.channel_sessions?.provider ?? null}
+                    onResponder={setRespondendo}
+                    onEncaminhar={setEncaminhando}
+                    // O cartão da passagem escolhe o gesto a partir de quem é o dono
+                    // da conversa: sem dono convida a assumir, com outro dono diz
+                    // quem atende. Sem estes dois campos ele cairia no estado mais
+                    // conservador e ficaria mudo justamente para quem mais precisa.
+                    dono={{
+                      userId: selectedConversation.assigned_to_user_id ?? null,
+                      nome: selectedConversation.assigned_to_user_name ?? null,
+                    }}
+                    contatoId={selectedConversation.contacts?.id ?? null}
+                  />
+                </div>
+                <RetentionNotice conversationId={selectedConversation.id} />
+                {selectedConversation.contacts?.id && (
+                  <NumeroForaDoAr
+                    key={`numero:${selectedConversation.id}`}
+                    conversationId={selectedConversation.id}
+                    channelSessionId={selectedConversation.channel_session_id}
+                    contactId={selectedConversation.contacts.id}
+                    contactPhone={selectedConversation.contacts.phone_number ?? null}
+                    onAbrirConversa={handleSelect}
+                  />
+                )}
+                {motivoDaJanela && (
+                  <JanelaFechadaAviso
+                    conversationId={selectedConversation.id}
+                    provider={selectedConversation.channel_sessions?.provider ?? null}
+                    motivo={motivoDaJanela}
+                  />
+                )}
+                <Composer
+                  // Trocar a chave quando o rascunho sai REMONTA o composer: o texto
+                  // nasce de `useState(initialDraft)`, e só a prop mudar não o limparia.
+                  // Sem rascunho a chave é fixa e a troca de conversa segue como antes.
+                  key={rascunhoVivo ? `rascunho:${rascunhoVivo.conversationId}` : "composer"}
+                  ref={composerRef}
                   conversationId={selectedConversation.id}
-                  provider={selectedConversation.channel_sessions?.provider ?? null}
-                  motivo={motivoDaJanela}
+                  blockedReason={supportReadonly ? "Acompanhamento somente leitura" : blockedReason}
+                  janelaFechada={motivoDaJanela}
+                  disabled={selectedConversation.status === "closed"}
+                  // A CAIXA TRAVADA ATÉ ASSUMIR (#3012) — a opção é da ORGANIZAÇÃO e
+                  // chega pela mesma preferência que o menu (`interface_settings` em
+                  // `useAuth`). Desligada (o padrão) ninguém vê diferença: com ela
+                  // fora, a expressão é `false` em todo estado. Assumir a conversa
+                  // muda `assigned_to_user_id` e o compositor libera sozinho, porque
+                  // a decisão é recalculada a cada render sobre a conversa atual.
+                  aguardandoAssumir={composerBloqueadoAteAssumir({
+                    ligada: activeOrg?.interface_settings?.bloquearAteAssumir === true,
+                    donoDaConversa: selectedConversation.assigned_to_user_id,
+                    atendenteId: user.id,
+                    participanteAtivo: participaDoAtendimento,
+                  })}
+                  contactName={selectedConversation.contacts?.name ?? null}
+                  contactDisplayName={selectedConversation.contacts?.display_name}
+                  respondendo={respondendo}
+                  onCancelarResposta={() => setRespondendo(null)}
+                  currentContactId={selectedConversation.contact_id}
+                  // A barra de recursos lembra o recolhimento POR usuário (#3282);
+                  // o id vem do `AuthProvider` daqui, não de dentro do compositor.
+                  usuarioId={user.id}
+                  // O aviso é DA conversa da URL: trocar de conversa dentro da inbox
+                  // não pode deixar um texto sugerido no campo de outra pessoa.
+                  rascunho={rascunhoVivo}
+                  initialDraft={
+                    rascunhoVivo?.leitura.estado === "sugerido" ? rascunhoVivo.leitura.texto : ""
+                  }
                 />
-              )}
-              <Composer
-                // Trocar a chave quando o rascunho sai REMONTA o composer: o texto
-                // nasce de `useState(initialDraft)`, e só a prop mudar não o limparia.
-                // Sem rascunho a chave é fixa e a troca de conversa segue como antes.
-                key={rascunhoVivo ? `rascunho:${rascunhoVivo.conversationId}` : "composer"}
-                ref={composerRef}
-                conversationId={selectedConversation.id}
-                blockedReason={supportReadonly ? "Acompanhamento somente leitura" : blockedReason}
-                janelaFechada={motivoDaJanela}
-                disabled={selectedConversation.status === "closed"}
-                // A CAIXA TRAVADA ATÉ ASSUMIR (#3012) — a opção é da ORGANIZAÇÃO e
-                // chega pela mesma preferência que o menu (`interface_settings` em
-                // `useAuth`). Desligada (o padrão) ninguém vê diferença: com ela
-                // fora, a expressão é `false` em todo estado. Assumir a conversa
-                // muda `assigned_to_user_id` e o compositor libera sozinho, porque
-                // a decisão é recalculada a cada render sobre a conversa atual.
-                aguardandoAssumir={composerBloqueadoAteAssumir({
-                  ligada: activeOrg?.interface_settings?.bloquearAteAssumir === true,
-                  donoDaConversa: selectedConversation.assigned_to_user_id,
-                  atendenteId: user.id,
-                  participanteAtivo: participaDoAtendimento,
-                })}
-                contactName={selectedConversation.contacts?.name ?? null}
-                contactDisplayName={selectedConversation.contacts?.display_name}
-                respondendo={respondendo}
-                onCancelarResposta={() => setRespondendo(null)}
-                currentContactId={selectedConversation.contact_id}
-                // A barra de recursos lembra o recolhimento POR usuário (#3282);
-                // o id vem do `AuthProvider` daqui, não de dentro do compositor.
-                usuarioId={user.id}
-                // O aviso é DA conversa da URL: trocar de conversa dentro da inbox
-                // não pode deixar um texto sugerido no campo de outra pessoa.
-                rascunho={rascunhoVivo}
-                initialDraft={
-                  rascunhoVivo?.leitura.estado === "sugerido" ? rascunhoVivo.leitura.texto : ""
-                }
-              />
-            </>
-          ) : selectionNotFound ? (
-            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-              {t("Conversa não encontrada ou fora do seu acesso.")}
-            </div>
-          ) : (
-            <div className="ds-entra flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-              <span
-                className="mb-1 flex size-14 items-center justify-center rounded-full bg-accent-soft text-accent"
-                aria-hidden
-              >
-                <ChatCircle size={28} weight="duotone" />
-              </span>
-              <p className="text-sm font-medium text-text-muted">{t("Selecione uma conversa")}</p>
-              <p className="text-xs text-text-muted">{t("Ou navegue com J e K")}</p>
-            </div>
-          )}
-        </div>
+              </>
+            ) : selectionNotFound ? (
+              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                {t("Conversa não encontrada ou fora do seu acesso.")}
+              </div>
+            ) : (
+              <div className="ds-entra flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+                <span
+                  className="mb-1 flex size-14 items-center justify-center rounded-full bg-accent-soft text-accent"
+                  aria-hidden
+                >
+                  <ChatCircle size={28} weight="duotone" />
+                </span>
+                <p className="text-sm font-medium text-text-muted">{t("Selecione uma conversa")}</p>
+                <p className="text-xs text-text-muted">{t("Ou navegue com J e K")}</p>
+              </div>
+            )}
+          </div>
 
-        <div className="hidden h-full min-h-0 min-w-0 xl:block">
-          <CRMSidePanel
-            conversation={selectedConversation}
-            recolhido={painelRecolhido}
-            onAlternarRecolhido={alternarPainelDoContato}
-            onBuscar={alternarBusca}
-            buscaAberta={buscaAberta}
-            botaoBuscaRef={botaoBuscaRef}
-            onAbrirConversa={handleSelect}
-          />
-        </div>
+          <div className="hidden h-full min-h-0 min-w-0 xl:block">
+            <CRMSidePanel
+              conversation={selectedConversation}
+              recolhido={painelRecolhido}
+              onAlternarRecolhido={alternarPainelDoContato}
+              onBuscar={alternarBusca}
+              buscaAberta={buscaAberta}
+              botaoBuscaRef={botaoBuscaRef}
+              onAbrirConversa={handleSelect}
+            />
+          </div>
 
-        {/*
+          {/*
         AS DUAS DIVISÓRIAS (#2579) — só a partir do `md`, quando as colunas
         convivem; abaixo disso `efetivas` é `null` e nenhuma nasce.
 
@@ -1195,86 +1242,89 @@ export function InboxLayout({
         ficha), o que evita medir a conversa para saber onde a terceira trilha
         começa.
       */}
-        {efetivas && (
-          <>
-            <span
-              role="separator"
-              aria-orientation="vertical"
-              aria-label={t("Ajustar largura da lista de conversas")}
-              title={t("Arraste para ajustar a largura")}
-              aria-valuenow={efetivas.lista}
-              aria-valuemin={LIMITES_LISTA.min}
-              aria-valuemax={LIMITES_LISTA.max}
-              data-divisoria="lista"
-              tabIndex={0}
-              onPointerDown={(evento) => arrastar("lista", evento)}
-              onDoubleClick={restaurarPadrao}
-              onKeyDown={(evento) => teclarNaDivisoria("lista", evento)}
-              className="group absolute inset-y-0 z-10 flex w-2 -translate-x-1/2 cursor-col-resize touch-none items-stretch justify-center select-none focus-visible:outline-hidden"
-              style={{ left: `${efetivas.lista}px` }}
-            >
-              <span
-                aria-hidden
-                className="w-px bg-transparent transition-colors duration-200 group-hover:bg-accent/60 group-focus-visible:bg-accent"
-              />
-            </span>
-            {faixa?.temFicha && !painelRecolhido && (
+          {efetivas && (
+            <>
               <span
                 role="separator"
                 aria-orientation="vertical"
-                aria-label={t("Ajustar largura da ficha do contato")}
+                aria-label={t("Ajustar largura da lista de conversas")}
                 title={t("Arraste para ajustar a largura")}
-                aria-valuenow={efetivas.ficha}
-                aria-valuemin={LIMITES_FICHA.min}
-                aria-valuemax={LIMITES_FICHA.max}
-                data-divisoria="ficha"
+                aria-valuenow={efetivas.lista}
+                aria-valuemin={LIMITES_LISTA.min}
+                aria-valuemax={LIMITES_LISTA.max}
+                data-divisoria="lista"
                 tabIndex={0}
-                onPointerDown={(evento) => arrastar("ficha", evento)}
+                onPointerDown={(evento) => arrastar("lista", evento)}
                 onDoubleClick={restaurarPadrao}
-                onKeyDown={(evento) => teclarNaDivisoria("ficha", evento)}
-                className="group absolute inset-y-0 z-10 flex w-2 translate-x-1/2 cursor-col-resize touch-none items-stretch justify-center select-none focus-visible:outline-hidden"
-                style={{ right: `${efetivas.ficha}px` }}
+                onKeyDown={(evento) => teclarNaDivisoria("lista", evento)}
+                className="group absolute inset-y-0 z-10 flex w-2 -translate-x-1/2 cursor-col-resize touch-none items-stretch justify-center select-none focus-visible:outline-hidden"
+                style={{ left: `${efetivas.lista}px` }}
               >
                 <span
                   aria-hidden
                   className="w-px bg-transparent transition-colors duration-200 group-hover:bg-accent/60 group-focus-visible:bg-accent"
                 />
               </span>
-            )}
-          </>
-        )}
+              {faixa?.temFicha && !painelRecolhido && (
+                <span
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={t("Ajustar largura da ficha do contato")}
+                  title={t("Arraste para ajustar a largura")}
+                  aria-valuenow={efetivas.ficha}
+                  aria-valuemin={LIMITES_FICHA.min}
+                  aria-valuemax={LIMITES_FICHA.max}
+                  data-divisoria="ficha"
+                  tabIndex={0}
+                  onPointerDown={(evento) => arrastar("ficha", evento)}
+                  onDoubleClick={restaurarPadrao}
+                  onKeyDown={(evento) => teclarNaDivisoria("ficha", evento)}
+                  className="group absolute inset-y-0 z-10 flex w-2 translate-x-1/2 cursor-col-resize touch-none items-stretch justify-center select-none focus-visible:outline-hidden"
+                  style={{ right: `${efetivas.ficha}px` }}
+                >
+                  <span
+                    aria-hidden
+                    className="w-px bg-transparent transition-colors duration-200 group-hover:bg-accent/60 group-focus-visible:bg-accent"
+                  />
+                </span>
+              )}
+            </>
+          )}
 
-        <InboxKeyboardShortcuts
-          visibleIds={visibleIds}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          onFocusReply={handleFocusReply}
-          onClaim={supportReadonly ? () => {} : handleClaim}
-          onClose={supportReadonly ? () => {} : handleClose}
-          onToggleHelp={() => setHelpOpen((v) => !v)}
-        />
-        <ShortcutsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
-        <EncaminharDialog
-          open={encaminhando !== null}
-          onOpenChange={(aberto) => {
-            if (!aberto) {
-              setEncaminhando(null);
-              // Diálogo fechado, intenção zerada: reabrir depois — outra mensagem
-              // ou até a mesma — tem de poder encaminhar de novo, com chave nova.
-              encaminhar.limparIntencao();
-            }
-          }}
-          conversas={conversasDaLista}
-          conversationIdAtual={selectedConversation?.id ?? null}
-          enviando={encaminhar.isPending}
-          onEscolher={(destino) => {
-            if (!encaminhando) return;
-            encaminhar.mutate(
-              { id: encaminhando.id, conversationIdDestino: destino },
-              { onSuccess: () => setEncaminhando(null) },
-            );
-          }}
-        />
+          {!mostrandoFunil && (
+            <InboxKeyboardShortcuts
+              visibleIds={visibleIds}
+              selectedId={selectedId}
+              onSelect={handleSelect}
+              onFocusReply={handleFocusReply}
+              onClaim={supportReadonly ? () => {} : handleClaim}
+              onClose={supportReadonly ? () => {} : handleClose}
+              onToggleHelp={() => setHelpOpen((v) => !v)}
+            />
+          )}
+          <ShortcutsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+          <EncaminharDialog
+            open={encaminhando !== null}
+            onOpenChange={(aberto) => {
+              if (!aberto) {
+                setEncaminhando(null);
+                // Diálogo fechado, intenção zerada: reabrir depois — outra mensagem
+                // ou até a mesma — tem de poder encaminhar de novo, com chave nova.
+                encaminhar.limparIntencao();
+              }
+            }}
+            conversas={conversasDaLista}
+            conversationIdAtual={selectedConversation?.id ?? null}
+            enviando={encaminhar.isPending}
+            onEscolher={(destino) => {
+              if (!encaminhando) return;
+              encaminhar.mutate(
+                { id: encaminhando.id, conversationIdDestino: destino },
+                { onSuccess: () => setEncaminhando(null) },
+              );
+            }}
+          />
+        </div>
       </div>
     </OpenConversationProvider>
   );

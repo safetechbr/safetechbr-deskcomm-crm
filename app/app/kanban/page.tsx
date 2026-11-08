@@ -85,6 +85,7 @@ export default async function KanbanPickerPage() {
         arquivados={arquivados}
         podeGerenciar={podeGerenciar}
         podeImportar={podeImportar}
+        podeDefinirPrincipal={podeGerenciar && user.support?.access_mode !== "support_readonly"}
       />
     </div>
   );

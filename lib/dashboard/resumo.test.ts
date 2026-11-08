@@ -63,3 +63,27 @@ describe("dashboard · resumo", () => {
     expect(variacaoPercentual(150, 100)).toBe(50);
   });
 });
+
+describe("montarMes", () => {
+  it("vai do dia 1º até hoje e acumula o faturamento", async () => {
+    const { montarMes } = await import("./resumo");
+    const mk = (dia: string, valor: number) =>
+      ({
+        tipo: "venda",
+        status: "concluida",
+        valor_cents: valor,
+        desconto_cents: 0,
+        concluida_em: `${dia}T15:00:00Z`,
+        created_at: `${dia}T15:00:00Z`,
+      }) as never;
+    const r = montarMes(
+      [mk("2026-11-02", 1000), mk("2026-11-05", 500), mk("2026-10-30", 9999)],
+      new Date("2026-11-08T15:00:00Z"),
+    );
+    expect(r.serie).toHaveLength(8);
+    expect(r.serie[0]!.dia).toBe("2026-11-01");
+    expect(r.receita_cents).toBe(1500);
+    expect(r.vendas).toBe(2);
+    expect(r.serie[7]!.acumulada_cents).toBe(1500);
+  });
+});

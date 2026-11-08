@@ -14,6 +14,8 @@ ser fonte sem ninguém decidir isso.
 
 ## Mapas
 
+- `central-visoes-e-funis.architecture.json`: A fazer, histórico autorizado e acesso aos quadros pela central.
+
 | arquivo | escopo |
 | `etiquetas-paginadas.architecture.json` | vocabulário paginado, busca e sugestões nos editores do Inbox |
 |---|---|

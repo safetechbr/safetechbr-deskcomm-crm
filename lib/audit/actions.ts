@@ -30,6 +30,7 @@
  */
 export const AUDIT_ACTIONS = [
   "settings.agenda_presentation_updated",
+  "settings.central_pipeline_updated",
   "ad_tracking_link.saved",
   "auth.login_success",
   "auth.login_failed",

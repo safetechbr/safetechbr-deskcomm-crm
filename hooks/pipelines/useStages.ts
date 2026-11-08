@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "@/lib/api/client";
 
+import { chaveDoQuadro } from "@/hooks/kanban/useBoard";
 import { chaveDoFunil } from "./useAgentMapping";
 
 /**
@@ -56,6 +57,8 @@ function useReler(pipelineId: string) {
   const qc = useQueryClient();
   return () => {
     void qc.invalidateQueries({ queryKey: chaveDoFunil(pipelineId) });
+    // Voltar ao quadro logo após editar não pode mostrar colunas do cache antigo.
+    void qc.invalidateQueries({ queryKey: chaveDoQuadro(pipelineId) });
   };
 }
 

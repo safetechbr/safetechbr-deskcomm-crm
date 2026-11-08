@@ -16,7 +16,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-import { InboxFilters, visibleInboxTabs, type InboxFiltersValue } from "@/components/inbox/InboxFilters";
+import {
+  InboxFilters,
+  visibleInboxTabs,
+  type InboxFiltersValue,
+} from "@/components/inbox/InboxFilters";
 import type * as CanaisModule from "@/hooks/channels/useChannelSessions";
 import type { ChannelSession } from "@/hooks/channels/useChannelSessions";
 import type { ActiveOrg } from "@/lib/auth/types";
@@ -111,11 +115,16 @@ describe("InboxFilters render — 3 visões + escopo", () => {
     setOrg("manager", "all");
     let onResize: ResizeObserverCallback = () => {};
     const disconnect = vi.fn();
-    vi.stubGlobal("ResizeObserver", class {
-      constructor(callback: ResizeObserverCallback) { onResize = callback; }
-      observe() {}
-      disconnect = disconnect;
-    });
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          onResize = callback;
+        }
+        observe() {}
+        disconnect = disconnect;
+      },
+    );
 
     try {
       const onChange = vi.fn();
@@ -150,7 +159,10 @@ describe("InboxFilters render — 3 visões + escopo", () => {
       expect(list.scrollLeft).toBe(260);
       expect(screen.getByRole("button", { name: "Aba anterior" })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Próxima aba" })).not.toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /Arquivadas/ })).toHaveAttribute("data-state", "active");
+      expect(screen.getByRole("tab", { name: /Arquivadas/ })).toHaveAttribute(
+        "data-state",
+        "active",
+      );
     } finally {
       vi.unstubAllGlobals();
     }
@@ -180,6 +192,48 @@ describe("InboxFilters render — 3 visões + escopo", () => {
   });
 });
 
+describe("InboxFilters — seções da central", () => {
+  it("A fazer oferece apenas Fila e Minhas", () => {
+    setOrg("manager", "all");
+    render(<InboxFilters value={VALUE} onChange={() => {}} visao="tarefas" />);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Fila3", "Minhas2"]);
+  });
+
+  it("Conversas reúne o histórico geral, automático, fechadas e arquivadas", () => {
+    setOrg("manager", "all");
+    render(<InboxFilters value={{ ...VALUE, tab: "all" }} onChange={() => {}} visao="conversas" />);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      "Todas5",
+      "Automático",
+      "Fechadas",
+      "Arquivadas",
+    ]);
+  });
+
+  it("o histórico de um vendedor restrito identifica o escopo e preserva os filtros", () => {
+    setOrg("agent", "own");
+    const onChange = vi.fn();
+    const value: InboxFiltersValue = {
+      ...VALUE,
+      tab: "all",
+      search: "Ana",
+      onlyUnread: true,
+      channel_session_id: "canal-1",
+    };
+    render(<InboxFilters value={value} onChange={onChange} visao="conversas" />);
+    expect(screen.getByRole("tab", { name: /Do meu acesso/ })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+    expect(screen.queryByRole("tab", { name: /^Todas/ })).not.toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Fechadas" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect(onChange).toHaveBeenCalledWith({ ...value, tab: "closed" });
+  });
+});
+
 describe("InboxFilters — seletor de número e o filtro órfão", () => {
   it("um número só: não há o que alternar, o seletor não aparece", () => {
     setOrg("manager", "all");
@@ -205,7 +259,10 @@ describe("InboxFilters — seletor de número e o filtro órfão", () => {
     setOrg("manager", "all");
     canaisRef.current = [canal()];
     render(
-      <InboxFilters value={{ ...VALUE, channel_session_id: "canal-excluido" }} onChange={() => {}} />,
+      <InboxFilters
+        value={{ ...VALUE, channel_session_id: "canal-excluido" }}
+        onChange={() => {}}
+      />,
     );
     const seletor = screen.getByLabelText(SELETOR);
     expect(seletor).toBeInTheDocument();
@@ -223,9 +280,7 @@ describe("InboxFilters — seletor de número e o filtro órfão", () => {
   it("etiqueta fora do vocabulário: o seletor FICA e oferece a etiqueta órfã", () => {
     setOrg("manager", "all");
     tagsRef.current = [];
-    render(
-      <InboxFilters value={{ ...VALUE, tag: "etiqueta-orfa" }} onChange={() => {}} />,
-    );
+    render(<InboxFilters value={{ ...VALUE, tag: "etiqueta-orfa" }} onChange={() => {}} />);
     // ⚠️ `getByLabelText` continua valendo (#1274): o seletor deixou de ser um
     // `Select` (que era `role="combobox"`) e virou um botão de menu, mas o RÓTULO
     // ACESSÍVEL é o mesmo — e é por ele que se procura o controle, e por ele que
@@ -267,7 +322,9 @@ describe("InboxFilters — seletor de número e o filtro órfão", () => {
   it("filtro que casa com a lista: nada de 'Número removido'", () => {
     setOrg("manager", "all");
     canaisRef.current = [canal(), canal({ id: "canal-2", display_name: "Suporte" })];
-    render(<InboxFilters value={{ ...VALUE, channel_session_id: "canal-2" }} onChange={() => {}} />);
+    render(
+      <InboxFilters value={{ ...VALUE, channel_session_id: "canal-2" }} onChange={() => {}} />,
+    );
     const seletor = screen.getByLabelText(SELETOR);
     expect(seletor).toHaveTextContent("Suporte");
     expect(seletor).not.toHaveTextContent("Número removido");

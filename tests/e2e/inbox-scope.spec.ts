@@ -244,6 +244,7 @@ test.describe("G4-02 — inbox com escopo", () => {
   test("manager: vê a visão Todas", async ({ page }) => {
     await login(page, creds.users.manager!.email);
     await page.goto("/app/inbox");
+    await page.getByRole("tab", { name: "Conversas", exact: true }).click();
     await expect(page.getByRole("tab", { name: /Todas/ })).toBeVisible();
     await page.screenshot({ path: path.join(EVIDENCE, "G4-02-inbox-scope-manager.png"), fullPage: true });
   });

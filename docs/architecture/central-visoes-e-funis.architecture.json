@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Visões e atalhos da central",
+    "subtitle": "Três abas na mesma área; principal da central independente do roteamento de novas entradas",
+    "output": "central-visoes-e-funis.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "tela",
+      "label": "Central"
+    },
+    {
+      "id": "consulta",
+      "label": "Consultas existentes"
+    },
+    {
+      "id": "destino",
+      "label": "Quadros"
+    }
+  ],
+  "mainPath": ["navegacao", "layout", "conversas"],
+  "nodes": [
+    {
+      "id": "navegacao",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "NavegacaoDaCentral",
+      "sublabel": "A fazer / Conversas / Funil principal / Outros funis"
+    },
+    {
+      "id": "layout",
+      "lane": "tela",
+      "col": 1,
+      "type": "frontend",
+      "label": "InboxLayout + InboxFilters",
+      "sublabel": "filter e visao na URL; conversa e rascunho permanecem montados"
+    },
+    {
+      "id": "conversas",
+      "lane": "consulta",
+      "col": 2,
+      "type": "api",
+      "label": "GET /api/v1/conversations",
+      "sublabel": "Fila/Minhas ou all/ai/closed/archived; escopo de leitura existente"
+    },
+    {
+      "id": "menu",
+      "lane": "consulta",
+      "col": 1,
+      "type": "api",
+      "label": "GET /api/v1/pipelines/menu",
+      "sublabel": "useFunisDoMenu carrega ao abrir"
+    },
+    {
+      "id": "quadros",
+      "lane": "destino",
+      "col": 2,
+      "type": "frontend",
+      "label": "FunilNaCentral + KanbanBoard",
+      "sublabel": "O quadro existente dentro da central, com filtros próprios"
+    },
+    {
+      "id": "preferencia",
+      "lane": "consulta",
+      "col": 1,
+      "type": "api",
+      "label": "GET/PATCH /api/v1/settings/central",
+      "sublabel": "Leitura autenticada; gravação manager+ e suporte protegido"
+    },
+    {
+      "id": "settings",
+      "lane": "destino",
+      "col": 3,
+      "type": "database",
+      "label": "organizations.settings.central.pipeline_id",
+      "sublabel": "ID da organização da sessão; CAS preserva outros settings"
+    },
+    {
+      "id": "auditoria",
+      "lane": "destino",
+      "col": 4,
+      "type": "database",
+      "label": "api_audit_log",
+      "sublabel": "settings.central_pipeline_updated → /app/audit"
+    },
+    {
+      "id": "dados-quadro",
+      "lane": "consulta",
+      "col": 3,
+      "type": "api",
+      "label": "GET /api/v1/pipelines/[id]/board",
+      "sublabel": "useBoard, RLS e realtime existentes"
+    },
+    {
+      "id": "lista-crm",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "CRM → Funis (FunisClient)",
+      "sublabel": "Tag Principal da central e troca por gestores"
+    },
+    {
+      "id": "configurar-colunas",
+      "lane": "destino",
+      "col": 4,
+      "type": "frontend",
+      "label": "Etapas do funil / StagesSection",
+      "sublabel": "Editor existente; âncora compartilhada por pipelineId; criação no início"
+    },
+    {
+      "id": "api-etapas",
+      "lane": "consulta",
+      "col": 5,
+      "type": "api",
+      "label": "POST /stages; PATCH/DELETE /stages/[id]",
+      "sublabel": "useStages; regras, manager+ e auditoria já existentes"
+    }
+  ],
+  "edges": [
+    {
+      "id": "escolher",
+      "from": "navegacao",
+      "to": "layout",
+      "label": "Troca filter sem descartar a conversa"
+    },
+    {
+      "id": "consultar",
+      "from": "layout",
+      "to": "conversas",
+      "label": "Mesmos filtros e RLS"
+    },
+    {
+      "id": "exibir",
+      "from": "conversas",
+      "to": "layout",
+      "label": "Lista e contagens do escopo autorizado"
+    },
+    {
+      "id": "listar",
+      "from": "navegacao",
+      "to": "menu",
+      "label": "Abre o menu Funis"
+    },
+    {
+      "id": "nomes",
+      "from": "menu",
+      "to": "navegacao",
+      "label": "Nomes dos quadros disponíveis"
+    },
+    {
+      "id": "abrir",
+      "from": "navegacao",
+      "to": "quadros",
+      "label": "Troca a área central; gestão continua em /app/kanban"
+    },
+    {
+      "id": "ler-principal",
+      "from": "quadros",
+      "to": "preferencia",
+      "label": "useFunilPrincipalDaCentral, cache por organização"
+    },
+    {
+      "id": "configurar",
+      "from": "preferencia",
+      "to": "settings",
+      "label": "Lê a preferência; PATCH mescla com CAS"
+    },
+    {
+      "id": "auditar",
+      "from": "preferencia",
+      "to": "auditoria",
+      "label": "Somente depois de gravar com sucesso"
+    },
+    {
+      "id": "escolhido",
+      "from": "preferencia",
+      "to": "quadros",
+      "label": "Principal vivo, padrão de reserva ou vazio explícito"
+    },
+    {
+      "id": "buscar-quadro",
+      "from": "quadros",
+      "to": "dados-quadro",
+      "label": "Mesmo quadro e ações do CRM; não lê filtros do Inbox"
+    },
+    {
+      "id": "dados-visiveis",
+      "from": "dados-quadro",
+      "to": "quadros",
+      "label": "Cartões e etapas autorizados, atualizados em tempo real"
+    },
+    {
+      "id": "escolher-na-lista",
+      "from": "lista-crm",
+      "to": "preferencia",
+      "label": "Mesmo GET/PATCH da central; não muda is_default"
+    },
+    {
+      "id": "tag-na-lista",
+      "from": "preferencia",
+      "to": "lista-crm",
+      "label": "Cache compartilhado move a tag somente após sucesso"
+    },
+    {
+      "id": "lista-colunas",
+      "from": "lista-crm",
+      "to": "configurar-colunas",
+      "label": "Configurar colunas do funil escolhido"
+    },
+    {
+      "id": "quadro-colunas",
+      "from": "quadros",
+      "to": "configurar-colunas",
+      "label": "Atalho no quadro completo e no embutido"
+    },
+    {
+      "id": "editar-colunas",
+      "from": "configurar-colunas",
+      "to": "api-etapas",
+      "label": "Criar, editar, ordenar e arquivar com destino quando necessário"
+    },
+    {
+      "id": "reler-colunas",
+      "from": "api-etapas",
+      "to": "configurar-colunas",
+      "label": "Invalida chaveDoFunil após resposta"
+    },
+    {
+      "id": "reler-quadro",
+      "from": "api-etapas",
+      "to": "quadros",
+      "label": "Invalida chaveDoQuadro só do funil editado ao voltar"
+    }
+  ]
+}

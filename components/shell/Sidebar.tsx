@@ -363,7 +363,14 @@ export function SidebarContent({
                 <ul
                   aria-labelledby={collapsed ? undefined : tituloId}
                   aria-label={collapsed ? t(group.label) : undefined}
-                  className="space-y-1"
+                  className={cn(
+                    "space-y-1",
+                    // Tracinho-guia que alinha os submenus do grupo aberto; as Ações rápidas
+                    // são atalhos soltos e o trilho recolhido não tem espaço para ele.
+                    !collapsed &&
+                      group.id !== GRUPO_SEMPRE_ABERTO &&
+                      "ml-5 border-l border-foreground/20 pl-2",
+                  )}
                 >
                   {items.map((item) => {
                     const chaveDoItem = `${group.id}:${item.href}`;

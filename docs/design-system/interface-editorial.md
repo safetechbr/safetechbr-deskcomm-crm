@@ -21,3 +21,7 @@ A camada editorial determina as cores dos controles, com precedência explícita
 ## Checklist Sistema Vivo
 
 Entrada: layout raiz e componentes compartilhados. Saída: todas as rotas renderizadas nessa árvore. Porta: navegação existente. Observação: foco, hover, item ativo e estados semânticos preservados. Registro: alteração visual em `.changes/interface-editorial.md`; não há mutação operacional a auditar. Configuração: estilo editorial no layout, tema claro/escuro existente e identidade textual no resolvedor de marca. Continuidade e laço de retorno: nenhuma regra de atendimento ou agente foi alterada; correções visuais retornam aos mesmos tokens e componentes. Mapa: layout → interface-editorial.css → componentes/ui e casca → telas; dashboard e estoque consomem os mesmos tokens.
+
+## Tipografia confirmada no menu autenticado
+
+Após login feito pelo usuário na referência PerIpsum, o CSS computado dos links e botões do menu confirmou a mesma sequência de fontes já aplicada: `-apple-system, system-ui, "Inter Variable", Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`. Itens: 14 px / peso 400 / linha 20 px / espaçamento −0,4 px. Títulos Ações Rápidas e Navegação: 12 px / peso 500 / linha 16 px / espaçamento −0,4 px / sem transformação para maiúsculas. Essas medidas foram aplicadas aos itens e títulos correspondentes da barra do sistema. A interface base usa 15 px e o mesmo espaçamento; controles e títulos com medidas próprias continuam explícitos. Não foi necessária extração ou instalação de arquivo de fonte.

@@ -26,6 +26,7 @@ vi.mock("sonner", () => ({
 }));
 
 import { apiClient } from "@/lib/api/client";
+import { chaveDoQuadro } from "@/hooks/kanban/useBoard";
 import { toast } from "sonner";
 import {
   StagesSection,
@@ -75,10 +76,9 @@ function estado(
   return { etapas, mapeamento: { ...VAZIO, ...over } };
 }
 
-function montar() {
-  const qc = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+function montar(qc = new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+})) {
   return render(
     <QueryClientProvider client={qc}>
       <StagesSection pipelineId={PIPE} ancoraMapeamento={`mapeamento-${PIPE}`} />
@@ -257,7 +257,10 @@ describe("StagesSection — renomear, criar e reordenar", () => {
   it("acrescentar etapa manda o nome para o fim do funil e relê", async () => {
     const user = userEvent.setup();
     vi.mocked(apiClient.post).mockResolvedValue({ data: { etapas: [] } });
-    montar();
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    qc.setQueryData(chaveDoQuadro(PIPE), { stages: [] });
+    qc.setQueryData(chaveDoQuadro("outro-funil"), { stages: [] });
+    montar(qc);
     await screen.findByTestId("nome-e1");
 
     await user.click(screen.getByTestId("nova-etapa"));
@@ -271,6 +274,8 @@ describe("StagesSection — renomear, criar e reordenar", () => {
     ]);
     // Releitura: a etapa nova precisa aparecer sem F5.
     await waitFor(() => expect(leiturasDoFunil()).toHaveLength(2));
+    expect(qc.getQueryState(chaveDoQuadro(PIPE))?.isInvalidated).toBe(true);
+    expect(qc.getQueryState(chaveDoQuadro("outro-funil"))?.isInvalidated).toBe(false);
   });
 
   it("subir uma coluna manda a VIZINHA DA ESQUERDA, não um número de posição", async () => {

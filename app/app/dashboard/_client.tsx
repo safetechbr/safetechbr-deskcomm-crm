@@ -13,7 +13,7 @@ import {
 } from "recharts";
 
 import { useT } from "@/hooks/i18n/useT";
-import { montarResumo, variacaoPercentual, type Periodo } from "@/lib/dashboard/resumo";
+import { montarMes, montarResumo, variacaoPercentual, type Periodo } from "@/lib/dashboard/resumo";
 import {
   ROTULO_DA_FORMA,
   tituloDoVeiculoDaNegociacao,
@@ -68,8 +68,11 @@ export function DashboardClient({
 
   const dVendas = variacaoPercentual(resumo.vendas_hoje, resumo.vendas_ontem);
   const dReceita = variacaoPercentual(resumo.receita_hoje_cents, resumo.receita_ontem_cents);
-  const formaHoje = (forma: string) =>
-    resumo.formas_hoje.find((f) => f.forma === forma)?.valor_cents ?? 0;
+  const mes = React.useMemo(() => montarMes(negociacoes, new Date()), [negociacoes]);
+  const dadosDoMes = mes.serie.map((p) => ({
+    dia: p.dia.slice(8, 10),
+    faturamento: p.acumulada_cents / 100,
+  }));
 
   const dados = resumo.serie.map((p) => ({
     dia: `${p.dia.slice(8, 10)}/${p.dia.slice(5, 7)}`,
@@ -148,26 +151,61 @@ export function DashboardClient({
           <Cartao rotulo={t("Total de clientes")} valor={numero(totalDeContatos)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {(["pix", "cartao", "dinheiro", "troca"] as const).map((k) => {
-            const cents =
-              k === "cartao"
-                ? formaHoje("cartao_credito") + formaHoje("cartao_debito")
-                : formaHoje(k);
-            const rotulo =
-              k === "cartao"
-                ? "Cartão"
-                : k === "troca"
-                  ? "Troca"
-                  : ROTULO_DA_FORMA[k as FormaDePagamento];
-            return (
-              <div key={k} className="editorial-panel p-5">
-                <p className="text-xs text-muted-foreground">{`${t(rotulo)} ${t("hoje")}`}</p>
-                <p className="mt-1 text-lg font-semibold">{dinheiro(cents)}</p>
+        <section aria-labelledby="mes" className="editorial-panel p-5">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 id="mes" className="font-semibold">
+                {t("Evolução do mês")}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {`${t("Do dia 1º até hoje")} · ${mes.serie.length} ${t("dias")}`}
+              </p>
+            </div>
+            <dl className="grid grid-cols-3 gap-6 text-right">
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("Faturamento")}</dt>
+                <dd className="text-lg font-semibold">{dinheiro(mes.receita_cents)}</dd>
               </div>
-            );
-          })}
-        </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("Lucro")}</dt>
+                <dd className="text-lg font-semibold text-muted-foreground">—</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">{t("Despesas")}</dt>
+                <dd className="text-lg font-semibold text-muted-foreground">—</dd>
+              </div>
+            </dl>
+          </div>
+          <div className="h-56 w-full">
+            {oculto ? (
+              <p className="grid h-full place-items-center text-sm text-muted-foreground">
+                {t("Dados ocultos")}
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dadosDoMes}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="dia" tick={{ fontSize: 11 }} />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v: number) => `R$ ${v >= 1000 ? `${v / 1000}k` : v}`}
+                  />
+                  <Tooltip formatter={(valor) => formatarPreco(Number(valor) * 100)} />
+                  <Area
+                    type="monotone"
+                    dataKey="faturamento"
+                    name={t("Faturamento")}
+                    stroke="var(--editorial-pink)"
+                    fill="var(--color-accent-soft)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {t("Lucro e despesas aparecem aqui quando o menu Financeiro estiver preenchido.")}
+          </p>
+        </section>
 
         <div
           role="tablist"

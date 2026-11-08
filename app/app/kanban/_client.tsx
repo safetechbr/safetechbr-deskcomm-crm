@@ -3,9 +3,11 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
+import { useFunilPrincipalDaCentral, useDefinirFunilPrincipalDaCentral } from "@/hooks/inbox/useFunilPrincipalDaCentral";
 import { useT } from "@/hooks/i18n/useT";
 
 import { ImportarLeads } from "./_components/ImportarLeads";
+import { ConfigurarColunasLink } from "@/components/kanban/ConfigurarColunasLink";
 import { EmptyPipeline } from "@/components/empty";
 import {
   AlertDialog,
@@ -90,6 +92,7 @@ export function FunisClient({
   arquivados: arquivadosDoServidor,
   podeGerenciar,
   podeImportar,
+  podeDefinirPrincipal = podeGerenciar,
 }: {
   funis: FunilDaLista[];
   /**
@@ -102,6 +105,7 @@ export function FunisClient({
   podeGerenciar: boolean;
   /** Espelha o `requireRole("agent")` de `POST /api/v1/leads/import`. */
   podeImportar: boolean;
+  podeDefinirPrincipal?: boolean;
 }) {
   const t = useT();
   /**
@@ -111,7 +115,10 @@ export function FunisClient({
    * Mostrar o controle com a regra desligada seria oferecer o que o motor
    * ignora.
    */
-  const clientesLigado = useActiveOrg()?.cliente_pela_agenda === true;
+  const activeOrg = useActiveOrg();
+  const clientesLigado = activeOrg?.cliente_pela_agenda === true;
+  const principalDaCentral = useFunilPrincipalDaCentral(activeOrg?.orgId ?? null);
+  const definirPrincipal = useDefinirFunilPrincipalDaCentral(activeOrg?.orgId ?? null);
   /**
    * ⚠️ A LISTA VEM DO SERVIDOR E É ATUALIZADA PELO CORPO DA RESPOSTA.
    *
@@ -149,7 +156,7 @@ export function FunisClient({
   const [arquivoAberto, setArquivoAberto] = useState(false);
   const [erro, setErro] = useState<{ id: string | null; texto: string } | null>(null);
 
-  const ocupado = criar.isPending || editar.isPending || arquivar.isPending;
+  const ocupado = criar.isPending || editar.isPending || arquivar.isPending || definirPrincipal.isPending;
 
   /**
    * As DUAS listas vêm de toda resposta, e as duas se aplicam juntas.
@@ -189,6 +196,13 @@ export function FunisClient({
         onError: (e) => setErro({ id, texto: textoDoErro(e, t) }),
       },
     );
+  }
+
+  function tornarPrincipalDaCentral(id: string) {
+    setErro(null);
+    definirPrincipal.mutate(id, {
+      onError: (e) => setErro({ id, texto: textoDoErro(e, t) }),
+    });
   }
 
   function pedirArquivamento(id: string, definitivo: boolean) {
@@ -462,6 +476,13 @@ export function FunisClient({
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        {t("O funil marcado como Principal da central aparece ao lado de Conversas na Central de Mensagens.")}
+      </p>
+      {principalDaCentral.isError && <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-error-fg">
+        <span>{t("Não consegui identificar o funil principal da central.")}</span>
+        <Button size="sm" variant="outline" onClick={() => void principalDaCentral.refetch()}>{t("Tentar de novo")}</Button>
+      </div>}
       {(podeGerenciar || podeImportar) && (
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           {/* A porta da importação fica AQUI, e não numa tela própria: é desta
@@ -579,8 +600,13 @@ export function FunisClient({
                       className="group flex flex-col"
                       data-testid={`abrir-${funil.id}`}
                     >
-                      <span className="flex items-center gap-2">
+                      <span className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold transition-colors group-hover:text-accent">{funil.name}</span>
+                        {principalDaCentral.data?.pipeline?.id === funil.id && (
+                          <Badge className="rounded-full border-0 bg-accent px-2 text-[11px] font-medium text-accent-foreground" data-testid={`principal-central-${funil.id}`}>
+                            {t("Principal da central")}
+                          </Badge>
+                        )}
                         {funil.is_default && (
                           <Badge variant="secondary" className="rounded-full border-0 bg-accent-soft px-2 text-[11px] font-medium text-accent">
                             {t("Padrão")}
@@ -611,6 +637,7 @@ export function FunisClient({
                 */}
                 {podeGerenciar && !renomeandoAqui && (
                   <div className="flex min-w-0 flex-wrap gap-1">
+                    <ConfigurarColunasLink pipelineId={funil.id} nomeDoFunil={funil.name} variant="ghost" />
                     <Button
                       variant="ghost"
                       size="sm"
@@ -621,6 +648,13 @@ export function FunisClient({
                     >
                       <PencilSimple size={16} className="mr-1" aria-hidden /> {t("Renomear")}
                     </Button>
+                    {podeDefinirPrincipal && (principalDaCentral.data?.pipeline?.id !== funil.id || !principalDaCentral.data?.configurado) && (
+                      <Button variant="ghost" size="sm" disabled={ocupado || !principalDaCentral.data}
+                        onClick={() => tornarPrincipalDaCentral(funil.id)} data-testid={`definir-principal-central-${funil.id}`}
+                        className="rounded-full hover:bg-muted/50 hover:text-accent">
+                        <Check size={16} className="mr-1" aria-hidden />{t("Definir como principal da central")}
+                      </Button>
+                    )}
                     {!funil.is_default && (
                       <Button
                         variant="ghost"

@@ -32,6 +32,7 @@ import { ROTULO_DO_PASSO } from "@/lib/leads/agent-mapping";
 import type { TaxaDaEtapa } from "@/lib/metrics/taxa-da-etapa";
 import { Archive, CaretDown, CaretUp, Plus, Warning } from "@/lib/ui/icons";
 import { SeloDeAutoria } from "@/components/operacao/SeloDeAutoria";
+import { ancoraDasEtapas } from "@/lib/kanban/links-de-configuracao";
 import { useT } from "@/hooks/i18n/useT";
 
 import { mensagemDeErro } from "./_mapping";
@@ -59,7 +60,7 @@ import { mensagemDeErro } from "./_mapping";
  */
 
 /** A âncora desta seção. O mapeamento linka para cá quando aponta uma lacuna do funil. */
-export const ancoraDasEtapas = (pipelineId: string) => `etapas-${pipelineId}`;
+export { ancoraDasEtapas } from "@/lib/kanban/links-de-configuracao";
 
 /** O papel de uma etapa no desfecho do negócio. `nenhum` é a maioria das colunas. */
 export type Papel = "nenhum" | "won" | "lost";
@@ -455,7 +456,7 @@ export function StagesSection({
   }
 
   return (
-    <div className="space-y-4" id={ancoraDasEtapas(pipelineId)} data-testid={`etapas-${pipelineId}`}>
+    <div className="scroll-mt-40 space-y-4" id={ancoraDasEtapas(pipelineId)} data-testid={`etapas-${pipelineId}`}>
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">{t("Etapas deste funil")}</h3>
         <p className="max-w-3xl text-sm leading-relaxed text-text-muted">
@@ -471,6 +472,51 @@ export function StagesSection({
           )}
         </p>
       </div>
+
+      {nova === null ? (
+        <Button variant="ghost" size="sm" data-testid="nova-etapa" onClick={() => setNova("")}>
+          <Plus size={16} className="mr-1" aria-hidden />
+          {t("Acrescentar etapa ao fim")}
+        </Button>
+      ) : (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            autoFocus
+            value={nova}
+            maxLength={80}
+            placeholder={t("Nome da nova coluna")}
+            aria-label={t("Nome da nova etapa")}
+            data-testid="nova-etapa-nome"
+            onChange={(e) => setNova(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") criarEtapa();
+              if (e.key === "Escape") setNova(null);
+            }}
+            className="sm:w-72"
+          />
+          <Button
+            size="sm"
+            data-testid="nova-etapa-criar"
+            disabled={ocupado || nova.trim().length === 0}
+            onClick={criarEtapa}
+          >
+            {t("Criar")}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setNova(null)}>
+            {t("Cancelar")}
+          </Button>
+        </div>
+      )}
+
+      {erro?.etapaId === null && (
+        <Card
+          className="flex items-start gap-3 border-warning bg-warning-bg p-4"
+          data-testid="etapas-erro"
+        >
+          <Warning size={18} className="mt-0.5 shrink-0 text-warning-fg" aria-hidden />
+          <p className="text-sm leading-relaxed">{erro.texto}</p>
+        </Card>
+      )}
 
       {/* ⚠️ O CABEÇALHO NÃO É ENFEITE. Sem ele a linha tem um campo de texto sem
           rótulo, duas setas sem legenda e um seletor dizendo "Nada especial"
@@ -864,50 +910,7 @@ export function StagesSection({
         })}
       </ul>
 
-      {nova === null ? (
-        <Button variant="ghost" size="sm" data-testid="nova-etapa" onClick={() => setNova("")}>
-          <Plus size={16} className="mr-1" aria-hidden />
-          {t("Acrescentar etapa ao fim")}
-        </Button>
-      ) : (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Input
-            autoFocus
-            value={nova}
-            maxLength={80}
-            placeholder={t("Nome da nova coluna")}
-            aria-label={t("Nome da nova etapa")}
-            data-testid="nova-etapa-nome"
-            onChange={(e) => setNova(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") criarEtapa();
-              if (e.key === "Escape") setNova(null);
-            }}
-            className="sm:w-72"
-          />
-          <Button
-            size="sm"
-            data-testid="nova-etapa-criar"
-            disabled={ocupado || nova.trim().length === 0}
-            onClick={criarEtapa}
-          >
-            {t("Criar")}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setNova(null)}>
-            {t("Cancelar")}
-          </Button>
-        </div>
-      )}
 
-      {erro?.etapaId === null && (
-        <Card
-          className="flex items-start gap-3 border-warning bg-warning-bg p-4"
-          data-testid="etapas-erro"
-        >
-          <Warning size={18} className="mt-0.5 shrink-0 text-warning-fg" aria-hidden />
-          <p className="text-sm leading-relaxed">{erro.texto}</p>
-        </Card>
-      )}
     </div>
   );
 }

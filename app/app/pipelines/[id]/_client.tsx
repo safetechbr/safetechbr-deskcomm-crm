@@ -20,6 +20,7 @@ function formatError(err: unknown, t: (texto: string) => string): string {
   }
   return String(err);
 }
+import { ConfigurarColunasLink } from "@/components/kanban/ConfigurarColunasLink";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { CalendarioDoFunil } from "@/components/kanban/CalendarioDoFunil";
 import { ListaDoFunil } from "@/components/kanban/ListaDoFunil";
@@ -304,6 +305,7 @@ export function PipelinePageClient({
           passar pelo quadro.
         */}
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {ROLE_RANK[role] >= ROLE_RANK.manager && <ConfigurarColunasLink pipelineId={pipelineId} nomeDoFunil={nomeAtual} />}
           <div className="flex items-center gap-0.5 rounded-md border bg-muted p-0.5">
             <button
               type="button"

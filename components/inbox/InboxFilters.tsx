@@ -26,15 +26,13 @@ import {
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { PontoDaEtiqueta } from "@/components/tags/PontoDaEtiqueta";
 import { channelLabel, useChannelSessions } from "@/hooks/channels/useChannelSessions";
-import {
-  type ModoDeEtiqueta,
-  marcadoresEscolhidos,
-} from "@/lib/inbox/marcador-da-conversa";
+import { type ModoDeEtiqueta, marcadoresEscolhidos } from "@/lib/inbox/marcador-da-conversa";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { useContactTagVocabulary } from "@/hooks/contacts/useContactTagVocabulary";
 import { useConversationTagVocabulary } from "@/hooks/inbox/useConversationTags";
 import { useConversationCounts } from "@/hooks/inbox/useConversationCounts";
 import { roleAtLeast, type Role, type VisibilityMode } from "@/lib/auth/types";
+import type { VisaoDaCentral } from "./NavegacaoDaCentral";
 import { SeletorDeAtendente } from "@/components/inbox/SeletorDeAtendente";
 
 export type InboxTab = "unassigned" | "mine" | "all" | "closed" | "archived" | "ai";
@@ -112,11 +110,12 @@ export function comAba(value: InboxFiltersValue, tab: InboxTab): InboxFiltersVal
 }
 
 interface Props {
+  visao?: Extract<VisaoDaCentral, "tarefas" | "conversas">;
   value: InboxFiltersValue;
   onChange: (next: InboxFiltersValue) => void;
 }
 
-export function InboxFilters({ value, onChange }: Props) {
+export function InboxFilters({ value, onChange, visao }: Props) {
   const t = useT();
   const [searchInput, setSearchInput] = useState(value.search);
   const tabsListRef = useRef<HTMLDivElement>(null);
@@ -139,8 +138,10 @@ export function InboxFilters({ value, onChange }: Props) {
       const selected = list.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
       if (selected) {
         const selectedCenter =
-          selected.getBoundingClientRect().left - list.getBoundingClientRect().left +
-          list.scrollLeft + selected.offsetWidth / 2;
+          selected.getBoundingClientRect().left -
+          list.getBoundingClientRect().left +
+          list.scrollLeft +
+          selected.offsetWidth / 2;
         const maxScroll = Math.max(0, list.scrollWidth - list.clientWidth);
         list.scrollLeft = Math.max(0, Math.min(maxScroll, selectedCenter - list.clientWidth / 2));
       }
@@ -226,9 +227,26 @@ export function InboxFilters({ value, onChange }: Props) {
   const podeFiltrarPorAtendente = roleAtLeast(activeOrg?.role, "manager");
   const mostrarSeletorDeAtendente = podeFiltrarPorAtendente && value.tab !== "mine";
 
-  const tabs = activeOrg
+  const permitidas = activeOrg
     ? visibleInboxTabs(activeOrg.role, activeOrg.visibility_mode)
     : INBOX_TABS.map((t) => t.value);
+  // A visão geral lê apenas o escopo já autorizado pela RLS. Para um atendente
+  // restrito, a aba "all" significa "Do meu acesso", nunca a empresa inteira.
+  const doEscopo =
+    visao === "conversas" && !permitidas.includes("all")
+      ? [...permitidas, "all" as InboxTab]
+      : permitidas;
+  const tabs = (
+    visao === "conversas"
+      ? (["all", "ai", "closed", "archived"] as InboxTab[]).filter((aba) => doEscopo.includes(aba))
+      : doEscopo
+  ).filter(
+    (aba) =>
+      !visao ||
+      (visao === "tarefas"
+        ? aba === "unassigned" || aba === "mine"
+        : aba !== "unassigned" && aba !== "mine"),
+  );
   const moveTab = (direction: -1 | 1) => {
     const next = tabs[tabs.indexOf(value.tab) + direction];
     if (next) onChange(comAba(value, next));
@@ -317,10 +335,7 @@ export function InboxFilters({ value, onChange }: Props) {
   // reabrir o menu entre a primeira e a segunda, e o `DropdownMenuCheckboxItem`
   // é o item que NÃO fecha (o `Select` de hoje fecha). A regra é do componente,
   // e por isso o gatilho é um botão com `aria-expanded` em vez de um `Select`.
-  const opcoesDoSeletor = [
-    ...vocabularioDoSeletor,
-    ...etiquetasForaDoVocabulario,
-  ];
+  const opcoesDoSeletor = [...vocabularioDoSeletor, ...etiquetasForaDoVocabulario];
   /**
    * A BUSCA DENTRO DO SELETOR (#2498) — e ela é de propósito SEM consulta.
    *
@@ -397,7 +412,7 @@ export function InboxFilters({ value, onChange }: Props) {
             <MagnifyingGlass
               size={15}
               weight="regular"
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-subtle"
               aria-hidden
             />
             {/* "última mensagem", e não "mensagem": a busca alcança apenas
@@ -423,7 +438,7 @@ export function InboxFilters({ value, onChange }: Props) {
             onClick={() => onChange({ ...value, onlyUnread: !value.onlyUnread })}
             className={cn(
               "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden",
               value.onlyUnread
                 ? "border-accent bg-accent text-accent-foreground"
                 : "border-border/80 bg-transparent text-text-muted hover:bg-foreground/[0.04] hover:text-text",
@@ -440,7 +455,7 @@ export function InboxFilters({ value, onChange }: Props) {
             onClick={() => onChange({ ...value, onlyGroups: !value.onlyGroups })}
             className={cn(
               "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition-colors",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden",
               value.onlyGroups
                 ? "border-accent bg-accent text-accent-foreground"
                 : "border-border/80 bg-transparent text-text-muted hover:bg-foreground/[0.04] hover:text-text",
@@ -483,9 +498,11 @@ export function InboxFilters({ value, onChange }: Props) {
             )}
 
             {mostrarSeletorDeTag && (
-              <DropdownMenu onOpenChange={(aberto) => {
-                if (!aberto) setBuscaDeEtiqueta("");
-              }}>
+              <DropdownMenu
+                onOpenChange={(aberto) => {
+                  if (!aberto) setBuscaDeEtiqueta("");
+                }}
+              >
                 {/*
                   ⚠️ POR QUE ISTO DEIXOU DE SER UM `Select` (#1274).
                   O `Select` do Radix é de escolha ÚNICA e — o que mata a
@@ -506,7 +523,7 @@ export function InboxFilters({ value, onChange }: Props) {
                     type="button"
                     className={cn(
                       "h-8 min-w-0 flex-1 truncate rounded-full border border-transparent bg-surface-elevated px-3 text-left text-xs shadow-none",
-                      "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden",
                       etiquetas.length > 0 && "border-accent bg-accent-soft text-accent",
                     )}
                     aria-label={t("Filtrar por tag")}
@@ -520,7 +537,7 @@ export function InboxFilters({ value, onChange }: Props) {
                             reconhecer de relance. */}
                         <ChipDeEtiqueta tag={etiquetas[0]!} className="h-5 px-1.5 text-[11px]" />
                         {etiquetas.length > 1 && (
-                          <span className="tabular-nums text-[11px]">+{etiquetas.length - 1}</span>
+                          <span className="text-[11px] tabular-nums">+{etiquetas.length - 1}</span>
                         )}
                       </span>
                     ) : (
@@ -629,31 +646,8 @@ export function InboxFilters({ value, onChange }: Props) {
         )}
       </div>
 
-      {/* As setas aparecem só quando há abas fora da área visível; a faixa e o
-          sublinhado continuam com a altura compacta do Inbox.
-
-          `flex-wrap` + `gap-x-1` (#2745) — A FAIXA QUEBRA EM VEZ DE ESCONDER.
-          Medido em browser real, com o CSS do produto compilado e a fonte
-          verdadeira (`tests/sonda-abas-inbox-1280.test.tsx`), as seis abas
-          somam 358px de rótulo+contagem e 378px com o gap de 4px; a coluna da
-          lista vale de 240 (mínimo do arraste, `LIMITES_LISTA`) a 520px, e o
-          padrão da faixa `xl` — a janela de 1280px da issue — é 272px. Sem
-          quebra, o `overflow-x-auto` rolava 191px na coluna de 272 e 13px na
-          de 450: "Fechadas" cortada e "Arquivadas" escondida atrás da seta,
-          que era exatamente o corte medido. Agora, na mesma medição: 2 linhas
-          (68px) em 272, 1 linha (30px) em 450, e as seis dentro da coluna em
-          toda a faixa — rolagem zero.
-
-          `shrink-0` + `whitespace-nowrap` seguem valendo: rótulo não encolhe
-          nem parte no meio. O `gap-x-1` só aperta onde não há folga (com
-          `justify-between` a sobra continua distribuída, então a faixa larga
-          não muda de figura) — e é o que leva 272px de 3 linhas para 2. A
-          seta de rolagem fica sendo o que sempre foi: reserva para o caso em
-          que UMA aba sozinha não cabe (zoom alto, coluna arrastada no mínimo).
-
-          Só o LAYOUT mudou: `value.tab`, `onChange`, `visibleInboxTabs` e
-          `countFor` estão byte a byte como estavam — a aba continua o mesmo
-          filtro com o mesmo rótulo, e "Automático" continua "Automático". */}
+      {/* Cada seção mostra só suas abas; a faixa quebra quando a coluna aperta.
+          As setas atendem o caso em que uma aba sozinha não cabe (zoom alto). */}
       <Tabs
         value={value.tab}
         onValueChange={(v) => onChange(comAba(value, v as InboxTab))}
@@ -665,7 +659,7 @@ export function InboxFilters({ value, onChange }: Props) {
               type="button"
               onClick={() => moveTab(-1)}
               aria-label={t("Aba anterior")}
-              className="flex w-4 shrink-0 items-center justify-center text-text-muted hover:text-text focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-4 shrink-0 items-center justify-center text-text-muted hover:text-text focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
             >
               <CaretLeft size={13} aria-hidden />
             </button>
@@ -675,7 +669,7 @@ export function InboxFilters({ value, onChange }: Props) {
           <TabsList
             ref={tabsListRef}
             onScroll={updateMoreTabs}
-            className="h-auto min-w-0 flex-1 flex-wrap justify-between gap-x-1 gap-y-2 rounded-none bg-transparent p-0 [scrollbar-width:none]"
+            className="h-auto min-w-0 flex-1 [scrollbar-width:none] flex-wrap justify-between gap-x-1 gap-y-2 rounded-none bg-transparent p-0"
           >
             {tabs.map((tab) => {
               const meta = INBOX_TABS.find((t) => t.value === tab)!;
@@ -684,11 +678,11 @@ export function InboxFilters({ value, onChange }: Props) {
                 <TabsTrigger
                   key={tab}
                   value={tab}
-                  className="shrink-0 gap-1 rounded-none border-b-2 border-transparent px-0 pb-2 pt-1 text-xs font-medium text-text-muted data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
+                  className="shrink-0 gap-1 rounded-none border-b-2 border-transparent px-0 pt-1 pb-2 text-xs font-medium text-text-muted data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:text-text data-[state=active]:shadow-none"
                 >
-                  {t(meta.label)}
+                  {t(tab === "all" && !permitidas.includes("all") ? "Do meu acesso" : meta.label)}
                   {typeof count === "number" && count > 0 && (
-                    <span className="text-[11px] tabular-nums text-text-subtle">{count}</span>
+                    <span className="text-[11px] text-text-subtle tabular-nums">{count}</span>
                   )}
                 </TabsTrigger>
               );
@@ -699,7 +693,7 @@ export function InboxFilters({ value, onChange }: Props) {
               type="button"
               onClick={() => moveTab(1)}
               aria-label={t("Próxima aba")}
-              className="flex w-4 shrink-0 items-center justify-center text-text-muted hover:text-text focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-4 shrink-0 items-center justify-center text-text-muted hover:text-text focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
             >
               <CaretRight size={13} aria-hidden />
             </button>

@@ -21,6 +21,11 @@ vi.mock("@/hooks/pipelines/usePipelines", () => ({
   useArquivarFunil: () => ({ mutate: arquivar, isPending: false }),
 }));
 
+vi.mock("@/hooks/inbox/useFunilPrincipalDaCentral", () => ({
+  useFunilPrincipalDaCentral: () => ({ data: undefined, isError: false }),
+  useDefinirFunilPrincipalDaCentral: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 const funil = (id: string): FunilDaLista => ({
   id,
   name: id,
@@ -104,6 +109,11 @@ describe("gaveta do arquivo (#979)", () => {
     );
   }
 
+  it("abre a configuração das colunas do funil existente pela própria lista", () => {
+    tela();
+    expect(screen.getByRole("link", { name: "Configurar colunas de «Pedidos»" })).toHaveAttribute("href", "/app/settings/tenant/pipelines#etapas-f-vivo");
+  });
+
   it("começa FECHADA e, ao abrir, mostra as duas saídas do funil arquivado", async () => {
     const user = userEvent.setup();
     tela();
@@ -156,5 +166,6 @@ describe("gaveta do arquivo (#979)", () => {
   it("quem não gerencia não vê a gaveta — tirar do arquivo e excluir são manager+", () => {
     tela({ podeGerenciar: false });
     expect(screen.queryByTestId("arquivados")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Configurar colunas de/ })).not.toBeInTheDocument();
   });
 });
