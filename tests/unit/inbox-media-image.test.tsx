@@ -31,6 +31,35 @@ describe("ImageMedia", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it.each([
+    [1080, 1920, "288px", "1080 / 1920"],
+    [1920, 1080, "384px", "1920 / 1080"],
+  ])("exibe a foto %sx%s inteira na proporção original", (width, height, cssWidth, ratio) => {
+    render(<ImageMedia messageId="m1" alt="Imagem recebida" />);
+    const img = screen.getByAltText("Imagem recebida");
+    Object.defineProperties(img, {
+      naturalWidth: { value: width },
+      naturalHeight: { value: height },
+    });
+    fireEvent.load(img);
+    const box = screen.getByRole("button", { name: /ampliar imagem/i });
+    expect(box.style.width).toBe(cssWidth);
+    expect(box.style.aspectRatio).toBe(ratio);
+    expect(img).toHaveClass("object-contain");
+    expect(box).toHaveClass("max-w-full");
+  });
+
+  it("reinicia o carregamento e as medidas ao mudar o arquivo", () => {
+    const { rerender } = render(<ImageMedia messageId="m1" alt="Imagem recebida" />);
+    const img = screen.getByAltText("Imagem recebida");
+    Object.defineProperties(img, { naturalWidth: { value: 1080 }, naturalHeight: { value: 1920 } });
+    fireEvent.load(img);
+    rerender(<ImageMedia messageId="m2" alt="Imagem recebida" />);
+    const box = screen.getByRole("button", { name: /ampliar imagem/i });
+    expect(box).toBeDisabled();
+    expect(box.style.aspectRatio).toBe("4 / 3");
+  });
+
   it("mostra fallback quando a imagem falha", () => {
     render(<ImageMedia messageId="m1" alt="Imagem recebida" />);
     fireEvent.error(screen.getByAltText("Imagem recebida"));

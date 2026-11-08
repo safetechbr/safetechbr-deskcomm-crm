@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MediaUnavailable } from "./MediaUnavailable";
 import { mediaSrc } from "./media-utils";
+import { proporcaoDaMidia } from "./proporcao-da-midia";
 
 /**
  * Vídeo inline com controles nativos (padrão WhatsApp Web).
@@ -12,23 +13,39 @@ import { mediaSrc } from "./media-utils";
  * rota da nota serve; sem ele, o caminho de mensagem de sempre.
  */
 export function VideoMedia({ messageId, src }: { messageId: string; src?: string }) {
+  const fonte = src ?? mediaSrc(messageId);
+  return <VideoProporcional key={fonte} src={fonte} />;
+}
+
+function VideoProporcional({ src }: { src: string }) {
+  const [dimensoes, setDimensoes] = useState(() => proporcaoDaMidia(0, 0));
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
   return (
-    <div className="relative w-full max-w-sm aspect-video overflow-hidden rounded-lg bg-black/5">
+    <div
+      data-testid="video-proporcional"
+      style={dimensoes}
+      className="relative max-w-full overflow-hidden rounded-lg bg-black/5"
+    >
       {failed ? (
         <MediaUnavailable kind="Vídeo" className="h-full w-full" />
       ) : (
         <>
           {!ready && <Skeleton className="absolute inset-0 h-full w-full" />}
           <video
-            src={src ?? mediaSrc(messageId)}
+            src={src}
             controls
             preload="metadata"
-            onLoadedMetadata={() => setReady(true)}
+            playsInline
+            onLoadedMetadata={(event) => {
+              setDimensoes(
+                proporcaoDaMidia(event.currentTarget.videoWidth, event.currentTarget.videoHeight),
+              );
+              setReady(true);
+            }}
             onError={() => setFailed(true)}
-            className="h-full w-full object-contain"
+            className="absolute inset-0 h-full w-full object-contain"
           />
         </>
       )}

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 import { MediaUnavailable } from "./MediaUnavailable";
 import { mediaSrc } from "./media-utils";
+import { proporcaoDaMidia } from "./proporcao-da-midia";
 
 interface Props {
   messageId: string;
@@ -22,14 +23,19 @@ interface Props {
 
 /** Miniatura na bolha + lightbox (Dialog) no clique. Padrão WhatsApp Web. */
 export function ImageMedia({ messageId, alt, src: fonte }: Props) {
+  const src = fonte ?? mediaSrc(messageId);
+  return <ImagemProporcional key={src} src={src} alt={alt} />;
+}
+
+function ImagemProporcional({ src, alt }: { src: string; alt: string }) {
   const t = useT();
+  const [dimensoes, setDimensoes] = useState(() => proporcaoDaMidia(0, 0));
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [open, setOpen] = useState(false);
-  const src = fonte ?? mediaSrc(messageId);
 
   if (state === "error")
     return (
-      <div className="w-64 max-w-full aspect-[4/3]">
+      <div style={dimensoes} className="max-w-full">
         <MediaUnavailable kind="Imagem" className="h-full w-full" />
       </div>
     );
@@ -42,13 +48,26 @@ export function ImageMedia({ messageId, alt, src: fonte }: Props) {
         onClick={() => setOpen(true)}
         disabled={state !== "ready"}
         aria-disabled={state !== "ready"}
+        style={dimensoes}
         className={cn(
-          "relative block w-64 max-w-full aspect-[4/3] overflow-hidden rounded-lg focus-visible:outline-2 focus-visible:outline-ring",
+          "relative block max-w-full overflow-hidden rounded-lg focus-visible:outline-2 focus-visible:outline-ring",
           state === "ready" ? "cursor-zoom-in" : "cursor-not-allowed opacity-50",
         )}
       >
         {state === "loading" && <Skeleton className="absolute inset-0 h-full w-full" />}
-        <img src={src} alt={alt} loading="lazy" onLoad={() => setState("ready")} onError={() => setState("error")} className="h-full w-full object-cover" />
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          onLoad={(event) => {
+            setDimensoes(
+              proporcaoDaMidia(event.currentTarget.naturalWidth, event.currentTarget.naturalHeight),
+            );
+            setState("ready");
+          }}
+          onError={() => setState("error")}
+          className="absolute inset-0 h-full w-full object-contain"
+        />
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-4xl border-none bg-transparent p-0 shadow-none">

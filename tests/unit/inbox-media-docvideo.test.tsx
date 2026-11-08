@@ -13,17 +13,29 @@ describe("VideoMedia", () => {
     expect(video).toHaveAttribute("controls");
   });
 
-  it("caixa estável aspect-video mantém proporção", () => {
+  it.each([
+    [720, 1280, "288px", "720 / 1280"],
+    [1920, 1080, "384px", "1920 / 1080"],
+    [800, 800, "384px", "800 / 800"],
+  ])("respeita o vídeo %sx%s sem forçar moldura horizontal", (width, height, cssWidth, ratio) => {
     const { container } = render(<VideoMedia messageId="m4" />);
-    const box = container.querySelector(".aspect-video");
-    expect(box).not.toBeNull();
-    expect(box).toHaveClass("relative", "w-full", "max-w-sm", "overflow-hidden", "rounded-lg");
+    const video = container.querySelector("video")!;
+    Object.defineProperties(video, {
+      videoWidth: { value: width },
+      videoHeight: { value: height },
+    });
+    fireEvent.loadedMetadata(video);
+    const box = screen.getByTestId("video-proporcional");
+    expect(box.style.width).toBe(cssWidth);
+    expect(box.style.aspectRatio).toBe(ratio);
+    expect(box).toHaveClass("max-w-full");
+    expect(video).toHaveAttribute("playsinline");
   });
 
   it("mostra skeleton enquanto carrega, desaparece após loadedmetadata", () => {
     const { container } = render(<VideoMedia messageId="m4" />);
     const video = container.querySelector("video")!;
-    const skeleton = container.querySelector(".absolute.inset-0");
+    const skeleton = container.querySelector("[data-esqueleto]");
 
     // Skeleton deve estar presente antes do evento
     expect(skeleton).not.toBeNull();
@@ -32,7 +44,7 @@ describe("VideoMedia", () => {
     fireEvent(video, new Event("loadedmetadata"));
 
     // Skeleton deve desaparecer
-    expect(container.querySelector(".absolute.inset-0")).toBeNull();
+    expect(container.querySelector("[data-esqueleto]")).toBeNull();
   });
 
   it("mostra fallback quando o vídeo falha (dentro do container)", () => {
@@ -41,7 +53,7 @@ describe("VideoMedia", () => {
 
     fireEvent.error(video);
 
-    const aspectVideoBox = container.querySelector(".aspect-video");
+    const aspectVideoBox = screen.getByTestId("video-proporcional");
     expect(aspectVideoBox).not.toBeNull();
     expect(screen.getByText("Mídia indisponível")).toBeInTheDocument();
 
