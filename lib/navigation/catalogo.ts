@@ -18,7 +18,7 @@ import type { CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
-export type NavGroupId = "acoes_rapidas" | "vendas" | "contatos" | "estoque" | "atendimento" | "crm" | "ia" | "canais" | "analise" | "organizacao";
+export type NavGroupId = "acoes_rapidas" | "vendas" | "contatos" | "estoque" | "atendimento" | "crm" | "ia" | "canais" | "analise" | "financeiro" | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -102,6 +102,7 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: "ia", label: "Agente de IA", hub: { href: "/app/ai", label: "Ver tudo em IA" } },
   { id: "canais", label: "Canais" },
   { id: "analise", label: "Análise", hub: { href: "/app/analise", label: "Ver tudo em Análise" } },
+  { id: "financeiro", label: "Financeiro" },
   {
     id: "organizacao",
     label: "Organização",
@@ -213,6 +214,7 @@ export const NAV_CATALOG = [
     sidebar: true,
     novaAba: true,
   },
+  { href: "/app/vendas/crediarios", label: "Crediários", description: "Parcelas, recebimentos e saldos das vendas a prazo.", icon: "Receipt", group: "vendas", sidebar: true },
   {
     href: "/app/vendas/historico",
     label: "Histórico de Vendas",
@@ -901,6 +903,23 @@ export const NAV_CATALOG = [
     section: "Dinheiro",
     minRole: "viewer",
     modulo: "honorarios",
+  },
+  {
+    // Financeiro: só a porta. As telas são "Em breve" — ainda não existe funcionalidade.
+    href: "/app/financeiro/movimentacoes",
+    label: "Movimentações",
+    description: "Entradas e saídas do caixa. Em breve.",
+    icon: "Receipt",
+    group: "financeiro",
+    sidebar: true,
+  },
+  {
+    href: "/app/financeiro/relatorios",
+    label: "Relatórios",
+    description: "Relatórios financeiros do período. Em breve.",
+    icon: "ChartBar",
+    group: "financeiro",
+    sidebar: true,
   },
   {
     href: "/app/metrics",

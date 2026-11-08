@@ -14,6 +14,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { COLUNAS_DA_NEGOCIACAO, negociacaoPatchSchema } from "@/lib/pdv/regras";
+import { vendedorEhDaOrganizacao } from "@/lib/pdv/vendedores";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +65,15 @@ export async function PATCH(
     });
   }
 
+  if (
+    parsed?.data?.vendedor_user_id &&
+    !(await vendedorEhDaOrganizacao(authz.org.orgId, parsed.data.vendedor_user_id))
+  ) {
+    return fail("validation_failed", t("Vendedor não encontrado na organização."), 422, {
+      requestId,
+    });
+  }
+
   const supabase = await createClient();
   const { data: atual } = await supabase
     .from("negociacoes_de_veiculo")
@@ -79,6 +89,8 @@ export async function PATCH(
   const mudancas: Record<string, unknown> = cancelar
     ? { status: "cancelada", cancelada_em: new Date().toISOString() }
     : { ...parsed!.data };
+  // Vazio não apaga o vendedor: ele só troca por outro membro.
+  if (!mudancas.vendedor_user_id) delete mudancas.vendedor_user_id;
   if (!cancelar && atual.tipo === "compra") {
     delete mudancas.veiculo_id;
     delete mudancas.troca;
@@ -93,7 +105,8 @@ export async function PATCH(
     .select(COLUNAS_DA_NEGOCIACAO)
     .maybeSingle();
   if (error) return fail("internal_error", "Erro ao salvar a negociação.", 500, { requestId });
-  if (!data) return fail("conflict", t("Negociação já fechada não pode ser alterada."), 409, { requestId });
+  if (!data)
+    return fail("conflict", t("Negociação já fechada não pode ser alterada."), 409, { requestId });
 
   await audit({
     organizationId: authz.org.orgId,

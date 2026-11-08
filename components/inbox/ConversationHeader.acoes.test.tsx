@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ConversationHeader } from "./ConversationHeader";
+import { AcoesDaConversa } from "./AcoesDaConversa";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 
 /**
@@ -76,6 +76,9 @@ vi.mock("@/hooks/ai/useAutomaticoAtivo", () => ({
 }));
 vi.mock("@/components/kanban/OwnerBadge", () => ({ OwnerBadge: () => null }));
 vi.mock("@/components/inbox/FaixaDaCarteira", () => ({ FaixaDaCarteira: () => null }));
+vi.mock("@/components/agenda/ReservarServicoNaConversa", () => ({
+  ReservarServicoNaConversa: () => null,
+}));
 vi.mock("@/components/inbox/ReassignDialog", () => ({ ReassignDialog: () => null }));
 vi.mock("@/components/inbox/JanelaSelo", () => ({ JanelaSelo: () => null }));
 vi.mock("@/components/inbox/ChannelLogo", () => ({ ChannelLogo: () => null }));
@@ -258,16 +261,16 @@ function montar(cenario: Cenario) {
   } as unknown as ConversationWithContact;
 
   return render(
-    <ConversationHeader conversation={conversa} onBuscar={cenario.comBusca ? () => {} : undefined} />,
+    <AcoesDaConversa conversation={conversa} onBuscar={cenario.comBusca ? () => {} : undefined} />,
   );
 }
 
-/** A barra de ações — ancorada por rótulo, nunca por índice fixo (contrato da catraca). */
+/** O bloco de ações — ancorado por rótulo, nunca por índice fixo (contrato da catraca). */
 function barraDeAcoes(ancora: string): HTMLElement {
   const botao = screen.getByText(ancora).closest("button");
   expect(botao, `a âncora "${ancora}" não renderizou um botão`).toBeTruthy();
-  const barra = (botao as HTMLElement).parentElement;
-  expect(barra, "a barra de ações não renderizou").toBeTruthy();
+  const barra = (botao as HTMLElement).closest<HTMLElement>('[data-testid="acoes-da-conversa"]');
+  expect(barra, "o bloco de ações não renderizou").toBeTruthy();
   return barra as HTMLElement;
 }
 
@@ -358,18 +361,32 @@ describe("#3003 — guia curta: todo botão da barra diz o que faz", () => {
  * automático assume de novo" mentiria em todos esses estados.
  */
 describe("#3003 — a guia de Liberar não promete o automático quando ele não volta", () => {
-  const VOLTA = "Solta esta conversa: ela fica sem dono e o atendimento automático volta a responder.";
-  const FILA = "Solta esta conversa: ela fica sem dono e volta para a fila, esperando um atendente.";
-  const minha = { assigned_to_user_id: "u1", assignee_kind: "user", bot_silenced_until: "infinity" };
+  const VOLTA =
+    "Solta esta conversa: ela fica sem dono e o atendimento automático volta a responder.";
+  const FILA =
+    "Solta esta conversa: ela fica sem dono e volta para a fila, esperando um atendente.";
+  const minha = {
+    assigned_to_user_id: "u1",
+    assignee_kind: "user",
+    bot_silenced_until: "infinity",
+  };
 
   const casos: Array<{ nome: string; cenario: Partial<Cenario>; guia: string }> = [
-    { nome: "assumida sem escalação, org com automático", cenario: { conversa: minha }, guia: VOLTA },
+    {
+      nome: "assumida sem escalação, org com automático",
+      cenario: { conversa: minha },
+      guia: VOLTA,
+    },
     {
       nome: "assumida DEPOIS de uma escalação — a RPC mantém o silêncio",
       cenario: { conversa: { ...minha, last_handoff_at: "2026-10-01T10:00:00Z" } },
       guia: FILA,
     },
-    { nome: "org sem automático no ar", cenario: { conversa: minha, automaticoDaOrg: false }, guia: FILA },
+    {
+      nome: "org sem automático no ar",
+      cenario: { conversa: minha, automaticoDaOrg: false },
+      guia: FILA,
+    },
     {
       nome: "contato travado (force_human) — Liberar não destrava",
       cenario: { conversa: minha, contato: { force_human: true } },

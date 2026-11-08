@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Acesso de vendedores por login e senha",
+    "subtitle": "Cadastro administrativo no núcleo, sem convite por e-mail",
+    "output": "acesso-vendedores.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "telas",
+      "label": "Telas"
+    },
+    {
+      "id": "servidor",
+      "label": "Servidor"
+    },
+    {
+      "id": "dados",
+      "label": "Autenticação e vínculo"
+    }
+  ],
+  "mainPath": [
+    "cadastro",
+    "criar",
+    "auth",
+    "vinculo",
+    "login",
+    "sessao"
+  ],
+  "nodes": [
+    {
+      "id": "cadastro",
+      "lane": "telas",
+      "col": 0,
+      "type": "service",
+      "label": "Equipe → Criar vendedor",
+      "sublabel": "app/app/team/invite/_components/CreateMemberForm.tsx"
+    },
+    {
+      "id": "criar",
+      "lane": "servidor",
+      "col": 1,
+      "type": "service",
+      "label": "POST /api/v1/team/create",
+      "sublabel": "requireSupportWrite + requireRole(admin); organização da sessão; auditoria member.created"
+    },
+    {
+      "id": "auth",
+      "lane": "dados",
+      "col": 2,
+      "type": "service",
+      "label": "Supabase Auth",
+      "sublabel": "Conta confirmada e bloqueada até concluir o vínculo; senha nunca armazenada pelo app"
+    },
+    {
+      "id": "vinculo",
+      "lane": "dados",
+      "col": 3,
+      "type": "service",
+      "label": "fn_accept_team_invite → user_organizations",
+      "sublabel": "Papel, interface e limite de assentos existentes; depois ativa a conta"
+    },
+    {
+      "id": "login",
+      "lane": "telas",
+      "col": 4,
+      "type": "service",
+      "label": "LoginForm → signInWithPassword",
+      "sublabel": "Login ou e-mail; identidade normalizada; mesmos limites de tentativa e MFA"
+    },
+    {
+      "id": "sessao",
+      "lane": "servidor",
+      "col": 5,
+      "type": "service",
+      "label": "Sessão e permissões existentes",
+      "sublabel": "requireRole e RLS preservados; interface oculta apenas navegação"
+    },
+    {
+      "id": "senha",
+      "lane": "servidor",
+      "col": 3,
+      "type": "service",
+      "label": "Equipe → Definir senha",
+      "sublabel": "PATCH /api/v1/team/[user_id]/password; somente contas gerenciadas pela empresa ativa; member.password_changed"
+    }
+  ],
+  "edges": [
+    {
+      "from": "cadastro",
+      "to": "criar",
+      "id": "e1",
+      "label": "formulário autenticado"
+    },
+    {
+      "from": "criar",
+      "to": "auth",
+      "id": "e2",
+      "label": "cria conta bloqueada"
+    },
+    {
+      "from": "auth",
+      "to": "vinculo",
+      "id": "e3",
+      "label": "vincula à empresa e ativa"
+    },
+    {
+      "from": "vinculo",
+      "to": "login",
+      "id": "e4",
+      "label": "vendedor usa credencial"
+    },
+    {
+      "from": "login",
+      "to": "sessao",
+      "id": "e5",
+      "label": "autentica e aplica permissões"
+    },
+    {
+      "from": "cadastro",
+      "to": "senha",
+      "id": "e6",
+      "label": "administrador gerencia recuperação"
+    },
+    {
+      "from": "senha",
+      "to": "auth",
+      "id": "e7",
+      "label": "define nova senha"
+    }
+  ]
+}

@@ -64,6 +64,14 @@ describe("signInWithPassword — teto de tentativas", () => {
     expect(signIn).toHaveBeenCalledTimes(5);
   });
 
+  it("login simples e endereço interno compartilham o limite da mesma conta", async () => {
+    const { signInWithPassword } = await import("./signInWithPassword");
+    for (let i = 0; i < 5; i++) await signInWithPassword({ email: " vendedor-limite ", password: "senha-errada-123" });
+    expect(signIn).toHaveBeenLastCalledWith({ email: "vendedor-limite@usuarios.login.invalid", password: "senha-errada-123" });
+    expect((await signInWithPassword({ email: "VENDEDOR-LIMITE@usuarios.login.invalid", password: "senha-errada-123" })).error).toBe("rate_limited");
+    expect(signIn).toHaveBeenCalledTimes(5);
+  });
+
   it("acertar a senha não gasta o orçamento de bloqueio da conta", async () => {
     const { signInWithPassword } = await import("./signInWithPassword");
     const input = { email: "certo@example.com", password: "senha-certa-123" };

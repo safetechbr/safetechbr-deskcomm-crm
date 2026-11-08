@@ -42,18 +42,42 @@ interface Rascunho {
 }
 
 const VAZIO: Rascunho = {
-  codigo: "", marca: "", modelo: "", versao: "", ano_fabricacao: "", ano_modelo: "", km: "",
-  motor: "", cambio: "", combustivel: "", cor: "", placa_final: "", preco: "", opcionais: "", descricao: "",
+  codigo: "",
+  marca: "",
+  modelo: "",
+  versao: "",
+  ano_fabricacao: "",
+  ano_modelo: "",
+  km: "",
+  motor: "",
+  cambio: "",
+  combustivel: "",
+  cor: "",
+  placa_final: "",
+  preco: "",
+  opcionais: "",
+  descricao: "",
 };
 
 function doVeiculo(v: Veiculo): Rascunho {
   return {
-    codigo: v.codigo, marca: v.marca ?? "", modelo: v.modelo, versao: v.versao ?? "",
-    ano_fabricacao: v.ano_fabricacao?.toString() ?? "", ano_modelo: v.ano_modelo?.toString() ?? "",
-    km: v.km?.toString() ?? "", motor: v.motor ?? "", cambio: v.cambio ?? "",
-    combustivel: v.combustivel ?? "", cor: v.cor ?? "", placa_final: v.placa_final ?? "",
-    preco: v.preco_cents ? (v.preco_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "",
-    opcionais: v.opcionais ?? "", descricao: v.descricao ?? "",
+    codigo: v.codigo,
+    marca: v.marca ?? "",
+    modelo: v.modelo,
+    versao: v.versao ?? "",
+    ano_fabricacao: v.ano_fabricacao?.toString() ?? "",
+    ano_modelo: v.ano_modelo?.toString() ?? "",
+    km: v.km?.toString() ?? "",
+    motor: v.motor ?? "",
+    cambio: v.cambio ?? "",
+    combustivel: v.combustivel ?? "",
+    cor: v.cor ?? "",
+    placa_final: v.placa_final ?? "",
+    preco: v.preco_cents
+      ? (v.preco_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+      : "",
+    opcionais: v.opcionais ?? "",
+    descricao: v.descricao ?? "",
   };
 }
 
@@ -68,10 +92,19 @@ function corpoDe(r: Rascunho): Record<string, unknown> | { erro: string } {
   if (!r.modelo.trim()) return { erro: "O modelo é obrigatório." };
   const txt = (s: string) => (s.trim() === "" ? null : s.trim());
   return {
-    modelo: r.modelo.trim(), marca: txt(r.marca), versao: txt(r.versao),
-    ano_fabricacao: numeroOuNulo(r.ano_fabricacao), ano_modelo: numeroOuNulo(r.ano_modelo),
-    km: numeroOuNulo(r.km), motor: txt(r.motor), cambio: txt(r.cambio), combustivel: txt(r.combustivel),
-    cor: txt(r.cor), placa_final: txt(r.placa_final), preco_cents: preco, opcionais: txt(r.opcionais),
+    modelo: r.modelo.trim(),
+    marca: txt(r.marca),
+    versao: txt(r.versao),
+    ano_fabricacao: numeroOuNulo(r.ano_fabricacao),
+    ano_modelo: numeroOuNulo(r.ano_modelo),
+    km: numeroOuNulo(r.km),
+    motor: txt(r.motor),
+    cambio: txt(r.cambio),
+    combustivel: txt(r.combustivel),
+    cor: txt(r.cor),
+    placa_final: txt(r.placa_final),
+    preco_cents: preco,
+    opcionais: txt(r.opcionais),
     descricao: txt(r.descricao),
   };
 }
@@ -89,7 +122,11 @@ async function enviarArquivo(url: string, arquivo: File): Promise<boolean> {
 }
 
 export function EstoqueClient({
-  inicial, urlsDasFotos, podeEditar, titulo, subtitulo,
+  inicial,
+  urlsDasFotos,
+  podeEditar,
+  titulo,
+  subtitulo,
 }: {
   inicial: Veiculo[];
   urlsDasFotos: Record<string, string>;
@@ -137,26 +174,28 @@ export function EstoqueClient({
           <span className="sr-only">{t("Buscar por modelo, marca ou código")}</span>
           <MagnifyingGlass
             size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+            className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-muted"
             aria-hidden
           />
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder={t("Buscar por modelo, marca ou código")}
-            className="h-10 w-72 rounded-full border border-border/80 bg-surface pl-9 pr-4 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
+            className="h-10 w-72 rounded-full border border-border/80 bg-surface pr-4 pl-9 text-sm shadow-xs transition-[border-color,box-shadow] duration-150 focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:outline-hidden"
             data-testid="busca-estoque"
           />
         </label>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="h-10 rounded-full border border-border/80 bg-surface px-3 text-sm shadow-xs transition-colors duration-150 hover:bg-foreground/[0.03] focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
+          className="h-10 rounded-full border border-border/80 bg-surface px-3 text-sm shadow-xs transition-colors duration-150 hover:bg-foreground/[0.03] focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:outline-hidden"
           data-testid="filtro-status"
         >
           <option value="todos">{t("Todos")}</option>
           {STATUS_DO_VEICULO.map((s) => (
-            <option key={s} value={s}>{t(ROTULO_DO_STATUS[s])}</option>
+            <option key={s} value={s}>
+              {t(ROTULO_DO_STATUS[s])}
+            </option>
           ))}
         </select>
         <span className="self-center text-sm text-muted-foreground">
@@ -166,7 +205,10 @@ export function EstoqueClient({
 
       {visiveis.length === 0 ? (
         <div className="ds-entra flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/80 bg-surface p-10 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent" aria-hidden>
+          <span
+            className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent"
+            aria-hidden
+          >
             <MagnifyingGlass size={22} weight="duotone" />
           </span>
           <p className="text-sm text-muted-foreground">{t("Nenhum veículo encontrado.")}</p>
@@ -179,11 +221,11 @@ export function EstoqueClient({
             return (
               <li
                 key={v.id}
-                className="ds-entra ds-elevavel group overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs"
+                className="ds-entra ds-elevavel group overflow-hidden rounded-[28px] border border-border bg-surface shadow-none"
                 style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 data-testid={`veiculo-${v.codigo}`}
               >
-                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-b from-muted to-surface">
                   {capa ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -197,19 +239,23 @@ export function EstoqueClient({
                       {t("Sem foto")}
                     </div>
                   )}
-                  <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-medium text-text shadow-xs backdrop-blur-sm">
+                  <span className="absolute top-3 left-3 rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-medium text-text shadow-xs backdrop-blur-sm">
                     {t(ROTULO_DO_STATUS[v.status as keyof typeof ROTULO_DO_STATUS] ?? v.status)}
                   </span>
                 </div>
-                <div className="space-y-1 p-4 text-sm">
-                  <div className="font-medium leading-snug">{tituloDoVeiculo(v)}</div>
+                <div className="space-y-2 p-5 text-sm">
+                  <div className="leading-snug font-medium">{tituloDoVeiculo(v)}</div>
                   <div className="text-muted-foreground">
-                    {[v.km != null ? `${formatarKm(v.km)} km` : null, v.motor, v.cambio].filter(Boolean).join(" · ")}
+                    {[v.km != null ? `${formatarKm(v.km)} km` : null, v.motor, v.cambio]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </div>
-                  <div className="pt-1 text-lg font-semibold tracking-tight text-accent">
+                  <div className="pt-2 text-xl font-semibold tracking-tight text-text">
                     {formatarPreco(v.preco_cents, v.moeda)}
                   </div>
-                  <div className={poucas ? "text-xs text-warning-fg" : "text-xs text-muted-foreground"}>
+                  <div
+                    className={poucas ? "text-xs text-warning-fg" : "text-xs text-muted-foreground"}
+                  >
                     {v.fotos.length} {t("foto(s)")}
                     {poucas ? ` — ${t("recomendado")}: ${MINIMO_RECOMENDADO_DE_FOTOS}+` : ""}
                   </div>
@@ -222,10 +268,17 @@ export function EstoqueClient({
                         className="h-8 rounded-full border border-border/80 bg-transparent px-2.5 text-xs transition-colors duration-150 hover:bg-foreground/[0.04]"
                       >
                         {STATUS_DO_VEICULO.map((s) => (
-                          <option key={s} value={s}>{t(ROTULO_DO_STATUS[s])}</option>
+                          <option key={s} value={s}>
+                            {t(ROTULO_DO_STATUS[s])}
+                          </option>
                         ))}
                       </select>
-                      <Button size="sm" variant="outline" className="ml-auto rounded-full" onClick={() => setEditando(v)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ml-auto rounded-full"
+                        onClick={() => setEditando(v)}
+                      >
                         {t("Editar")}
                       </Button>
                     </div>
@@ -250,7 +303,9 @@ export function EstoqueClient({
 }
 
 function FormularioDoVeiculo({
-  veiculo, urlsDasFotos, aoFechar,
+  veiculo,
+  urlsDasFotos,
+  aoFechar,
 }: {
   veiculo: Veiculo | null;
   urlsDasFotos: Record<string, string>;
@@ -293,7 +348,13 @@ function FormularioDoVeiculo({
     setR({ ...r, modelo: valor });
   }
 
-  const campo = (k: keyof Rascunho, rotulo: string, extra?: string, lista?: string, aoMudar?: (v: string) => void) => (
+  const campo = (
+    k: keyof Rascunho,
+    rotulo: string,
+    extra?: string,
+    lista?: string,
+    aoMudar?: (v: string) => void,
+  ) => (
     <label className={`text-sm ${extra ?? ""}`}>
       {rotulo}
       <input
@@ -390,7 +451,8 @@ function FormularioDoVeiculo({
   }
 
   async function excluir() {
-    if (!veiculo || !window.confirm(t("Excluir este veículo e suas fotos? Não dá para desfazer."))) return;
+    if (!veiculo || !window.confirm(t("Excluir este veículo e suas fotos? Não dá para desfazer.")))
+      return;
     try {
       await apiClient.delete(`/api/v1/veiculos/${veiculo.id}`);
       toast.success(t("Veículo excluído"));
@@ -418,10 +480,28 @@ function FormularioDoVeiculo({
             </div>
           ) : null}
           {campo("marca", t("Marca"), undefined, "lista-marcas")}
-          {campo("modelo", r.marca ? t("Modelo (digite para buscar)") : t("Modelo (escolha a marca antes)"), undefined, "lista-modelos", aoDigitarModelo)}
-          <datalist id="lista-marcas">{marcas.map((m) => <option key={m} value={m} />)}</datalist>
-          <datalist id="lista-modelos">{sugestoes.map((m) => <option key={m} value={m} />)}</datalist>
-          <datalist id="lista-anos">{anos.map((a) => <option key={a} value={a} />)}</datalist>
+          {campo(
+            "modelo",
+            r.marca ? t("Modelo (digite para buscar)") : t("Modelo (escolha a marca antes)"),
+            undefined,
+            "lista-modelos",
+            aoDigitarModelo,
+          )}
+          <datalist id="lista-marcas">
+            {marcas.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+          <datalist id="lista-modelos">
+            {sugestoes.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+          <datalist id="lista-anos">
+            {anos.map((a) => (
+              <option key={a} value={a} />
+            ))}
+          </datalist>
           {campo("versao", t("Versão"))}
           {campo("ano_fabricacao", t("Ano de fabricação"), undefined, "lista-anos")}
           {campo("ano_modelo", t("Ano do modelo"), undefined, "lista-anos")}
@@ -477,7 +557,8 @@ function FormularioDoVeiculo({
             </div>
             {fotos.length < MINIMO_RECOMENDADO_DE_FOTOS ? (
               <p className="text-xs text-warning-fg">
-                {t("Recomendado: pelo menos")} {MINIMO_RECOMENDADO_DE_FOTOS} {t("fotos. A primeira é a capa.")}
+                {t("Recomendado: pelo menos")} {MINIMO_RECOMENDADO_DE_FOTOS}{" "}
+                {t("fotos. A primeira é a capa.")}
               </p>
             ) : null}
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -490,11 +571,26 @@ function FormularioDoVeiculo({
                     ) : null}
                   </div>
                   <div className="flex justify-between text-xs">
-                    <button disabled={ocupado || i === 0} onClick={() => mover(i, -1)} aria-label={t("Mover para trás")}>←</button>
-                    <button disabled={ocupado} onClick={() => void gravarFotos(fotos.filter((x) => x !== c))}>
+                    <button
+                      disabled={ocupado || i === 0}
+                      onClick={() => mover(i, -1)}
+                      aria-label={t("Mover para trás")}
+                    >
+                      ←
+                    </button>
+                    <button
+                      disabled={ocupado}
+                      onClick={() => void gravarFotos(fotos.filter((x) => x !== c))}
+                    >
                       {t("Remover")}
                     </button>
-                    <button disabled={ocupado || i === fotos.length - 1} onClick={() => mover(i, 1)} aria-label={t("Mover para frente")}>→</button>
+                    <button
+                      disabled={ocupado || i === fotos.length - 1}
+                      onClick={() => mover(i, 1)}
+                      aria-label={t("Mover para frente")}
+                    >
+                      →
+                    </button>
                   </div>
                 </li>
               ))}
@@ -509,7 +605,12 @@ function FormularioDoVeiculo({
                 className="hidden"
                 onChange={(e) => void enviarVideo(e.target.files?.[0])}
               />
-              <Button size="sm" variant="outline" disabled={ocupado} onClick={() => videoRef.current?.click()}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={ocupado}
+                onClick={() => videoRef.current?.click()}
+              >
                 {t(temVideo ? "Trocar vídeo" : "Enviar vídeo")}
               </Button>
               {temVideo ? (
@@ -534,7 +635,9 @@ function FormularioDoVeiculo({
             ) : null}
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={aoFechar}>{t("Cancelar")}</Button>
+            <Button variant="ghost" onClick={aoFechar}>
+              {t("Cancelar")}
+            </Button>
             <Button onClick={() => void salvar()} disabled={ocupado} data-testid="salvar-veiculo">
               {t(ocupado ? "Salvando…" : "Salvar")}
             </Button>

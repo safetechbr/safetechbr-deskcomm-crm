@@ -1,0 +1,172 @@
+/* Interface compartilhada: superfícies claras, ações monocromáticas e acentos
+   editoriais. A identidade da empresa continua no resolvedor de marca; esta
+   camada governa o tratamento visual dos controles, sem alterar dados de marca. */
+html:root[data-interface="editorial"],
+html:root[data-interface="editorial"] body {
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f5f5f6;
+  --color-overlay: rgba(12, 12, 16, 0.35);
+  --color-text: #101014;
+  --color-text-muted: #66666e;
+  --color-text-subtle: #707078;
+  --color-border: #e8e8eb;
+  --color-border-strong: #c9c9cf;
+  --color-accent-50: #fafafa;
+  --color-accent-100: #f0f0f2;
+  --color-accent-200: #e2e2e6;
+  --color-accent-300: #c9c9cf;
+  --color-accent-400: #90909a;
+  --color-accent-500: #555560;
+  --color-accent-600: #101014;
+  --color-accent-700: #303038;
+  --color-accent-800: #24242b;
+  --color-accent-900: #18181e;
+  --color-accent-950: #0b0b0f;
+  --color-accent: #101014;
+  --color-accent-fg: #ffffff;
+  --color-accent-hover: #303038;
+  --color-accent-soft: #f0f0f2;
+  --editorial-coral: #b94c43;
+  --editorial-pink: #98538a;
+  --editorial-gradient: linear-gradient(110deg, var(--editorial-coral), var(--editorial-pink));
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f6;
+  --color-neutral-200: #e8e8eb;
+  --color-neutral-300: #d1d1d7;
+  --color-neutral-400: #9898a2;
+  --color-neutral-500: #707078;
+  --color-neutral-600: #66666e;
+  --color-neutral-700: #45454d;
+  --color-neutral-800: #2a2a32;
+  --color-neutral-900: #101014;
+  --color-neutral-950: #09090d;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-xs: 0 1px 2px rgb(16 16 20 / 0.025);
+  --shadow-sm: 0 2px 8px rgb(16 16 20 / 0.035);
+  --shadow-md: 0 8px 28px rgb(16 16 20 / 0.07);
+  --shadow-lg: 0 18px 60px rgb(16 16 20 / 0.12);
+  --shadow-xl: 0 28px 80px rgb(16 16 20 / 0.16);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+html:root[data-interface="editorial"][data-theme="dark"],
+html:root[data-interface="editorial"][data-theme="dark"] body {
+  --color-bg: #111115;
+  --editorial-coral: #f5a79b;
+  --editorial-pink: #d995c6;
+  --color-surface: #19191e;
+  --color-surface-elevated: #232329;
+  --color-text: #f5f5f7;
+  --color-text-muted: #b5b5bf;
+  --color-text-subtle: #a0a0ac;
+  --color-border: #303038;
+  --color-border-strong: #50505b;
+  --color-accent: #f5f5f7;
+  --color-accent-fg: #111115;
+  --color-accent-hover: #dddde4;
+  --color-accent-soft: #292930;
+  --color-accent-50: #19191e;
+  --color-accent-100: #232329;
+  --color-accent-200: #303038;
+  --color-accent-300: #50505b;
+  --color-accent-400: #d1d1d7;
+  --color-accent-500: #c0c0cb;
+  --color-accent-600: #f5f5f7;
+  --color-accent-700: #dddde4;
+}
+html[data-interface="editorial"] body {
+  font-family: var(--font-sans);
+}
+html[data-interface="editorial"] :where(h1, h2, h3) {
+  text-wrap: balance;
+}
+html[data-interface="editorial"] main :where(h1) {
+  font-size: clamp(1.75rem, 2.5vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+  font-weight: 700;
+}
+html[data-interface="editorial"] :where(input, select, textarea) {
+  accent-color: var(--color-accent);
+}
+html[data-interface="editorial"]
+  :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus-visible {
+  outline-offset: 3px;
+}
+html[data-interface="editorial"] .app-sidebar {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+html[data-interface="editorial"] .app-sidebar nav a {
+  min-height: 36px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+html[data-interface="editorial"] .app-sidebar nav a[aria-current="page"] {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
+  box-shadow: none;
+}
+html[data-interface="editorial"] .app-sidebar nav h2 button {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding-block: 8px;
+}
+html[data-interface="editorial"] .app-topbar {
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  border-bottom: 1px solid var(--color-border);
+}
+html[data-interface="editorial"] .editorial-hero {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 24px;
+}
+html[data-interface="editorial"] .editorial-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--color-text-muted);
+}
+html[data-interface="editorial"] .editorial-flourish {
+  display: inline-block;
+  background: var(--editorial-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+html[data-interface="editorial"] .editorial-metric {
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  background: linear-gradient(160deg, var(--color-surface-elevated), var(--color-surface) 75%);
+  padding: 24px;
+}
+html[data-interface="editorial"] .editorial-shortcut {
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+html[data-interface="editorial"] .editorial-shortcut:hover {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-border-strong);
+}
+html[data-interface="editorial"] .editorial-panel {
+  border-radius: 28px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+@media (max-width: 767px) {
+  html[data-interface="editorial"] main :where(h1) {
+    font-size: 1.75rem;
+  }
+  html[data-interface="editorial"] .editorial-metric {
+    padding: 20px;
+  }
+}

@@ -7,7 +7,11 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { COLUNAS_DA_NEGOCIACAO, type Negociacao } from "@/lib/pdv/regras";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { arquivoPertenceAoVeiculo, BUCKET_DAS_FOTOS_DE_VEICULO, COLUNAS_DO_VEICULO } from "@/lib/veiculos/regras";
+import {
+  arquivoPertenceAoVeiculo,
+  BUCKET_DAS_FOTOS_DE_VEICULO,
+  COLUNAS_DO_VEICULO,
+} from "@/lib/veiculos/regras";
 
 import { PdvClient, type VeiculoDoPdv } from "./_client";
 
@@ -49,7 +53,9 @@ export default async function PdvPage() {
 
   // Só a capa de cada carro — é o que o seletor mostra.
   const capas = veiculos
-    .map((v) => (v.fotos ?? []).find((c) => arquivoPertenceAoVeiculo(c, activeOrg.orgId, v.id, "foto")))
+    .map((v) =>
+      (v.fotos ?? []).find((c) => arquivoPertenceAoVeiculo(c, activeOrg.orgId, v.id, "foto")),
+    )
     .filter((c): c is string => Boolean(c));
   const urlsDasCapas: Record<string, string> = {};
   if (capas.length > 0) {
@@ -68,6 +74,7 @@ export default async function PdvPage() {
       negociacoesIniciais={(negociacoes.data ?? []) as unknown as Negociacao[]}
       podeNegociar={podeNegociar}
       titulo={t("PDV")}
+      usuarioId={user.id}
     />
   );
 }

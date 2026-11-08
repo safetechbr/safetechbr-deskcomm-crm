@@ -48,7 +48,7 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
         return;
       }
       if (res.error === "invalid_credentials") {
-        setServerError(t("Email ou senha incorretos."));
+        setServerError(t("Login ou senha incorretos."));
       } else if (res.error === "rate_limited") {
         setServerError(t("Muitas tentativas. Aguarde alguns minutos."));
       } else if (res.error === "validation_error") {
@@ -62,11 +62,13 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
   return (
     <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="space-y-1.5">
-        <Label htmlFor="email">{t("Email")}</Label>
+        <Label htmlFor="email">{t("Login ou e-mail")}</Label>
         <Input
           id="email"
-          type="email"
-          autoComplete="email"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
           autoFocus
           aria-invalid={errors.email ? true : undefined}
           {...register("email")}
@@ -75,6 +77,7 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
           <p className="text-xs text-destructive">{t(errors.email.message ?? "")}</p>
         )}
       </div>
+      <p className="text-xs text-muted-foreground">{t("Se você recebeu um login da empresa, use esse nome e a senha fornecida. Para recuperar a senha desse acesso, fale com o administrador.")}</p>
       <div className="space-y-1.5">
         <Label htmlFor="password">{t("Senha")}</Label>
         <div className="relative">

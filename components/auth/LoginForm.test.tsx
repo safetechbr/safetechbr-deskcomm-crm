@@ -26,7 +26,7 @@ const { signInWithPassword } = await import("@/app/actions/auth/signInWithPasswo
 const AVISO = "Não recebemos a resposta do servidor. Recarregue a página para tentar de novo.";
 
 function preencherEEnviar() {
-  fireEvent.change(screen.getByLabelText("Email"), {
+  fireEvent.change(screen.getByLabelText("Login ou e-mail"), {
     target: { value: "pessoa@exemplo.com" },
   });
   fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "SenhaQueServe#1" } });
@@ -135,7 +135,7 @@ describe("LoginForm — a espera tem teto", () => {
       await vi.advanceTimersByTimeAsync(200);
     });
 
-    expect(screen.getByText("Email ou senha incorretos.")).toBeInTheDocument();
+    expect(screen.getByText("Login ou senha incorretos.")).toBeInTheDocument();
     expect(screen.queryByText(AVISO)).not.toBeInTheDocument();
   });
 });

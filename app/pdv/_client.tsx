@@ -30,11 +30,11 @@ import {
 } from "@/lib/pdv/regras";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 import { formatarKm, formatarPreco, tituloDoVeiculo, type Veiculo } from "@/lib/veiculos/regras";
+import { CadastroClienteModal } from "./cadastro-cliente-modal";
 import { nomeDoContato, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import {
   CaretLeft,
   CheckCircle,
-  ClockCounterClockwise,
   FileText,
   MagnifyingGlass,
   Plus,
@@ -71,11 +71,17 @@ interface ContatoEncontrado {
 
 const CLIENTE_VAZIO: ClienteDaNegociacao = { nome: "" };
 const VEICULO_VAZIO: VeiculoDaNegociacao = { modelo: "" };
-const TROCA_VAZIA: TrocaDaNegociacao = { modelo: "", valor_cents: 0, quitacao_cents: 0, entra_no_estoque: true };
+const TROCA_VAZIA: TrocaDaNegociacao = {
+  modelo: "",
+  valor_cents: 0,
+  quitacao_cents: 0,
+  entra_no_estoque: true,
+};
 
 function rascunhoNovo(tipo: TipoDeNegociacao): Rascunho {
   return {
     tipo,
+    modalidade: "normal",
     contact_id: null,
     cliente: { ...CLIENTE_VAZIO },
     veiculo_id: null,
@@ -84,6 +90,7 @@ function rascunhoNovo(tipo: TipoDeNegociacao): Rascunho {
     desconto_cents: 0,
     troca: null,
     pagamentos: [],
+    vendedor_user_id: null,
     comissao_cents: null,
     observacoes: null,
   };
@@ -92,6 +99,7 @@ function rascunhoNovo(tipo: TipoDeNegociacao): Rascunho {
 function rascunhoDe(n: Negociacao): Rascunho {
   return {
     tipo: n.tipo,
+    modalidade: n.modalidade ?? "normal",
     contact_id: n.contact_id,
     cliente: { ...CLIENTE_VAZIO, ...n.cliente },
     veiculo_id: n.veiculo_id,
@@ -100,6 +108,7 @@ function rascunhoDe(n: Negociacao): Rascunho {
     desconto_cents: n.desconto_cents,
     troca: n.troca ? { ...TROCA_VAZIA, ...n.troca } : null,
     pagamentos: n.pagamentos ?? [],
+    vendedor_user_id: n.vendedor_user_id ?? null,
     comissao_cents: n.comissao_cents,
     observacoes: n.observacoes,
   };
@@ -108,7 +117,8 @@ function rascunhoDe(n: Negociacao): Rascunho {
 /** Vazio vira null — o schema aceita null e o contrato mostra a linha em branco. */
 function limpo<T extends Record<string, unknown>>(o: T): T {
   const saida: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(o)) saida[k] = typeof v === "string" && v.trim() === "" ? null : v;
+  for (const [k, v] of Object.entries(o))
+    saida[k] = typeof v === "string" && v.trim() === "" ? null : v;
   return saida as T;
 }
 
@@ -173,7 +183,9 @@ function CampoDinheiro({
   testid?: string;
 }) {
   const formatar = (c: number | null | undefined) =>
-    c ? (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+    c
+      ? (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : "";
   const [texto, setTexto] = React.useState(formatar(cents));
   const ultimo = React.useRef(cents);
   React.useEffect(() => {
@@ -213,14 +225,29 @@ function numeroOuNull(v: string): number | null {
   return d ? Number(d) : null;
 }
 
+/** Abaixo de `lg` as colunas empilham e rolam juntas: o rodapé sai da coluna e ancora embaixo da tela. */
+function useTelaLarga(): boolean {
+  return React.useSyncExternalStore(
+    (aviso) => {
+      const mq = window.matchMedia("(min-width: 1024px)");
+      mq.addEventListener("change", aviso);
+      return () => mq.removeEventListener("change", aviso);
+    },
+    () => window.matchMedia("(min-width: 1024px)").matches,
+    () => true,
+  );
+}
+
 function Coluna({
   titulo,
   atalho,
   rodape,
   icone: Icone,
   indice = 0,
+  className = "",
   children,
 }: {
+  className?: string;
   titulo: string;
   atalho?: string;
   rodape?: React.ReactNode;
@@ -230,7 +257,7 @@ function Coluna({
 }) {
   return (
     <section
-      className="ds-entra flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs"
+      className={`ds-entra flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs ${className}`}
       style={{ animationDelay: `${indice * 60}ms` }}
     >
       <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
@@ -238,7 +265,11 @@ function Coluna({
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
             <Icone className="size-4" weight="duotone" aria-hidden />
           </span>
-          <h2 className="truncate text-sm font-semibold tracking-tight">{titulo}</h2>
+          <h2
+            className={`truncate text-sm font-semibold ${indice === 2 ? "tracking-wider text-accent uppercase" : "tracking-tight"}`}
+          >
+            {titulo}
+          </h2>
         </div>
         {atalho ? (
           <kbd className="rounded-full border border-border/80 bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
@@ -263,21 +294,49 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
   prefixo: string;
 }) {
   const t = useT();
-  const set = (campo: keyof VeiculoDaNegociacao, valor: unknown) => onChange({ ...v, [campo]: valor });
+  const set = (campo: keyof VeiculoDaNegociacao, valor: unknown) =>
+    onChange({ ...v, [campo]: valor });
   return (
     <div className="grid grid-cols-2 gap-2">
       <Campo rotulo={t("Marca")} valor={v.marca} onChange={(x) => set("marca", x)} />
-      <Campo rotulo={t("Modelo")} valor={v.modelo} onChange={(x) => set("modelo", x)} testid={`${prefixo}-modelo`} />
-      <Campo rotulo={t("Versão")} valor={v.versao} onChange={(x) => set("versao", x)} extra="col-span-2" />
-      <Campo rotulo={t("Ano fab.")} valor={v.ano_fabricacao} onChange={(x) => set("ano_fabricacao", numeroOuNull(x))} />
-      <Campo rotulo={t("Ano modelo")} valor={v.ano_modelo} onChange={(x) => set("ano_modelo", numeroOuNull(x))} />
+      <Campo
+        rotulo={t("Modelo")}
+        valor={v.modelo}
+        onChange={(x) => set("modelo", x)}
+        testid={`${prefixo}-modelo`}
+      />
+      <Campo
+        rotulo={t("Versão")}
+        valor={v.versao}
+        onChange={(x) => set("versao", x)}
+        extra="col-span-2"
+      />
+      <Campo
+        rotulo={t("Ano fab.")}
+        valor={v.ano_fabricacao}
+        onChange={(x) => set("ano_fabricacao", numeroOuNull(x))}
+      />
+      <Campo
+        rotulo={t("Ano modelo")}
+        valor={v.ano_modelo}
+        onChange={(x) => set("ano_modelo", numeroOuNull(x))}
+      />
       <Campo rotulo={t("Km")} valor={v.km} onChange={(x) => set("km", numeroOuNull(x))} />
       <Campo rotulo={t("Cor")} valor={v.cor} onChange={(x) => set("cor", x)} />
-      <Campo rotulo={t("Combustível")} valor={v.combustivel} onChange={(x) => set("combustivel", x)} />
+      <Campo
+        rotulo={t("Combustível")}
+        valor={v.combustivel}
+        onChange={(x) => set("combustivel", x)}
+      />
       <Campo rotulo={t("Câmbio")} valor={v.cambio} onChange={(x) => set("cambio", x)} />
       <Campo rotulo={t("Placa")} valor={v.placa} onChange={(x) => set("placa", x.toUpperCase())} />
       <Campo rotulo={t("Renavam")} valor={v.renavam} onChange={(x) => set("renavam", x)} />
-      <Campo rotulo={t("Chassi")} valor={v.chassi} onChange={(x) => set("chassi", x.toUpperCase())} extra="col-span-2" />
+      <Campo
+        rotulo={t("Chassi")}
+        valor={v.chassi}
+        onChange={(x) => set("chassi", x.toUpperCase())}
+        extra="col-span-2"
+      />
     </div>
   );
 }
@@ -297,9 +356,12 @@ function ColunaCliente({
   const t = useT();
   const [busca, setBusca] = React.useState("");
   const [achados, setAchados] = React.useState<ContatoEncontrado[]>([]);
+  const [cadastroAberto, setCadastroAberto] = React.useState(false);
+  const campoDeBusca = React.useRef<HTMLInputElement>(null);
+  const botaoMais = React.useRef<HTMLButtonElement>(null);
   const c = r.cliente;
-  const set = (campo: keyof ClienteDaNegociacao, valor: string) =>
-    setR((x) => ({ ...x, cliente: { ...x.cliente, [campo]: valor } }));
+  const identificado = Boolean(r.contact_id) || c.nome.trim().length > 0;
+  const docPreenchido = (c.documento ?? "").replace(/\D/g, "").length > 0;
 
   React.useEffect(() => {
     const termo = busca.trim();
@@ -317,103 +379,172 @@ function ColunaCliente({
     return () => clearTimeout(h);
   }, [busca]);
 
+  // F2 leva ao campo de busca de cliente (o atalho que a coluna já anunciava).
+  React.useEffect(() => {
+    if (travado || cadastroAberto) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== "F2") return;
+      e.preventDefault();
+      campoDeBusca.current?.focus();
+      campoDeBusca.current?.select();
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [travado, cadastroAberto]);
 
-  const docPreenchido = (c.documento ?? "").replace(/\D/g, "").length > 0;
+  function escolher(ct: ContatoEncontrado) {
+    // Troca por inteiro: dado do cliente anterior não pode vazar para o novo.
+    setR((x) => ({
+      ...x,
+      contact_id: ct.id,
+      cliente: {
+        nome: nomeDoContato(ct) ?? "",
+        telefone: ct.phone_number || undefined,
+        email: ct.email || undefined,
+      },
+    }));
+    setBusca("");
+    setAchados([]);
+  }
+
   return (
-    <Coluna atalho="F2" icone={UserCircle} indice={0} titulo={r.tipo === "venda" ? t("Cliente (comprador)") : t("Cliente (vendedor)")}>
+    <Coluna
+      atalho="F2"
+      icone={UserCircle}
+      indice={0}
+      titulo={r.tipo === "venda" ? t("Cliente (comprador)") : t("Cliente (vendedor)")}
+    >
       <fieldset disabled={travado} className="space-y-3">
-        <div className="relative">
-          <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={t("Buscar contato por nome ou telefone…")}
-            className={`${CAMPO} pl-9`}
-            data-testid="pdv-busca-contato"
-          />
-          {busca.trim().length >= 2 && achados.length > 0 ? (
-            <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-border/60 bg-surface p-1 shadow-md">
-              {achados.map((ct) => (
-                <li key={ct.id}>
-                  <button
-                    type="button"
-                    className="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60"
-                    onClick={() => {
-                      setR((x) => ({
-                        ...x,
-                        contact_id: ct.id,
-                        cliente: {
-                          ...x.cliente,
-                          nome: nomeDoContato(ct) ?? x.cliente.nome,
-                          telefone: ct.phone_number || x.cliente.telefone,
-                          email: ct.email || x.cliente.email,
-                        },
-                      }));
-                      setBusca("");
-                      setAchados([]);
-                    }}
-                  >
-                    <div className="font-medium">{rotuloDoContato(ct, t)}</div>
-                    <div className="text-xs text-muted-foreground">{ct.phone_number ?? ct.email ?? ""}</div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-        {r.contact_id ? (
-          <div className="flex items-center justify-between rounded-xl bg-accent-soft px-3 py-2 text-xs text-accent">
-            <span className="flex items-center gap-1.5"><CheckCircle className="size-4" weight="duotone" aria-hidden />{t("Vinculado a um contato do CRM.")}</span>
-            <button type="button" className="font-medium underline-offset-2 hover:underline" onClick={() => setR((x) => ({ ...x, contact_id: null }))}>
-              {t("Desvincular")}
-            </button>
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-2 gap-2">
-          <Campo rotulo={t("Nome completo / razão social")} valor={c.nome} onChange={(x) => set("nome", x)} extra="col-span-2" testid="pdv-cliente-nome" />
-          <label className="col-span-2 block text-xs">
-            <span className="text-muted-foreground">{t("CPF ou CNPJ")}</span>
-            <input
-              value={c.documento ?? ""}
-              onChange={(e) => set("documento", e.target.value)}
-              onBlur={(e) => set("documento", formatarDocumento(e.target.value))}
-              className={`mt-1 ${CAMPO} ${
-                docPreenchido && !documentoValido(c.documento) ? "border-error" : ""
-              }`}
-              data-testid="pdv-cliente-documento"
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <MagnifyingGlass
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
             />
-            {docPreenchido && !documentoValido(c.documento) ? (
-              <span className="mt-1 block text-error-fg">{t("Documento inválido.")}</span>
+            <input
+              ref={campoDeBusca}
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder={t("Buscar cliente (F2)")}
+              aria-label={t("Buscar contato por nome ou telefone…")}
+              className={`${CAMPO} pl-9`}
+              data-testid="pdv-busca-contato"
+            />
+            {busca.trim().length >= 2 && achados.length > 0 ? (
+              <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-border/60 bg-surface p-1 shadow-md">
+                {achados.map((ct) => (
+                  <li key={ct.id}>
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60"
+                      onClick={() => escolher(ct)}
+                    >
+                      <div className="font-medium">{rotuloDoContato(ct, t)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {ct.phone_number ?? ct.email ?? ""}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             ) : null}
-          </label>
-          <Campo rotulo={t("RG")} valor={c.rg} onChange={(x) => set("rg", x)} />
-          <Campo rotulo={t("CNH")} valor={c.cnh} onChange={(x) => set("cnh", x)} />
-          <Campo rotulo={t("Nascimento")} tipo="date" valor={c.nascimento} onChange={(x) => set("nascimento", x)} />
-          <Campo rotulo={t("Telefone")} valor={c.telefone} onChange={(x) => set("telefone", x)} />
-          <Campo rotulo={t("E-mail")} tipo="email" valor={c.email} onChange={(x) => set("email", x)} extra="col-span-2" />
+          </div>
+          <button
+            ref={botaoMais}
+            type="button"
+            onClick={() => setCadastroAberto(true)}
+            aria-label={t("Cadastrar cliente")}
+            title={t("Cadastrar cliente")}
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xs transition-colors hover:bg-accent/90 focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-hidden disabled:opacity-60"
+            data-testid="pdv-cliente-novo"
+          >
+            <Plus className="size-4" aria-hidden />
+          </button>
         </div>
 
-        <div className="border-t border-border/60 pt-3">
-          <div className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t("Endereço")}</div>
-          <div className="grid grid-cols-3 gap-2">
-            <label className="block text-xs">
-              <span className="text-muted-foreground">{t("CEP")}</span>
-              <input
-                value={c.cep ?? ""}
-                onChange={(e) => set("cep", e.target.value)}
-                className={`mt-1 ${CAMPO}`}
-              />
-            </label>
-            <Campo rotulo={t("Rua")} valor={c.endereco} onChange={(x) => set("endereco", x)} extra="col-span-2" />
-            <Campo rotulo={t("Número")} valor={c.numero} onChange={(x) => set("numero", x)} />
-            <Campo rotulo={t("Complemento")} valor={c.complemento} onChange={(x) => set("complemento", x)} extra="col-span-2" />
-            <Campo rotulo={t("Bairro")} valor={c.bairro} onChange={(x) => set("bairro", x)} />
-            <Campo rotulo={t("Cidade")} valor={c.cidade} onChange={(x) => set("cidade", x)} />
-            <Campo rotulo={t("UF")} valor={c.uf} onChange={(x) => set("uf", x.toUpperCase().slice(0, 2))} />
+        {identificado ? (
+          <div
+            className="space-y-2 rounded-xl border border-border/60 bg-accent-soft/40 p-3 text-sm"
+            data-testid="pdv-cliente-resumo"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <CheckCircle
+                    className="size-4 shrink-0 text-accent"
+                    weight="duotone"
+                    aria-hidden
+                  />
+                  <span className="truncate" data-testid="pdv-cliente-nome">
+                    {c.nome || t("Cliente")}
+                  </span>
+                </div>
+                <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {[c.documento, c.telefone, c.email].filter(Boolean).join(" · ") ||
+                    t("Sem documento ou contato informado.")}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2 text-xs font-medium">
+                <button
+                  type="button"
+                  className="text-accent underline-offset-2 hover:underline"
+                  onClick={() => {
+                    campoDeBusca.current?.focus();
+                  }}
+                >
+                  {t("Trocar")}
+                </button>
+                <button
+                  type="button"
+                  className="text-muted-foreground underline-offset-2 hover:underline"
+                  onClick={() => setR((x) => ({ ...x, contact_id: null, cliente: { nome: "" } }))}
+                >
+                  {t("Remover")}
+                </button>
+              </div>
+            </div>
+            {!docPreenchido || !documentoValido(c.documento) ? (
+              <label className="block text-xs">
+                <span className="text-muted-foreground">
+                  {t("CPF ou CNPJ (necessário para concluir a venda)")}
+                </span>
+                <input
+                  value={c.documento ?? ""}
+                  onChange={(e) =>
+                    setR((x) => ({ ...x, cliente: { ...x.cliente, documento: e.target.value } }))
+                  }
+                  onBlur={(e) =>
+                    setR((x) => ({
+                      ...x,
+                      cliente: { ...x.cliente, documento: formatarDocumento(e.target.value) },
+                    }))
+                  }
+                  className={`mt-1 ${CAMPO} ${docPreenchido ? "border-error" : ""}`}
+                  data-testid="pdv-cliente-documento"
+                />
+                {docPreenchido ? (
+                  <span className="mt-1 block text-error-fg">{t("Documento inválido.")}</span>
+                ) : null}
+              </label>
+            ) : null}
           </div>
-        </div>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted px-3 py-1 text-xs text-muted-foreground"
+            data-testid="pdv-sem-identificacao"
+          >
+            <UserCircle className="size-3.5" aria-hidden />
+            {t("Sem identificação")}
+          </span>
+        )}
       </fieldset>
+
+      <CadastroClienteModal
+        open={cadastroAberto}
+        onOpenChange={setCadastroAberto}
+        retornoDoFoco={botaoMais}
+        onSalvo={(cliente, contactId) => setR((x) => ({ ...x, contact_id: contactId, cliente }))}
+      />
     </Coluna>
   );
 }
@@ -467,7 +598,11 @@ function ColunaVeiculo({
     return (
       <Coluna icone={Storefront} indice={1} titulo={t("Veículo comprado")}>
         <fieldset disabled={travado} className="space-y-3">
-          <FichaDoVeiculo v={r.veiculo} onChange={(v) => setR((x) => ({ ...x, veiculo: v }))} prefixo="pdv-compra" />
+          <FichaDoVeiculo
+            v={r.veiculo}
+            onChange={(v) => setR((x) => ({ ...x, veiculo: v }))}
+            prefixo="pdv-compra"
+          />
           <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
             <CampoDinheiro
               rotulo={t("Valor pago ao cliente")}
@@ -478,11 +613,15 @@ function ColunaVeiculo({
             <CampoDinheiro
               rotulo={t("Preço de anúncio (opcional)")}
               cents={r.veiculo.preco_venda_cents}
-              onChange={(c) => setR((x) => ({ ...x, veiculo: { ...x.veiculo, preco_venda_cents: c || null } }))}
+              onChange={(c) =>
+                setR((x) => ({ ...x, veiculo: { ...x.veiculo, preco_venda_cents: c || null } }))
+              }
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            {t("Ao concluir, o veículo entra no estoque. Sem preço de anúncio ele fica como reservado.")}
+            {t(
+              "Ao concluir, o veículo entra no estoque. Sem preço de anúncio ele fica como reservado.",
+            )}
           </p>
         </fieldset>
       </Coluna>
@@ -495,7 +634,10 @@ function ColunaVeiculo({
     .filter((v) =>
       !termo
         ? true
-        : [tituloDoVeiculo(v), v.codigo, v.placa ?? "", v.placa_final ?? "", v.cor ?? ""].join(" ").toLowerCase().includes(termo),
+        : [tituloDoVeiculo(v), v.codigo, v.placa ?? "", v.placa_final ?? "", v.cor ?? ""]
+            .join(" ")
+            .toLowerCase()
+            .includes(termo),
     );
   const capa = (v: VeiculoDoPdv) => {
     const c = (v.fotos ?? []).find((f) => urlsDasCapas[f]);
@@ -506,28 +648,45 @@ function ColunaVeiculo({
     <Coluna atalho="F3" icone={Storefront} indice={1} titulo={t("Veículos")}>
       <fieldset disabled={travado} className="space-y-3">
         {escolhido ? (
-          <div className="ds-entra overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs" data-testid="pdv-veiculo-escolhido">
+          <div
+            className="ds-entra overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs"
+            data-testid="pdv-veiculo-escolhido"
+          >
             <div className="aspect-[16/9] bg-muted">
               {capa(escolhido) ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={capa(escolhido)!} alt={tituloDoVeiculo(escolhido)} className="h-full w-full object-cover" />
+                <img
+                  src={capa(escolhido)!}
+                  alt={tituloDoVeiculo(escolhido)}
+                  className="h-full w-full object-cover"
+                />
               ) : null}
             </div>
             <div className="space-y-1 p-3 text-sm">
               <div className="font-medium">{tituloDoVeiculo(escolhido)}</div>
               <div className="text-xs text-muted-foreground">
-                {[escolhido.codigo, escolhido.km != null ? formatarKm(escolhido.km) : null, escolhido.cor, escolhido.placa]
+                {[
+                  escolhido.codigo,
+                  escolhido.km != null ? formatarKm(escolhido.km) : null,
+                  escolhido.cor,
+                  escolhido.placa,
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               </div>
               <div className="text-xs text-muted-foreground">
-                {t("Preço de tabela")}: <span className="font-semibold text-accent tabular-nums">{formatarPreco(escolhido.preco_cents, escolhido.moeda)}</span>
+                {t("Preço de tabela")}:{" "}
+                <span className="font-semibold text-accent tabular-nums">
+                  {formatarPreco(escolhido.preco_cents, escolhido.moeda)}
+                </span>
               </div>
               {!travado ? (
                 <button
                   type="button"
                   className="mt-1 rounded-full px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
-                  onClick={() => setR((x) => ({ ...x, veiculo_id: null, veiculo: { ...VEICULO_VAZIO } }))}
+                  onClick={() =>
+                    setR((x) => ({ ...x, veiculo_id: null, veiculo: { ...VEICULO_VAZIO } }))
+                  }
                 >
                   {t("Trocar de veículo")}
                 </button>
@@ -537,14 +696,17 @@ function ColunaVeiculo({
         ) : (
           <>
             <div className="relative">
-            <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder={t("Buscar no estoque por modelo, código ou placa…")}
-              className={`${CAMPO} pl-9`}
-              data-testid="pdv-busca-veiculo"
-            />
+              <MagnifyingGlass
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder={t("Buscar no estoque por modelo, código ou placa…")}
+                className={`${CAMPO} pl-9`}
+                data-testid="pdv-busca-veiculo"
+              />
             </div>
             {lista.length === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/80 p-6 text-center text-sm text-muted-foreground">
@@ -572,9 +734,13 @@ function ColunaVeiculo({
                       <div className="min-w-0 flex-1 space-y-0.5 p-2 text-sm">
                         <div className="truncate font-medium">{tituloDoVeiculo(v)}</div>
                         <div className="text-xs text-muted-foreground">
-                          {[v.codigo, v.km != null ? formatarKm(v.km) : null].filter(Boolean).join(" · ")}
+                          {[v.codigo, v.km != null ? formatarKm(v.km) : null]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </div>
-                        <div className="font-semibold text-accent tabular-nums">{formatarPreco(v.preco_cents, v.moeda)}</div>
+                        <div className="font-semibold text-accent tabular-nums">
+                          {formatarPreco(v.preco_cents, v.moeda)}
+                        </div>
                       </div>
                     </button>
                   </li>
@@ -599,16 +765,6 @@ function ColunaVeiculo({
         </div>
 
         <div className="border-t border-border/60 pt-3">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              className="size-4 accent-accent"
-              checked={Boolean(r.troca)}
-              onChange={(e) => setR((x) => ({ ...x, troca: e.target.checked ? { ...TROCA_VAZIA } : null }))}
-              data-testid="pdv-tem-troca"
-            />
-            {t("Cliente dá um veículo na troca")}
-          </label>
           {r.troca ? (
             <div className="ds-entra mt-3 space-y-2 rounded-xl border border-border/60 bg-muted/50 p-3">
               <FichaDoVeiculo
@@ -620,13 +776,20 @@ function ColunaVeiculo({
                 <CampoDinheiro
                   rotulo={t("Valor avaliado")}
                   cents={r.troca.valor_cents}
-                  onChange={(c) => setR((x) => ({ ...x, troca: x.troca ? { ...x.troca, valor_cents: c } : null }))}
+                  onChange={(c) =>
+                    setR((x) => ({ ...x, troca: x.troca ? { ...x.troca, valor_cents: c } : null }))
+                  }
                   testid="pdv-troca-valor"
                 />
                 <CampoDinheiro
                   rotulo={t("Saldo a quitar (financiamento)")}
                   cents={r.troca.quitacao_cents}
-                  onChange={(c) => setR((x) => ({ ...x, troca: x.troca ? { ...x.troca, quitacao_cents: c } : null }))}
+                  onChange={(c) =>
+                    setR((x) => ({
+                      ...x,
+                      troca: x.troca ? { ...x.troca, quitacao_cents: c } : null,
+                    }))
+                  }
                 />
               </div>
               <label className="flex items-center gap-2 text-xs">
@@ -634,7 +797,10 @@ function ColunaVeiculo({
                   type="checkbox"
                   checked={r.troca.entra_no_estoque}
                   onChange={(e) =>
-                    setR((x) => ({ ...x, troca: x.troca ? { ...x.troca, entra_no_estoque: e.target.checked } : null }))
+                    setR((x) => ({
+                      ...x,
+                      troca: x.troca ? { ...x.troca, entra_no_estoque: e.target.checked } : null,
+                    }))
                   }
                   className="size-4 accent-accent"
                 />
@@ -651,17 +817,29 @@ function ColunaVeiculo({
 // ---------------------------------------------------------------------------
 // Coluna 3 — pagamento
 
-/** Os blocos do painel, como no balcão: PIX, cartões, dinheiro e o resto. */
-const GRUPOS_DE_PAGAMENTO: { id: string; rotulo: string; formas: readonly FormaDePagamento[] }[] = [
-  { id: "pix", rotulo: "PIX", formas: ["pix", "transferencia"] },
-  { id: "cartoes", rotulo: "Cartões", formas: ["cartao_debito", "cartao_credito"] },
-  { id: "dinheiro", rotulo: "Dinheiro", formas: ["dinheiro"] },
-  {
-    id: "outras",
-    rotulo: "Outras formas",
-    formas: ["financiamento", "consorcio", "boleto", "cheque", "promissoria", "quitacao"],
-  },
-];
+interface VendedorDaOrg {
+  user_id: string;
+  role: string;
+  full_name: string | null;
+}
+
+/** Seção do painel: rótulo pequeno em cima, conteúdo embaixo. */
+function Secao({
+  titulo,
+  testid,
+  children,
+}: {
+  titulo: string;
+  testid?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2" data-testid={testid}>
+      {titulo && <h3 className="text-sm font-normal text-muted-foreground">{titulo}</h3>}
+      {children}
+    </section>
+  );
+}
 
 function ColunaPagamento({
   r,
@@ -669,21 +847,57 @@ function ColunaPagamento({
   travado,
   faltas,
   rodape,
+  usuarioId,
 }: {
   r: Rascunho;
   setR: (f: (r: Rascunho) => Rascunho) => void;
   travado: boolean;
   faltas: string[];
+  /** Nulo em tela pequena: lá o rodapé fica fora da coluna, preso embaixo da tela. */
   rodape: React.ReactNode;
+  usuarioId: string;
+  podeTrocarTipo: boolean;
+  onTrocarTipo: (tipo: TipoDeNegociacao) => void;
 }) {
   const t = useT();
   const resumo = resumoDaNegociacao(r);
   const formas = FORMAS_POR_TIPO[r.tipo];
   const venda = r.tipo === "venda";
+  const [contas, setContas] = React.useState<{ id: string; name: string }[]>([]);
+  const [erroContas, setErroContas] = React.useState(false);
+  React.useEffect(() => {
+    let ativo = true;
+    apiClient
+      .get<{ data: { id: string; name: string }[] }>("/api/v1/financeiro/catalogo/contas")
+      .then((r) => {
+        if (ativo) setContas(r.data);
+      })
+      .catch(() => {
+        if (ativo) setErroContas(true);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+  const [vendedores, setVendedores] = React.useState<VendedorDaOrg[] | null>(null);
+
+  React.useEffect(() => {
+    let vivo = true;
+    apiClient
+      .get<{ data: VendedorDaOrg[] }>("/api/v1/team/assignable")
+      .then((res) => vivo && setVendedores(res?.data ?? []))
+      .catch(() => vivo && setVendedores([]));
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   function adicionar(forma: FormaDePagamento) {
     const valor = Math.max(0, resumo.saldo_cents);
-    setR((x) => ({ ...x, pagamentos: [...x.pagamentos, { forma, valor_cents: valor, parcelas: 1 }] }));
+    setR((x) => ({
+      ...x,
+      pagamentos: [...x.pagamentos, { forma, valor_cents: valor, parcelas: 1 }],
+    }));
   }
   function mudar(i: number, p: Partial<PagamentoDaNegociacao>) {
     setR((x) => ({
@@ -692,7 +906,11 @@ function ColunaPagamento({
         if (j !== i) return atual;
         const novo = { ...atual, ...p };
         // Valor da parcela acompanha valor/parcelas, até o vendedor digitar outro (juros).
-        if (("valor_cents" in p || "parcelas" in p) && FORMAS_PARCELADAS.includes(novo.forma) && novo.parcelas > 1) {
+        if (
+          ("valor_cents" in p || "parcelas" in p) &&
+          FORMAS_PARCELADAS.includes(novo.forma) &&
+          novo.parcelas > 1
+        ) {
           novo.valor_parcela_cents = Math.round(novo.valor_cents / novo.parcelas);
         }
         return novo;
@@ -704,12 +922,17 @@ function ColunaPagamento({
     const parcelada = FORMAS_PARCELADAS.includes(p.forma);
     const comBanco = FORMAS_COM_BANCO.includes(p.forma);
     return (
-      <li key={i} className="ds-entra space-y-2 rounded-xl border border-border/60 bg-surface p-3 shadow-xs" data-testid={`pdv-pagamento-${i}`}>
+      <li
+        key={i}
+        className="ds-entra space-y-2 rounded-xl border border-border/60 bg-surface p-3 shadow-xs"
+        data-testid={`pdv-pagamento-${i}`}
+      >
         <div className="flex items-center justify-between gap-2">
           <select
             value={p.forma}
             onChange={(e) => mudar(i, { forma: e.target.value as FormaDePagamento })}
-            className="h-8 flex-1 rounded-full border border-border/80 bg-surface px-3 text-sm font-medium shadow-xs focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
+            aria-label={t("Forma de pagamento")}
+            className="h-8 min-w-0 flex-1 rounded-full border border-border/80 bg-surface px-3 text-sm font-medium shadow-xs focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:outline-hidden"
           >
             {formas.map((f) => (
               <option key={f} value={f}>
@@ -720,8 +943,11 @@ function ColunaPagamento({
           {!travado ? (
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-error-fg transition-colors hover:bg-error-bg"
-              onClick={() => setR((x) => ({ ...x, pagamentos: x.pagamentos.filter((_, j) => j !== i) }))}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-error-fg transition-colors hover:bg-error-bg"
+              onClick={() =>
+                setR((x) => ({ ...x, pagamentos: x.pagamentos.filter((_, j) => j !== i) }))
+              }
+              data-testid={`pdv-pagamento-${i}-remover`}
             >
               <Trash className="size-3.5" aria-hidden />
               {t("Remover")}
@@ -767,84 +993,370 @@ function ColunaPagamento({
               extra="col-span-2"
             />
           ) : null}
-          <Campo rotulo={t("Observação")} valor={p.observacao} onChange={(x) => mudar(i, { observacao: x })} extra="col-span-2" />
+          {seletorConta(p.conta_id ?? "", (v) => mudar(i, { conta_id: v }), "Conta do pagamento")}
+          <Campo
+            rotulo={t("Observação")}
+            valor={p.observacao}
+            onChange={(x) => mudar(i, { observacao: x })}
+            extra="col-span-2"
+          />
         </div>
       </li>
     );
   }
 
-  const grupos = GRUPOS_DE_PAGAMENTO.map((g) => ({ ...g, disponiveis: g.formas.filter((f) => formas.includes(f)) })).filter(
-    (g) => g.disponiveis.length > 0,
-  );
   const troco = Math.max(0, -resumo.saldo_cents);
+
+  // Mensagem do estado REAL da negociação: itens, pendências do cadastro e saldo.
   const situacao =
-    faltas.length > 0
-      ? { texto: t("Aguardando itens"), cor: "bg-muted text-muted-foreground" }
-      : resumo.saldo_cents > 0
-        ? { texto: `${t("Falta")} ${formatarPreco(resumo.saldo_cents)}`, cor: "bg-warning-bg text-warning-fg" }
-        : { texto: t("Pronto para finalizar"), cor: "bg-success-bg text-success-fg" };
+    resumo.total_cents <= 0 && faltas.length > 0
+      ? {
+          texto: venda ? t("Aguardando itens") : t("Informe o veículo para começar."),
+          cor: "bg-muted text-muted-foreground",
+        }
+      : faltas.length > 0
+        ? { texto: t(faltas[0]!), cor: "bg-warning-bg text-warning-fg" }
+        : resumo.saldo_cents > 0
+          ? {
+              texto: `${t("Pagamento pendente")} · ${t("falta")} ${formatarPreco(resumo.saldo_cents)}`,
+              cor: "bg-warning-bg text-warning-fg",
+            }
+          : resumo.saldo_cents < 0
+            ? {
+                texto: `${t("Passou do total")} · ${t("Troco")} ${formatarPreco(troco)}`,
+                cor: "bg-success-bg text-success-fg",
+              }
+            : { texto: t("Pronto para finalizar"), cor: "bg-success-bg text-success-fg" };
+
+  const vendedorAtual = r.vendedor_user_id ?? usuarioId;
+  const opcoesDeVendedor = [...(vendedores ?? [])];
+  if (!opcoesDeVendedor.some((v) => v.user_id === vendedorAtual)) {
+    opcoesDeVendedor.unshift({
+      user_id: vendedorAtual,
+      role: "",
+      full_name: vendedorAtual === usuarioId ? t("Você") : t("Vendedor"),
+    });
+  }
+
+  function seletorConta(valor: string, mudarConta: (v: string) => void, label: string) {
+    return (
+      <select
+        aria-label={label}
+        value={valor}
+        onChange={(e) => mudarConta(e.target.value)}
+        className="h-10 min-w-0 rounded-full border bg-muted px-3 text-xs"
+      >
+        <option value="">Selecione a conta</option>
+        {contas.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    );
+  }
+  function linhaDireta(forma: "pix" | "dinheiro") {
+    const indice = r.pagamentos.findIndex((p) => p.forma === forma);
+    const atual = r.pagamentos[indice];
+    function atualizar(valor: Partial<PagamentoDaNegociacao>) {
+      setR((x) => ({
+        ...x,
+        pagamentos:
+          indice < 0
+            ? [...x.pagamentos, { forma, valor_cents: 0, parcelas: 1, ...valor }]
+            : x.pagamentos.map((p, i) => (i === indice ? { ...p, ...valor } : p)),
+      }));
+    }
+    return (
+      <Secao key={forma} titulo={ROTULO_DA_FORMA[forma]} testid={`pdv-grupo-${forma}`}>
+        <div className="flex h-12 items-center overflow-hidden rounded-full border bg-muted/20">
+          <span className="border-r px-3 text-sm text-muted-foreground">R$</span>
+          <input
+            aria-label={ROTULO_DA_FORMA[forma]}
+            inputMode="decimal"
+            value={((atual?.valor_cents ?? 0) / 100).toLocaleString("pt-BR", {
+              minimumFractionDigits: 2,
+            })}
+            onChange={(e) => atualizar({ valor_cents: precoParaCentavos(e.target.value) ?? 0 })}
+            className="h-full w-0 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+          />
+          {seletorConta(
+            atual?.conta_id ?? "",
+            (v) => atualizar({ conta_id: v }),
+            `Conta ${ROTULO_DA_FORMA[forma]}`,
+          )}
+        </div>
+        {erroContas ? (
+          <p role="alert" className="text-xs text-destructive">
+            Não foi possível carregar as contas.
+          </p>
+        ) : !contas.length ? (
+          <a
+            className="text-xs underline"
+            href="/app/settings/tenant/financeiro"
+            target="_blank"
+            rel="noopener"
+          >
+            Cadastre uma conta financeira para receber.
+          </a>
+        ) : null}
+      </Secao>
+    );
+  }
+  const clienteIdentificado = r.cliente.nome.trim().length > 0;
 
   return (
-    <Coluna icone={Receipt} indice={2} titulo={venda ? t("Pagamento") : t("Como a loja paga")} rodape={rodape}>
-      <fieldset disabled={travado} className="space-y-4">
-        {grupos.map((g) => {
-          const doGrupo = r.pagamentos.map((p, i) => ({ p, i })).filter(({ p }) => g.formas.includes(p.forma));
-          return (
-            <div key={g.id} className="space-y-2" data-testid={`pdv-grupo-${g.id}`}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t(g.rotulo)}</span>
-                <div className="flex flex-wrap justify-end gap-1">
-                  {g.disponiveis.map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => adicionar(f)}
-                      className="inline-flex items-center gap-1 rounded-full border border-dashed border-border/80 px-2.5 py-1 text-xs transition-colors hover:border-accent/50 hover:bg-accent-soft hover:text-accent"
-                      data-testid={`pdv-forma-${f}`}
-                    >
-                      <Plus className="size-3" aria-hidden />
-                      {t(ROTULO_DA_FORMA[f])}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {doGrupo.length > 0 ? <ul className="space-y-2">{doGrupo.map(({ p, i }) => cartaoDoPagamento(p, i))}</ul> : null}
-            </div>
-          );
-        })}
+    <Coluna
+      icone={Receipt}
+      indice={2}
+      className="min-h-[32rem] lg:min-h-0"
+      titulo={venda ? t("Pagamento") : t("Como a loja paga")}
+      rodape={rodape}
+    >
+      <fieldset disabled={travado} className="space-y-3">
+        <Secao titulo={t("Vendedor")} testid="pdv-vendedor">
+          <select
+            value={vendedorAtual}
+            onChange={(e) => setR((x) => ({ ...x, vendedor_user_id: e.target.value }))}
+            aria-label={t("Vendedor")}
+            className={CAMPO}
+            data-testid="pdv-vendedor-select"
+          >
+            {opcoesDeVendedor.map((v) => (
+              <option key={v.user_id} value={v.user_id}>
+                {v.full_name?.trim() || t("Sem nome")}
+              </option>
+            ))}
+          </select>
+        </Secao>
 
-        {venda ? (
-          <div className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2 text-xs">
-            <span className="font-semibold">{t("Troca")}</span>
-            <span className={r.troca ? "font-semibold tabular-nums" : "text-muted-foreground"}>
-              {r.troca ? formatarPreco(resumo.troca_liquida_cents) : t("Sem troca")}
-            </span>
+        {venda && (
+          <Secao titulo={t("Tipo de Venda")} testid="pdv-tipo">
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Tipo de Venda">
+              {(
+                [
+                  ["normal", "Normal"],
+                  ["crediario", "Crediário"],
+                  ["reserva", "Reserva"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={(r.modalidade ?? "normal") === id}
+                  onClick={() =>
+                    setR((x) => ({
+                      ...x,
+                      modalidade: id,
+                      pagamentos:
+                        id === "crediario"
+                          ? x.pagamentos
+                          : [...x.pagamentos.filter((p) => p.forma !== "crediario")],
+                    }))
+                  }
+                  className={`rounded-full border px-2 py-2 text-sm shadow-xs ${(r.modalidade ?? "normal") === id ? "border-accent bg-accent text-accent-foreground" : "bg-surface text-muted-foreground"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {r.modalidade === "reserva" && (
+              <p className="text-xs text-muted-foreground">
+                Reserva salva como negociação em aberto, sem concluir a venda.
+              </p>
+            )}
+          </Secao>
+        )}
+        {(["pix", "dinheiro"] as const).slice(0, 1).map((forma) => linhaDireta(forma))}
+        <Secao titulo="Cartões" testid="pdv-grupo-cartoes">
+          <ul className="space-y-2">
+            {r.pagamentos.map((p, i) =>
+              p.forma === "cartao_credito" || p.forma === "cartao_debito"
+                ? cartaoDoPagamento(p, i)
+                : null,
+            )}
+          </ul>
+          <button
+            type="button"
+            onClick={() => adicionar("cartao_credito")}
+            className="flex w-full items-center justify-center gap-2 rounded-full border py-1.5 text-sm"
+            data-testid="pdv-forma-cartao_credito"
+          >
+            <Plus className="size-3" />
+            Adicionar Cartão
+          </button>
+        </Secao>
+        {linhaDireta("dinheiro")}
+        {r.modalidade === "crediario" && (
+          <Secao titulo="Crediário" testid="pdv-crediario">
+            {r.pagamentos.map((p, i) =>
+              p.forma === "crediario" ? (
+                <div key={i} className="space-y-3 rounded-2xl border p-3">
+                  <p className="text-sm">
+                    Saldo a parcelar: <strong>{formatarPreco(p.valor_cents)}</strong>
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Campo
+                      rotulo="Número de Parcelas"
+                      tipo="number"
+                      valor={p.parcelas}
+                      onChange={(v) =>
+                        mudar(i, { parcelas: Math.max(1, Math.min(120, Number(v) || 1)) })
+                      }
+                    />
+                    <Campo
+                      rotulo="Primeiro Vencimento"
+                      tipo="date"
+                      valor={p.primeiro_vencimento}
+                      onChange={(v) => mudar(i, { primeiro_vencimento: v })}
+                    />
+                    <Campo
+                      rotulo="Juros sobre o saldo (%)"
+                      tipo="number"
+                      valor={(p.juros_bps ?? 0) / 100}
+                      onChange={(v) =>
+                        mudar(i, {
+                          juros_bps: Math.max(0, Math.min(10000, Math.round(Number(v) * 100))),
+                        })
+                      }
+                    />
+                  </div>
+                  {seletorConta(
+                    p.conta_id ?? "",
+                    (v) => mudar(i, { conta_id: v }),
+                    "Conta do crediário",
+                  )}
+                  <p className="rounded-xl bg-accent-soft p-3 text-sm">
+                    {p.parcelas}x · Total com juros:{" "}
+                    {formatarPreco(Math.round(p.valor_cents * (1 + (p.juros_bps ?? 0) / 10000)))}
+                  </p>
+                </div>
+              ) : null,
+            )}
+          </Secao>
+        )}
+        <details>
+          <summary className="cursor-pointer text-xs text-muted-foreground">
+            Outras formas de pagamento
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {formas
+              .filter(
+                (f) =>
+                  !["pix", "dinheiro", "cartao_credito", "cartao_debito", "crediario"].includes(f),
+              )
+              .map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => adicionar(f)}
+                  className="rounded-full border px-3 py-1 text-xs"
+                >
+                  + {ROTULO_DA_FORMA[f]}
+                </button>
+              ))}
           </div>
+          <ul className="mt-2 space-y-2">
+            {r.pagamentos.map((p, i) =>
+              !["pix", "dinheiro", "cartao_credito", "cartao_debito", "crediario"].includes(p.forma)
+                ? cartaoDoPagamento(p, i)
+                : null,
+            )}
+          </ul>
+        </details>
+        {venda ? (
+          <Secao titulo={t("Troca")} testid="pdv-troca">
+            {r.troca ? (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface px-3 py-2 text-xs shadow-xs">
+                <div className="min-w-0">
+                  <div className="truncate font-medium">
+                    {r.troca.modelo.trim() || t("Veículo da troca")}
+                  </div>
+                  <div className="text-muted-foreground tabular-nums">
+                    {t("Abate")} {formatarPreco(resumo.troca_liquida_cents)} ·{" "}
+                    {t("dados do veículo na coluna do meio")}
+                  </div>
+                </div>
+                {!travado ? (
+                  <button
+                    type="button"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-error-fg transition-colors hover:bg-error-bg"
+                    onClick={() => setR((x) => ({ ...x, troca: null }))}
+                    data-testid="pdv-troca-remover"
+                  >
+                    <Trash className="size-3.5" aria-hidden />
+                    {t("Remover")}
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={!clienteIdentificado}
+                  onClick={() => setR((x) => ({ ...x, troca: { ...TROCA_VAZIA } }))}
+                  className="flex w-full items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+                  data-testid="pdv-adicionar-troca"
+                >
+                  <Plus className="size-3" aria-hidden />
+                  {clienteIdentificado ? t("Adicionar troca") : t("Selecione cliente")}
+                </button>
+                {!clienteIdentificado ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("Identifique o cliente para adicionar uma troca.")}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </Secao>
         ) : null}
 
-        <div className="grid grid-cols-2 divide-x divide-border/60 rounded-xl border border-border/60 bg-muted/40 text-center">
-          <div className="p-2">
-            <div className="text-[10px] tracking-wider text-muted-foreground uppercase">{t("Pago")}</div>
-            <div className="text-sm font-semibold tabular-nums">{formatarPreco(resumo.pagamentos_cents)}</div>
+        <Secao titulo="" testid="pdv-resumo">
+          <div className="grid grid-cols-2 divide-x divide-border/60 rounded-full border border-border/60 text-center">
+            <div className="p-2">
+              <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                {t("Pago")}
+              </div>
+              <div className="text-sm font-semibold tabular-nums" data-testid="pdv-pago">
+                {formatarPreco(
+                  r.pagamentos
+                    .filter((p) => p.forma !== "crediario")
+                    .reduce((a, p) => a + p.valor_cents, 0),
+                )}
+              </div>
+            </div>
+            <div className="p-2">
+              <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                {t("Troco")}
+              </div>
+              <div className="text-sm font-semibold tabular-nums" data-testid="pdv-troco">
+                {formatarPreco(troco)}
+              </div>
+            </div>
           </div>
-          <div className="p-2">
-            <div className="text-[10px] tracking-wider text-muted-foreground uppercase">{t("Troco")}</div>
-            <div className="text-sm font-semibold tabular-nums">{formatarPreco(troco)}</div>
+          <div
+            role="status"
+            data-testid="pdv-situacao"
+            className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-center text-xs font-medium transition-colors ${situacao.cor}`}
+          >
+            {faltas.length === 0 && resumo.saldo_cents <= 0 ? (
+              <CheckCircle className="size-4 shrink-0" weight="duotone" aria-hidden />
+            ) : null}
+            {situacao.texto}
           </div>
-        </div>
+        </Secao>
 
-        <div className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-center text-xs font-medium transition-colors ${situacao.cor}`}>
-          {faltas.length === 0 && resumo.saldo_cents <= 0 ? <CheckCircle className="size-4" weight="duotone" aria-hidden /> : null}
-          {situacao.texto}
-        </div>
-
-        <label className="block text-xs">
-          <span className="text-muted-foreground">{venda ? t("Observações da Venda") : t("Observações da Compra")}</span>
+        <label className="block">
+          <span className="text-sm font-normal text-muted-foreground">
+            {venda ? t("Observações da Venda") : t("Observações da Compra")}
+          </span>
           <textarea
             value={r.observacoes ?? ""}
             onChange={(e) => setR((x) => ({ ...x, observacoes: e.target.value }))}
+            placeholder="Observações adicionais sobre a venda..."
             rows={3}
-            className="mt-1 w-full rounded-xl border border-border/80 bg-surface px-3.5 py-2 text-sm shadow-xs transition-colors focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20"
+            className="mt-2 w-full rounded-3xl border border-border/80 bg-surface px-3.5 py-2 text-sm shadow-xs transition-colors focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:outline-hidden"
+            data-testid="pdv-observacoes"
           />
         </label>
       </fieldset>
@@ -904,12 +1416,20 @@ function Historico({
             </thead>
             <tbody>
               {lista.map((n) => (
-                <tr key={n.id} className="border-t border-border/60 transition-colors hover:bg-muted/50" data-testid={`pdv-historico-${n.numero}`}>
-                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{String(n.numero).padStart(4, "0")}</td>
+                <tr
+                  key={n.id}
+                  className="border-t border-border/60 transition-colors hover:bg-muted/50"
+                  data-testid={`pdv-historico-${n.numero}`}
+                >
+                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                    {String(n.numero).padStart(4, "0")}
+                  </td>
                   <td className="px-3 py-2">{n.tipo === "venda" ? t("Venda") : t("Compra")}</td>
                   <td className="px-3 py-2 font-medium">{n.cliente?.nome || "—"}</td>
                   <td className="px-3 py-2">{tituloDoVeiculoDaNegociacao(n.veiculo) || "—"}</td>
-                  <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatarPreco(resumoDaNegociacao(n).total_cents, n.moeda)}</td>
+                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                    {formatarPreco(resumoDaNegociacao(n).total_cents, n.moeda)}
+                  </td>
                   <td className="px-3 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -926,8 +1446,12 @@ function Historico({
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {new Date(n.concluida_em ?? n.created_at).toLocaleDateString(tagDeIdioma)}
                   </td>
-                  <td className="space-x-2 whitespace-nowrap px-3 py-2 text-right">
-                    <button type="button" className="rounded-full px-2 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft" onClick={() => abrir(n)}>
+                  <td className="space-x-2 px-3 py-2 text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      className="rounded-full px-2 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
+                      onClick={() => abrir(n)}
+                    >
                       {n.status === "rascunho" ? t("Continuar") : t("Ver")}
                     </button>
                     {n.status !== "cancelada" ? (
@@ -960,12 +1484,14 @@ export function PdvClient({
   negociacoesIniciais,
   podeNegociar,
   titulo,
+  usuarioId,
 }: {
   estoque: VeiculoDoPdv[];
   urlsDasCapas: Record<string, string>;
   negociacoesIniciais: Negociacao[];
   podeNegociar: boolean;
   titulo: string;
+  usuarioId: string;
 }) {
   const t = useT();
   const [aba, setAba] = React.useState<Aba>("venda");
@@ -976,7 +1502,26 @@ export function PdvClient({
   const [salvando, setSalvando] = React.useState(false);
 
   const travado = !podeNegociar || (aberta !== null && aberta.status !== "rascunho");
-  const setR = React.useCallback((f: (r: Rascunho) => Rascunho) => setRascunho((x) => f(x)), []);
+  const setR = React.useCallback(
+    (f: (r: Rascunho) => Rascunho) =>
+      setRascunho((x) => {
+        const novo = f(x);
+        if (novo.modalidade === "crediario") {
+          const anteriores = novo.pagamentos.filter((p) => p.forma !== "crediario");
+          const saldo = Math.max(
+            0,
+            resumoDaNegociacao({ ...novo, pagamentos: anteriores }).saldo_cents,
+          );
+          const credito = novo.pagamentos.find((p) => p.forma === "crediario");
+          novo.pagamentos = [
+            ...anteriores,
+            { forma: "crediario", parcelas: 1, ...credito, valor_cents: saldo },
+          ];
+        }
+        return novo;
+      }),
+    [],
+  );
   const resumo = resumoDaNegociacao(r);
   const faltas = pendenciasParaConcluir(r);
 
@@ -1022,6 +1567,10 @@ export function PdvClient({
   }
 
   async function finalizar() {
+    if (r.modalidade === "reserva") {
+      await salvarRascunho();
+      return;
+    }
     if (faltas.length > 0) {
       toast.error(t(faltas[0]!));
       return;
@@ -1033,12 +1582,19 @@ export function PdvClient({
       return;
     }
     try {
-      const res = await apiClient.post<{ data: Negociacao }>(`/api/v1/pdv/negociacoes/${n.id}/concluir`, {});
+      const res = await apiClient.post<{ data: Negociacao }>(
+        `/api/v1/pdv/negociacoes/${n.id}/concluir`,
+        {},
+      );
       guardar(res.data);
       if (res.data.tipo === "venda" && res.data.veiculo_id) {
         setEstoque((lista) => lista.filter((v) => v.id !== res.data.veiculo_id));
       }
-      toast.success(res.data.tipo === "venda" ? t("Venda concluída!") : t("Compra concluída! O veículo entrou no estoque."));
+      toast.success(
+        res.data.tipo === "venda"
+          ? t("Venda concluída!")
+          : t("Compra concluída! O veículo entrou no estoque."),
+      );
       window.open(`/api/v1/pdv/negociacoes/${n.id}/contrato`, "_blank", "noopener");
     } catch (e) {
       showApiError(e);
@@ -1049,9 +1605,13 @@ export function PdvClient({
 
   async function cancelar() {
     if (!aberta) return;
-    if (!window.confirm(t("Cancelar esta negociação? Ela continua no histórico como cancelada."))) return;
+    if (!window.confirm(t("Cancelar esta negociação? Ela continua no histórico como cancelada.")))
+      return;
     try {
-      const res = await apiClient.patch<{ data: Negociacao }>(`/api/v1/pdv/negociacoes/${aberta.id}`, { acao: "cancelar" });
+      const res = await apiClient.patch<{ data: Negociacao }>(
+        `/api/v1/pdv/negociacoes/${aberta.id}`,
+        { acao: "cancelar" },
+      );
       guardar(res.data);
       toast.success(t("Negociação cancelada."));
       nova(r.tipo);
@@ -1066,24 +1626,43 @@ export function PdvClient({
     { id: "historico", rotulo: t("Histórico") },
   ];
 
+  const telaLarga = useTelaLarga();
   const rodapeDoPagamento =
     aba !== "historico" ? (
       <footer className="bg-accent text-accent-foreground" data-testid="pdv-rodape">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div data-testid="pdv-saldo" className="min-w-0">
-            <div className="text-[10px] tracking-wider uppercase opacity-90">{r.tipo === "venda" ? t("Total") : t("Valor da compra")}</div>
-            <div className="text-xl leading-tight font-bold tabular-nums">{formatarPreco(resumo.total_cents)}</div>
+            <div className="text-[10px] tracking-wider uppercase opacity-90">
+              {r.tipo === "venda" ? t("Total") : t("Valor da compra")}
+            </div>
+            <div className="text-xl leading-tight font-bold tabular-nums">
+              {formatarPreco(resumo.total_cents)}
+            </div>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {aberta?.status === "rascunho" && podeNegociar ? (
-              <Button variant="ghost" size="sm" onClick={cancelar} disabled={salvando} className="rounded-full text-accent-foreground hover:bg-white/15 hover:text-accent-foreground">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={cancelar}
+                disabled={salvando}
+                className="rounded-full text-accent-foreground hover:bg-white/15 hover:text-accent-foreground"
+              >
                 {t("Cancelar")}
               </Button>
             ) : null}
             {!travado ? (
               <>
-                <Button variant="ghost" size="sm" onClick={salvarRascunho} disabled={salvando} className="rounded-full text-accent-foreground hover:bg-white/15 hover:text-accent-foreground" data-testid="pdv-salvar">
-                  {t("Salvar rascunho")}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={salvarRascunho}
+                  disabled={salvando}
+                  className="rounded-full text-accent-foreground hover:bg-white/15 hover:text-accent-foreground"
+                  data-testid="pdv-salvar"
+                >
+                  <span className="sr-only">{t("Salvar rascunho")}</span>
+                  <FileText className="size-4" aria-hidden />
                 </Button>
                 <Button
                   onClick={finalizar}
@@ -1092,17 +1671,16 @@ export function PdvClient({
                   className="rounded-full bg-white px-5 font-semibold text-accent shadow-xs hover:bg-white/90"
                   data-testid="pdv-finalizar"
                 >
-                  {r.tipo === "venda" ? t("Finalizar") : t("Finalizar compra")}
+                  {r.modalidade === "reserva"
+                    ? t("Salvar reserva")
+                    : r.tipo === "venda"
+                      ? t("Finalizar")
+                      : t("Finalizar compra")}
                 </Button>
               </>
             ) : null}
           </div>
         </div>
-        {!travado && faltas.length > 0 ? (
-          <div className="px-4 pb-2 text-xs opacity-90" data-testid="pdv-pendencias">
-            {t("Falta")}: {faltas.map(t).join(" · ")}
-          </div>
-        ) : null}
       </footer>
     ) : null;
 
@@ -1111,7 +1689,7 @@ export function PdvClient({
       <header className="ds-entra flex flex-wrap items-center gap-3 border-b border-border/60 bg-surface px-4 py-2.5">
         <a
           href="/app"
-          className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent-soft hover:text-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent-soft hover:text-accent focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:outline-hidden"
         >
           <CaretLeft className="size-4" aria-hidden />
           {t("Voltar")}
@@ -1130,7 +1708,8 @@ export function PdvClient({
         </span>
         {aberta ? (
           <span className="text-xs text-muted-foreground tabular-nums">
-            {r.tipo === "venda" ? t("Venda") : t("Compra")} #{String(aberta.numero).padStart(4, "0")}
+            {r.tipo === "venda" ? t("Venda") : t("Compra")} #
+            {String(aberta.numero).padStart(4, "0")}
           </span>
         ) : null}
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -1145,20 +1724,33 @@ export function PdvClient({
                 <FileText className="size-3.5" aria-hidden />
                 {aberta.status === "concluida" ? t("Imprimir contrato") : t("Prévia do contrato")}
               </a>
-              <button type="button" className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft" onClick={() => nova(r.tipo)}>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
+                onClick={() => nova(r.tipo)}
+              >
                 <Plus className="size-3.5" aria-hidden />
                 {t("Nova negociação")}
               </button>
             </>
           ) : null}
-          <div className="flex gap-0.5 rounded-full border border-border/80 bg-muted p-1" role="tablist">
+          <div
+            className="flex gap-0.5 rounded-full border border-border/80 bg-muted p-1"
+            role="tablist"
+          >
             {abas.map((a) => (
               <button
                 key={a.id}
                 type="button"
                 role="tab"
                 aria-selected={aba === a.id}
-                onClick={() => (a.id === "historico" ? setAba("historico") : a.id !== r.tipo || aberta ? nova(a.id) : setAba(a.id))}
+                onClick={() =>
+                  a.id === "historico"
+                    ? setAba("historico")
+                    : a.id !== r.tipo || aberta
+                      ? nova(a.id)
+                      : setAba(a.id)
+                }
                 className={`rounded-full px-3.5 py-1 text-xs font-medium transition-colors ${aba === a.id ? "bg-accent text-accent-foreground shadow-xs" : "text-muted-foreground hover:bg-surface hover:text-foreground"}`}
                 data-testid={`pdv-aba-${a.id}`}
               >
@@ -1176,10 +1768,26 @@ export function PdvClient({
       ) : (
         <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)] lg:overflow-hidden">
           <ColunaCliente r={r} setR={setR} travado={travado} />
-          <ColunaVeiculo r={r} setR={setR} estoque={estoque} urlsDasCapas={urlsDasCapas} travado={travado} />
-          <ColunaPagamento r={r} setR={setR} travado={travado} faltas={faltas} rodape={rodapeDoPagamento} />
+          <ColunaVeiculo
+            r={r}
+            setR={setR}
+            estoque={estoque}
+            urlsDasCapas={urlsDasCapas}
+            travado={travado}
+          />
+          <ColunaPagamento
+            r={r}
+            setR={setR}
+            travado={travado}
+            faltas={faltas}
+            rodape={telaLarga ? rodapeDoPagamento : null}
+            usuarioId={usuarioId}
+            podeTrocarTipo={aberta === null}
+            onTrocarTipo={nova}
+          />
         </div>
       )}
+      {!telaLarga ? <div className="shrink-0">{rodapeDoPagamento}</div> : null}
     </div>
   );
 }

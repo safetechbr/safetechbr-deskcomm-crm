@@ -70,6 +70,18 @@ export function SidebarContent({
   const [gruposAbertos, setGruposAbertos] = useState<Set<string>>(
     () => new Set([GRUPO_SEMPRE_ABERTO]),
   );
+  const [itemClicado, setItemClicado] = useState<string | null>(null);
+  // Um destino pode aparecer nas Ações rápidas e no seu grupo original.
+  // Só uma ocorrência visível recebe o destaque; o clique escolhe qual delas.
+  const candidatosAtivos = grupos
+    .filter(({ group }) => collapsed || gruposAbertos.has(group.id))
+    .flatMap(({ group, items }) => items
+      .filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
+      .map((item) => ({ chave: `${group.id}:${item.href}`, href: item.href })))
+    .sort((a, b) => b.href.length - a.href.length);
+  const destinoMaisEspecifico = candidatosAtivos[0]?.href;
+  const itemAtivo = candidatosAtivos.find((item) => item.chave === itemClicado && item.href === destinoMaisEspecifico)?.chave
+    ?? candidatosAtivos[0]?.chave;
   function toggleGrupo(id: string) {
     setGruposAbertos((prev) => {
       const next = new Set(prev);
@@ -153,6 +165,12 @@ export function SidebarContent({
           collapsed ? "justify-center" : "justify-start",
         )}
       >
+        {/* A marca é a porta da tela inicial (Dashboard): não há item de menu para ela. */}
+        <Link
+          href="/app/dashboard"
+          aria-label={t("Ir para o Dashboard")}
+          className="flex min-w-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
         {(logo || logoEscuro) && !collapsed ? (
           // Sem arte própria para o escuro, preserva a proteção de contraste.
           <div
@@ -236,6 +254,7 @@ export function SidebarContent({
             {[...nome][0]?.toUpperCase() ?? brand.initial}
           </span>
         )}
+        </Link>
         {/* Issue #2722 — o controle de recolher mora no ALTO, como no
             mercado: na linha da logo, à direita, quando a barra está aberta. */}
         {showCollapseControl && !collapsed && (
@@ -347,7 +366,8 @@ export function SidebarContent({
                   className="space-y-1"
                 >
                   {items.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                    const chaveDoItem = `${group.id}:${item.href}`;
+                    const isActive = itemAtivo === chaveDoItem;
                     const Icon = item.icon;
                     // O atalho "CRM principal" das Ações rápidas é só porta: a lista dos
                     // funis fica no item original, dentro do menu CRM.
@@ -361,7 +381,13 @@ export function SidebarContent({
                           {...(item.novaAba ? { target: "_blank", rel: "noopener" } : {})}
                           title={collapsed ? t(item.label) : undefined}
                           aria-current={isActive ? "page" : undefined}
-                          onClick={onNavigate}
+                          onClick={(event) => {
+                            if (!item.novaAba && !event.defaultPrevented && event.button === 0 &&
+                                !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+                              setItemClicado(chaveDoItem);
+                            }
+                            onNavigate?.();
+                          }}
                           className={cn(
                             "relative flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-[background-color,color,box-shadow] duration-base ease-out-slow",
                             isActive
@@ -567,7 +593,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
         // `duration-base` em vez do `duration-200` literal: 200ms é o mesmo
         // número, mas vindo de `--duration-base`. A Lei de movimento fecha a
         // tabela de durações, e número solto é o que a faz apodrecer.
-        "sticky top-[var(--faixas-de-cima,0px)] z-30 flex h-[calc(100dvh-var(--faixas-de-cima,0px))] shrink-0 flex-col border-r border-border/60 bg-background transition-[width] duration-base",
+        "app-sidebar sticky top-[var(--faixas-de-cima,0px)] z-30 flex h-[calc(100dvh-var(--faixas-de-cima,0px))] shrink-0 flex-col border-r border-border/60 bg-background transition-[width] duration-base",
         collapsed ? "w-16" : "w-60",
       )}
     >

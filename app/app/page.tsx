@@ -1,14 +1,8 @@
 import { redirect } from "next/navigation";
-import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
-import { homeDaInterface } from "@/lib/navigation/interface";
+import { requireAuth } from "@/lib/auth/server";
+
+/** A tela inicial é o Dashboard; o logo da barra volta para ela. */
 export default async function AppHome() {
-  const user = await requireAuth();
-  const org = await resolveActiveOrg(user);
-  redirect(
-    homeDaInterface(
-      org?.interface_settings,
-      user.is_platform_admin && !user.support,
-      org?.role ?? null,
-    ),
-  );
+  await requireAuth();
+  redirect("/app/dashboard");
 }

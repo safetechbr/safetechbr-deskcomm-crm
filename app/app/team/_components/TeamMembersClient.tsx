@@ -1,6 +1,7 @@
 "use client";
 
 import { MemberInterfaceDialog } from "@/components/team/MemberInterfaceDialog";
+import { MemberPasswordDialog } from "@/components/team/MemberPasswordDialog";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -59,6 +60,7 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
   const reativar = useReactivateMember();
 
   const [interfaceMember, setInterfaceMember] = useState<TeamMember | null>(null);
+  const [passwordMember, setPasswordMember] = useState<TeamMember | null>(null);
   const [revokeDialog, setRevokeDialog] = useState<TeamMember | null>(null);
 
   if (isLoading) {
@@ -97,6 +99,7 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                     {m.full_name ?? m.email ?? m.user_id.slice(0, 8)}
                   </div>
                   {m.email ? <div className="text-xs text-muted-foreground">{m.email}</div> : null}
+                  {m.username ? <div className="text-xs text-muted-foreground">{t("Login")}: {m.username}</div> : null}
                 </TableCell>
                 <TableCell className="max-md:p-0">
                   {canManage && m.user_id !== currentUserId ? (
@@ -183,6 +186,7 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {m.username && !m.revoked_at ? <DropdownMenuItem onClick={() => setPasswordMember(m)}>{t("Definir senha")}</DropdownMenuItem> : null}
                           {/*
                             Revogar e reativar são exclusivos: oferecer os dois
                             na mesma linha convidaria ao clique errado. Sem o
@@ -225,6 +229,7 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
           onClose={() => setInterfaceMember(null)}
         />
       )}
+      {passwordMember && <MemberPasswordDialog member={passwordMember} onClose={() => setPasswordMember(null)} />}
       <Dialog open={!!revokeDialog} onOpenChange={(o) => !o && setRevokeDialog(null)}>
         <DialogContent>
           <DialogHeader>

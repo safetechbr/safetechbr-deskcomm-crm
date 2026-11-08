@@ -27,6 +27,7 @@ import { ThemeProvider } from "@/lib/theme";
 import { Providers } from "./providers";
 import { PublicEnvScript } from "./public-env-script";
 import "./globals.css";
+import "./interface-editorial.css";
 
 // Fontes versionadas em app/fonts/ (origem e licença no README de lá): o
 // next/font/google as baixava durante o build, e o build caía quando o Google
@@ -53,7 +54,9 @@ const atkinson = localFont({
 // cantos suaves, com x-height alto que segura bem 13–14px em tela de operação.
 // Atkinson segue logo atrás na pilha (`--font-sans`) como rede de segurança.
 const jakarta = localFont({
-  src: [{ path: "./fonts/plus-jakarta-sans-200-800-latin.woff2", weight: "200 800", style: "normal" }],
+  src: [
+    { path: "./fonts/plus-jakarta-sans-200-800-latin.woff2", weight: "200 800", style: "normal" },
+  ],
   display: "swap",
   variable: "--font-jakarta",
 });
@@ -342,6 +345,7 @@ async function MarcaDosClientComponents({ children }: { children: React.ReactNod
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
+      data-interface="editorial"
       lang="pt-BR"
       data-theme="light"
       suppressHydrationWarning

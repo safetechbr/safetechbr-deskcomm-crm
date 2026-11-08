@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { loginVendedorSchema } from "./login-vendedor";
 
 export const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
+  email: z.string().trim().toLowerCase().pipe(z.union([z.string().email(), loginVendedorSchema])),
   password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres"),
 });
 

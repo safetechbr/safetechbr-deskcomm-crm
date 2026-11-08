@@ -135,6 +135,21 @@ describe("grupo settings/api-tokens (admin)", () => {
 // team — read manager+ (nota 7), write admin
 // ---------------------------------------------------------------------------
 describe("grupo team (read manager+, write admin)", () => {
+  it("POST /team/create nega 403 para gerente antes de criar conta", async () => {
+    session("manager");
+    const { POST } = await import("@/app/api/v1/team/create/route");
+    const res = await POST(req("/api/v1/team/create", { method: "POST", body: "{}" }));
+    expect(res.status).toBe(403);
+    expect(await errorCode(res)).toBe("forbidden_role");
+  });
+
+  it("PATCH /team/[user_id]/password nega 403 para atendente", async () => {
+    session("agent");
+    const { PATCH } = await import("@/app/api/v1/team/[user_id]/password/route");
+    const res = await PATCH(req("/api/v1/team/x/password", { method: "PATCH", body: "{}" }), params({ user_id: USER_ID }));
+    expect(res.status).toBe(403);
+    expect(await errorCode(res)).toBe("forbidden_role");
+  });
   it("GET /team nega 403 para agent", async () => {
     session("agent");
     const { GET } = await import("@/app/api/v1/team/route");

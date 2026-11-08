@@ -80,7 +80,7 @@ describe("Sidebar agrupado", () => {
       .filter(Boolean);
     // Organização não tem título aqui: seu hub (Configurações) vive no rodapé
     // fixo, fora da área que rola — medido, ele caía fora da dobra até em 1080px.
-    expect(titulos).toEqual(["Ações rápidas", "Vendas", "Contatos", "Estoque", "Atendimento", "CRM", "Agente de IA", "Canais", "Análise"]);
+    expect(titulos).toEqual(["Ações rápidas", "Vendas", "Contatos", "Estoque", "Atendimento", "CRM", "Agente de IA", "Canais", "Análise", "Financeiro"]);
   });
 
   it("leva às Etapas do funil pelo CRM, e não por Configurações", () => {
@@ -205,11 +205,29 @@ describe("Sidebar agrupado", () => {
     expect(screen.getByRole("link", { name: /^Inbox/ })).toBeTruthy();
   });
 
-  it("marca a rota atual com aria-current", () => {
+  it("destaca somente a ocorrência clicada, mesmo com atalhos para a mesma rota", () => {
     comoPapel("admin");
     render(<Sidebar collapsed={false} />);
     abrirTodosOsMenus();
-    expect(screen.getByRole("link", { name: /^Inbox/ })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: /Central de conversas/ })).toHaveAttribute("aria-current", "page");
+    const inbox = screen.getByRole("link", { name: /^Inbox/ });
+    const atalho = screen.getByRole("link", { name: /Central de conversas/ });
+    expect(screen.getAllByRole("link", { current: "page" })).toEqual([atalho]);
+    fireEvent.click(inbox);
+    expect(screen.getAllByRole("link", { current: "page" })).toEqual([inbox]);
+    expect(atalho).not.toHaveClass("bg-accent");
+    fireEvent.click(atalho);
+    expect(screen.getAllByRole("link", { current: "page" })).toEqual([atalho]);
+    expect(inbox).not.toHaveClass("bg-accent");
+  });
+
+  it("mantém um único destaque com a barra recolhida e ao fechar o grupo ativo", () => {
+    comoPapel("admin");
+    const { rerender } = render(<Sidebar collapsed={false} />);
+    abrirTodosOsMenus();
+    fireEvent.click(screen.getByRole("link", { name: /^Inbox/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Atendimento" }));
+    expect(screen.getAllByRole("link", { current: "page" })).toEqual([screen.getByRole("link", { name: /Central de conversas/ })]);
+    rerender(<Sidebar collapsed />);
+    expect(screen.getAllByRole("link", { current: "page" })).toHaveLength(1);
   });
 });

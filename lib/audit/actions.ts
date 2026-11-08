@@ -93,6 +93,9 @@ export const AUDIT_ACTIONS = [
    */
   "org.interface_changed",
   "member.accepted",
+  "negociacao_veiculo.crediario_updated",
+  "member.created",
+  "member.password_changed",
   "member.role_changed",
   "member.revoked",
   // O inverso de `member.revoked`. Auditável pelo mesmo motivo que ela: a

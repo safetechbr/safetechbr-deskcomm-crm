@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useBlocoRecolhivel } from "@/hooks/inbox/useBlocoRecolhivel";
+import { CaretDown, CaretRight } from "@/lib/ui/icons";
 import { useSendMessage } from "@/hooks/inbox/useSendMessage";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
@@ -40,43 +42,52 @@ const MODOS: Array<{ id: ModoDeEnvio; rotulo: string }> = [
 const PAUSA_ENTRE_ITENS_MS = 1500;
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const CHAVE_RECOLHIDO = "deskcomm:inbox:estoque-da-conversa:recolhido";
+
 /**
- * "Estoque" no compositor: escolhe o veículo e envia fotos + ficha em um clique.
+ * "Estoque" no painel lateral da conversa: bloco recolhível (recolhido de
+ * fábrica) com a lista de veículos disponíveis e o envio em um clique.
  *
  * Não existe caminho de envio novo: a rota `preparar-envio` só copia as mídias
  * para a pasta da conversa e devolve a lista; cada item sai por
  * `useSendMessage` (`/api/v1/messages`), então canal, janela de 24 h, opt-out e
- * limites valem como em qualquer mensagem.
+ * limites valem como em qualquer mensagem. Os dados só são buscados com o
+ * bloco aberto.
  */
-export function EstoqueButton({
-  conversationId,
-  disabled,
-}: {
-  conversationId: string;
-  disabled?: boolean;
-}) {
+export function EstoqueDaConversa({ conversationId }: { conversationId: string }) {
   const t = useT();
-  const [aberto, setAberto] = useState(false);
+  const [recolhido, definirRecolhido] = useBlocoRecolhivel(CHAVE_RECOLHIDO, true);
+  const Seta = recolhido ? CaretRight : CaretDown;
   return (
-    <>
-      <Button
+    <section
+      className="rounded-lg border border-border bg-surface"
+      data-testid="estoque-da-conversa"
+      aria-label={t("Estoque")}
+    >
+      <button
         type="button"
-        size="sm"
-        variant="ghost"
-        className="shrink-0"
-        disabled={disabled}
-        onClick={() => setAberto(true)}
-        data-testid="abrir-estoque"
+        className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        aria-expanded={!recolhido}
+        aria-controls="estoque-da-conversa-corpo"
+        title={recolhido ? t("Mostrar estoque") : t("Recolher estoque")}
+        onClick={() => definirRecolhido(!recolhido)}
+        data-testid="estoque-da-conversa-alternar"
       >
-        {t("Estoque")}
-      </Button>
-      {/* Os hooks de dados só existem com o diálogo aberto. */}
-      {aberto ? <DialogoDeEstoque conversationId={conversationId} aoFechar={() => setAberto(false)} /> : null}
-    </>
+        <span>{t("Estoque")}</span>
+        <Seta size={14} aria-hidden />
+      </button>
+      <div
+        id="estoque-da-conversa-corpo"
+        hidden={recolhido}
+        className="border-t border-border/60 p-3"
+      >
+        {recolhido ? null : <CorpoDoEstoque conversationId={conversationId} />}
+      </div>
+    </section>
   );
 }
 
-function DialogoDeEstoque({ conversationId, aoFechar }: { conversationId: string; aoFechar: () => void }) {
+function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
   const t = useT();
   const send = useSendMessage();
   const [busca, setBusca] = useState("");
@@ -89,7 +100,9 @@ function DialogoDeEstoque({ conversationId, aoFechar }: { conversationId: string
   const lista = useQuery({
     queryKey: ["veiculos", "disponiveis"],
     queryFn: async () => {
-      const r = await apiClient.get<{ data: VeiculoComCapa[] }>("/api/v1/veiculos?status=disponivel&capas=1");
+      const r = await apiClient.get<{ data: VeiculoComCapa[] }>(
+        "/api/v1/veiculos?status=disponivel&capas=1",
+      );
       return r.data;
     },
     staleTime: 30_000,
@@ -105,11 +118,14 @@ function DialogoDeEstoque({ conversationId, aoFechar }: { conversationId: string
     if (modo === "fotos") return void enviar(v);
     setEnviando(v.id);
     try {
-      const r = await apiClient.post<{ data: Preparado }>(`/api/v1/veiculos/${v.id}/preparar-envio`, {
-        conversation_id: conversationId,
-        modo,
-        previa: true,
-      });
+      const r = await apiClient.post<{ data: Preparado }>(
+        `/api/v1/veiculos/${v.id}/preparar-envio`,
+        {
+          conversation_id: conversationId,
+          modo,
+          previa: true,
+        },
+      );
       setRevisao({ veiculo: v, texto: r.data.itens[0]?.body ?? "" });
     } catch (e) {
       showApiError(e);
@@ -140,7 +156,7 @@ function DialogoDeEstoque({ conversationId, aoFechar }: { conversationId: string
       }
       toast.success(`${t("Enviado")}: ${tituloDoVeiculo(v)}`);
       if (fotos_faltando) toast.warning(t("Algumas fotos não puderam ser enviadas."));
-      aoFechar();
+      setRevisao(null);
     } catch (e) {
       showApiError(e);
     } finally {
@@ -150,62 +166,77 @@ function DialogoDeEstoque({ conversationId, aoFechar }: { conversationId: string
 
   return (
     <>
-      <Dialog open onOpenChange={(a) => !a && !enviando && aoFechar()}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t("Enviar veículo ao cliente")}</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            {MODOS.map((m) => (
-              <Button
-                key={m.id}
-                size="sm"
-                variant={modo === m.id ? "default" : "outline"}
-                onClick={() => setModo(m.id)}
-              >
-                {t(m.rotulo)}
-              </Button>
-            ))}
-            <label className="flex items-center gap-1">
-              <input type="checkbox" checked={comVideo} onChange={(e) => setComVideo(e.target.checked)} />
-              {t("com vídeo")}
-            </label>
-          </div>
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder={t("Buscar modelo, marca ou código")}
-            className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-          />
-          <ul className="space-y-2">
-            {lista.isPending ? <li className="text-sm text-muted-foreground">{t("Carregando…")}</li> : null}
-            {!lista.isPending && veiculos.length === 0 ? (
-              <li className="text-sm text-muted-foreground">{t("Nenhum veículo disponível.")}</li>
-            ) : null}
-            {veiculos.map((v) => (
-              <li key={v.id} className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          {MODOS.map((m) => (
+            <Button
+              key={m.id}
+              type="button"
+              size="sm"
+              variant={modo === m.id ? "default" : "outline"}
+              aria-pressed={modo === m.id}
+              onClick={() => setModo(m.id)}
+            >
+              {t(m.rotulo)}
+            </Button>
+          ))}
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={comVideo}
+              onChange={(e) => setComVideo(e.target.checked)}
+            />
+            {t("com vídeo")}
+          </label>
+        </div>
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder={t("Buscar modelo, marca ou código")}
+          className="h-8 w-full rounded-md border bg-background px-3 text-sm"
+        />
+        <ul className="max-h-96 space-y-2 overflow-y-auto">
+          {lista.isPending ? (
+            <li className="text-sm text-muted-foreground">{t("Carregando…")}</li>
+          ) : null}
+          {!lista.isPending && veiculos.length === 0 ? (
+            <li className="text-sm text-muted-foreground">{t("Nenhum veículo disponível.")}</li>
+          ) : null}
+          {veiculos.map((v) => (
+            <li key={v.id} className="flex flex-col gap-2 rounded-md border p-2 text-sm">
+              <div className="flex items-center gap-2">
                 {v.capa_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={v.capa_url} alt="" className="h-14 w-20 shrink-0 rounded-md object-cover" />
+                  <img
+                    src={v.capa_url}
+                    alt=""
+                    className="h-12 w-16 shrink-0 rounded-md object-cover"
+                  />
                 ) : (
-                  <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                  <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
                     {t("Sem foto")}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{tituloDoVeiculo(v)}</div>
-                  <div className="text-muted-foreground">
+                  <div className="truncate font-medium">{tituloDoVeiculo(v)}</div>
+                  <div className="text-xs text-muted-foreground">
                     {formatarPreco(v.preco_cents, v.moeda)} · {v.fotos.length} {t("foto(s)")}
                   </div>
                 </div>
-                <Button size="sm" disabled={enviando !== null} onClick={() => void aoClicarEnviar(v)}>
-                  {enviando === v.id ? t("Enviando…") : t("Enviar")}
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </DialogContent>
-      </Dialog>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                disabled={enviando !== null}
+                onClick={() => void aoClicarEnviar(v)}
+              >
+                {enviando === v.id ? t("Enviando…") : t("Enviar")}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
       {revisao ? (
         <Dialog open onOpenChange={(a) => !a && !enviando && setRevisao(null)}>
           <DialogContent className="sm:max-w-lg">
@@ -222,7 +253,12 @@ function DialogoDeEstoque({ conversationId, aoFechar }: { conversationId: string
               data-testid="ficha-editavel"
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" disabled={enviando !== null} onClick={() => setRevisao(null)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={enviando !== null}
+                onClick={() => setRevisao(null)}
+              >
                 {t("Voltar")}
               </Button>
               <Button

@@ -10,7 +10,6 @@ import {
   type KeyboardEvent,
 } from "react";
 import { PaperPlaneTilt } from "@/lib/ui/icons";
-import { EstoqueButton } from "@/components/inbox/composer/EstoqueButton";
 import { Button } from "@/components/ui/button";
 import { AttachMenu } from "@/components/inbox/composer/AttachMenu";
 import { AttachmentPreviewDialog } from "@/components/inbox/composer/AttachmentPreviewDialog";
@@ -42,10 +41,7 @@ import {
   payloadDeUso,
   type TemplateContact,
 } from "@/lib/inbox/template-vars";
-import {
-  type AvisoDeRascunho,
-  type MotivoDeRecusa,
-} from "@/lib/inbox/rascunho-sugerido";
+import { type AvisoDeRascunho, type MotivoDeRecusa } from "@/lib/inbox/rascunho-sugerido";
 import { apiClient } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/types";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -426,15 +422,17 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             // `embutirMencoes` pareia ocorrência e escolha por ordem.
             const restaurado = restaurar(taRef.current?.value ?? "");
             setMencoes((atual) =>
-              podarMencoes(restaurado, [...mencoesEnviadas, ...atual.filter((m) => !mencoesEnviadas.includes(m))]),
+              podarMencoes(restaurado, [
+                ...mencoesEnviadas,
+                ...atual.filter((m) => !mencoesEnviadas.includes(m)),
+              ]),
             );
           },
           // Só depois de gravar, e só as escolhas DESTA nota — a lista pode já
           // ter a menção da PRÓXIMA, escolhida enquanto esta ainda estava no ar
           // (`mencoesEnviadas`): zerar tudo apagava a escolha dela, e a nota
           // seguinte sairia como texto puro (com homônimos, avisando os dois).
-          onSuccess: () =>
-            setMencoes((atual) => atual.filter((m) => !mencoesEnviadas.includes(m))),
+          onSuccess: () => setMencoes((atual) => atual.filter((m) => !mencoesEnviadas.includes(m))),
         },
       );
       return;
@@ -563,7 +561,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
     // precisa editar antes de mandar.
     if (motivoDoCuringaLiteral(template.body, contato)) {
       toast.warning(
-        t("Contato sem nome no CRM: {{nome}}/{{primeiro_nome}} ficaram literais no texto. Edite antes de enviar."),
+        t(
+          "Contato sem nome no CRM: {{nome}}/{{primeiro_nome}} ficaram literais no texto. Edite antes de enviar.",
+        ),
       );
     }
 
@@ -832,7 +832,9 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             className="mb-1.5 flex items-start gap-2 rounded-md border-l-2 border-warning bg-warning-bg px-2 py-1.5 text-xs text-warning-fg"
           >
             <p className="min-w-0 flex-1">
-              {t("Contato sem nome no CRM: {{nome}}/{{primeiro_nome}} ficaram literais no texto. Edite antes de enviar.")}
+              {t(
+                "Contato sem nome no CRM: {{nome}}/{{primeiro_nome}} ficaram literais no texto. Edite antes de enviar.",
+              )}
             </p>
           </div>
         )}
@@ -940,9 +942,6 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
             onPick={escolherArquivo}
             onPickContact={mode === "reply" ? () => setContactPickerOpen(true) : undefined}
           />
-          {mode === "reply" ? (
-            <EstoqueButton conversationId={conversationId} disabled={respostaBarrada} />
-          ) : null}
           <EmojiButton
             disabled={isDisabled}
             onPick={(emoji) => {
@@ -1038,7 +1037,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               // 16px abaixo do `md`: o Safari do iPhone AMPLIA a página ao focar
               // campo com fonte menor, e a conversa sai do quadro. 44px de alvo
               // até o `lg`, como o resto dos botões de toque.
-              "max-h-40 min-h-11 flex-1 resize-none rounded-xl border border-border/80 bg-background px-3 py-2 transition-[border-color,box-shadow] duration-150 focus-visible:border-accent/50 text-base md:text-sm lg:min-h-9",
+              "max-h-40 min-h-11 flex-1 resize-none rounded-xl border border-border/80 bg-background px-3 py-2 text-base transition-[border-color,box-shadow] duration-150 focus-visible:border-accent/50 md:text-sm lg:min-h-9",
               "placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden",
             )}
             disabled={mode === "note" ? isDisabled : respostaBarrada}

@@ -39,6 +39,7 @@ export const FORMAS_DE_PAGAMENTO = [
   "boleto",
   "cheque",
   "promissoria",
+  "crediario",
   "quitacao",
 ] as const;
 export type FormaDePagamento = (typeof FORMAS_DE_PAGAMENTO)[number];
@@ -54,6 +55,7 @@ export const ROTULO_DA_FORMA: Record<FormaDePagamento, string> = {
   boleto: "Boleto",
   cheque: "Cheque",
   promissoria: "Parcelado na loja (promissória)",
+  crediario: "Crediário",
   quitacao: "Quitação de financiamento",
 };
 
@@ -65,9 +67,14 @@ export const FORMAS_PARCELADAS: readonly FormaDePagamento[] = [
   "boleto",
   "cheque",
   "promissoria",
+  "crediario",
 ];
 /** Formas que envolvem um banco/financeira — a tela pede o nome dele. */
-export const FORMAS_COM_BANCO: readonly FormaDePagamento[] = ["financiamento", "consorcio", "quitacao"];
+export const FORMAS_COM_BANCO: readonly FormaDePagamento[] = [
+  "financiamento",
+  "consorcio",
+  "quitacao",
+];
 
 /** Formas que fazem sentido em cada lado do balcão. */
 export const FORMAS_POR_TIPO: Record<TipoDeNegociacao, readonly FormaDePagamento[]> = {
@@ -182,6 +189,8 @@ export type TrocaDaNegociacao = z.infer<typeof trocaSchema>;
 
 export const pagamentoSchema = z.object({
   forma: z.enum(FORMAS_DE_PAGAMENTO),
+  conta_id: z.string().uuid().optional().nullable(),
+  juros_bps: z.number().int().min(0).max(10000).optional(),
   valor_cents: centavos,
   parcelas: z.number().int().min(1).max(120).default(1),
   valor_parcela_cents: centavos.optional().nullable(),
@@ -193,6 +202,7 @@ export type PagamentoDaNegociacao = z.infer<typeof pagamentoSchema>;
 
 export const negociacaoSchema = z.object({
   tipo: z.enum(TIPOS_DE_NEGOCIACAO),
+  modalidade: z.enum(["normal", "crediario", "reserva"]).optional(),
   contact_id: z.string().uuid().optional().nullable(),
   cliente: clienteSchema,
   veiculo_id: z.string().uuid().optional().nullable(),
@@ -202,6 +212,8 @@ export const negociacaoSchema = z.object({
   troca: trocaSchema.optional().nullable(),
   pagamentos: z.array(pagamentoSchema).max(20).default([]),
   comissao_cents: centavos.optional().nullable(),
+  /** Quem vendeu. Vazio = quem abriu a negociação. A rota confere que é membro da organização. */
+  vendedor_user_id: z.string().uuid().optional().nullable(),
   observacoes: textoOpcional(4000),
 });
 export type NegociacaoInput = z.infer<typeof negociacaoSchema>;
@@ -209,12 +221,15 @@ export type NegociacaoInput = z.infer<typeof negociacaoSchema>;
 /** PATCH: tudo opcional, menos o tipo, que não muda depois de criada. */
 export const negociacaoPatchSchema = negociacaoSchema.omit({ tipo: true }).partial();
 
-export const COLUNAS_DA_NEGOCIACAO =
-  "id, numero, tipo, status, contact_id, cliente, veiculo_id, veiculo, valor_cents, desconto_cents, troca, troca_veiculo_id, pagamentos, vendedor_user_id, comissao_cents, observacoes, moeda, concluida_em, cancelada_em, created_by, created_at, updated_at";
+// A projeção completa permite ler instalações anteriores à ativação do crediário,
+// nas quais a coluna opcional modalidade ainda não existe. A RLS e o filtro de
+// organização continuam aplicados por cada chamador.
+export const COLUNAS_DA_NEGOCIACAO = "*";
 
 export interface Negociacao {
   id: string;
   numero: number;
+  modalidade?: "normal" | "crediario" | "reserva";
   tipo: TipoDeNegociacao;
   status: StatusDaNegociacao;
   contact_id: string | null;
@@ -248,10 +263,14 @@ export interface ResumoDaNegociacao {
   saldo_cents: number;
 }
 
-type ParaResumo = Pick<NegociacaoInput, "tipo" | "valor_cents" | "desconto_cents" | "troca" | "pagamentos">;
+type ParaResumo = Pick<
+  NegociacaoInput,
+  "tipo" | "valor_cents" | "desconto_cents" | "troca" | "pagamentos"
+>;
 
 export function resumoDaNegociacao(n: ParaResumo): ResumoDaNegociacao {
-  const total = n.tipo === "venda" ? Math.max(0, n.valor_cents - (n.desconto_cents ?? 0)) : n.valor_cents;
+  const total =
+    n.tipo === "venda" ? Math.max(0, n.valor_cents - (n.desconto_cents ?? 0)) : n.valor_cents;
   const troca =
     n.tipo === "venda" && n.troca ? (n.troca.valor_cents ?? 0) - (n.troca.quitacao_cents ?? 0) : 0;
   const pagos = (n.pagamentos ?? []).reduce((acc, p) => acc + p.valor_cents, 0);
@@ -267,14 +286,29 @@ export function resumoDaNegociacao(n: ParaResumo): ResumoDaNegociacao {
  * O que falta para fechar. Vazio = pode concluir. Textos em português; quem
  * mostra traduz.
  */
-export function pendenciasParaConcluir(n: ParaResumo & Pick<NegociacaoInput, "cliente" | "veiculo" | "veiculo_id">): string[] {
+export function pendenciasParaConcluir(
+  n: ParaResumo & Pick<NegociacaoInput, "cliente" | "veiculo" | "veiculo_id">,
+): string[] {
   const faltas: string[] = [];
   if (!n.cliente.nome.trim()) faltas.push("Informe o nome do cliente.");
-  if (!documentoValido(n.cliente.documento)) faltas.push("Informe um CPF ou CNPJ válido do cliente.");
+  if (!documentoValido(n.cliente.documento))
+    faltas.push("Informe um CPF ou CNPJ válido do cliente.");
   if (n.tipo === "venda" && !n.veiculo_id) faltas.push("Escolha o veículo do estoque.");
-  if (n.tipo === "compra" && !n.veiculo.modelo.trim()) faltas.push("Informe o modelo do veículo comprado.");
-  if (n.valor_cents <= 0) faltas.push(n.tipo === "venda" ? "Informe o preço de venda." : "Informe o valor da compra.");
-  if (n.tipo === "venda" && n.troca && !n.troca.modelo.trim()) faltas.push("Informe o modelo do veículo da troca.");
+  if (n.tipo === "compra" && !n.veiculo.modelo.trim())
+    faltas.push("Informe o modelo do veículo comprado.");
+  if (n.valor_cents <= 0)
+    faltas.push(n.tipo === "venda" ? "Informe o preço de venda." : "Informe o valor da compra.");
+  if (n.tipo === "venda" && n.troca && !n.troca.modelo.trim())
+    faltas.push("Informe o modelo do veículo da troca.");
+  for (const p of n.pagamentos) {
+    if (n.pagamentos.some((x) => x.forma === "crediario") && p.valor_cents > 0 && !p.conta_id)
+      faltas.push("Selecione a conta de cada pagamento.");
+    if (
+      p.forma === "crediario" &&
+      (!p.primeiro_vencimento || !p.conta_id || p.valor_cents < p.parcelas)
+    )
+      faltas.push("Informe conta, primeiro vencimento e valor válido do crediário.");
+  }
   const { saldo_cents } = resumoDaNegociacao(n);
   if (saldo_cents > 0) faltas.push("Os pagamentos não cobrem o total.");
   if (saldo_cents < 0) faltas.push("Os pagamentos passam do total.");
@@ -282,7 +316,9 @@ export function pendenciasParaConcluir(n: ParaResumo & Pick<NegociacaoInput, "cl
 }
 
 /** Título curto do veículo: "Fiat Argo Drive 1.0 2022/2023". */
-export function tituloDoVeiculoDaNegociacao(v: Partial<VeiculoDaNegociacao> | null | undefined): string {
+export function tituloDoVeiculoDaNegociacao(
+  v: Partial<VeiculoDaNegociacao> | null | undefined,
+): string {
   if (!v) return "";
   const anos =
     v.ano_fabricacao && v.ano_modelo

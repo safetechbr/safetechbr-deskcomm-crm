@@ -30,7 +30,7 @@ test("criar conta: signup → e-mail de confirmação → onboarding → re-logi
 
   // 2. Formulário de signup
   await page.getByLabel("Nome da empresa").fill("Loja E2E Signup");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel(/^(Email|Login ou e-mail)$/).fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(password);
   await page.getByLabel("Confirmar senha").fill(password);
   await page.getByRole("button", { name: "Criar conta" }).click();
@@ -49,7 +49,7 @@ test("criar conta: signup → e-mail de confirmação → onboarding → re-logi
   // 5. Sai (limpa sessão) e entra de novo com as credenciais criadas
   await context.clearCookies();
   await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel(/^(Email|Login ou e-mail)$/).fill(email);
   await page.getByLabel("Senha").fill(password);
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await page.waitForURL(/\/(app|onboarding)\//, { timeout: 30_000 });

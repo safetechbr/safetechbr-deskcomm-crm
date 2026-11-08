@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { safeNext } from "@/lib/auth/safe-next";
+import { identidadeDoLogin } from "@/lib/auth/login-vendedor";
 
 import { ipDoCliente } from "@/lib/http/ip-do-cliente";
 import { createClient } from "@/lib/supabase/server";
@@ -45,6 +46,7 @@ export async function signInWithPassword(input: LoginInput, next?: string): Prom
   }
 
   const supabase = await createClient();
+  const identidade = identidadeDoLogin(parsed.data.email);
   const hdrs = await headers();
   const requestId = hdrs.get("x-request-id");
   const ip = ipDoCliente(hdrs);
@@ -55,11 +57,11 @@ export async function signInWithPassword(input: LoginInput, next?: string): Prom
   // contra um e-mail só não aparece na contagem por IP.
   if (
     (await authRateLimited("login", null, AUTH_LIMITS.login)) ||
-    (await contaBloqueadaPorFalhas(parsed.data.email, AUTH_LIMITS.login))
+    (await contaBloqueadaPorFalhas(identidade, AUTH_LIMITS.login))
   ) {
     await audit({
       action: "auth.login_rate_limited",
-      metadata: { email_hash: hashEmail(parsed.data.email) },
+      metadata: { email_hash: hashEmail(identidade) },
       requestId,
       ip,
       userAgent,
@@ -68,17 +70,17 @@ export async function signInWithPassword(input: LoginInput, next?: string): Prom
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
+    email: identidade,
     password: parsed.data.password,
   });
 
   if (error || !data.user) {
     // Só senha errada gasta o orçamento da conta.
-    await registrarFalhaDeLogin(parsed.data.email, AUTH_LIMITS.login);
+    await registrarFalhaDeLogin(identidade, AUTH_LIMITS.login);
     await audit({
       action: "auth.login_failed",
       metadata: {
-        email_hash: hashEmail(parsed.data.email),
+        email_hash: hashEmail(identidade),
         reason: error?.message ?? "unknown",
       },
       requestId,

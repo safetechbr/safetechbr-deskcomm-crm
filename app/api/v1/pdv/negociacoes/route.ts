@@ -18,6 +18,7 @@ import {
   STATUS_DA_NEGOCIACAO,
   TIPOS_DE_NEGOCIACAO,
 } from "@/lib/pdv/regras";
+import { vendedorEhDaOrganizacao } from "@/lib/pdv/vendedores";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   const tipo = params.get("tipo");
   if (tipo && (TIPOS_DE_NEGOCIACAO as readonly string[]).includes(tipo)) q = q.eq("tipo", tipo);
   const status = params.get("status");
-  if (status && (STATUS_DA_NEGOCIACAO as readonly string[]).includes(status)) q = q.eq("status", status);
+  if (status && (STATUS_DA_NEGOCIACAO as readonly string[]).includes(status))
+    q = q.eq("status", status);
 
   const { data, error } = await q.order("created_at", { ascending: false }).limit(200);
   if (error) return fail("internal_error", "Erro ao listar as negociações.", 500, { requestId });
@@ -61,6 +63,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
   const entrada = parsed.data;
 
+  if (
+    entrada.vendedor_user_id &&
+    !(await vendedorEhDaOrganizacao(authz.org.orgId, entrada.vendedor_user_id))
+  ) {
+    return fail("validation_failed", t("Vendedor não encontrado na organização."), 422, {
+      requestId,
+    });
+  }
+
   const supabase = await createClient();
   if (entrada.tipo === "venda" && entrada.veiculo_id) {
     const { data: carro } = await supabase
@@ -69,8 +80,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       .eq("organization_id", authz.org.orgId)
       .eq("id", entrada.veiculo_id)
       .maybeSingle();
-    if (!carro) return fail("not_found", t("Veículo não encontrado no estoque."), 404, { requestId });
-    if (carro.status === "vendido") return fail("conflict", t("Esse veículo já foi vendido."), 409, { requestId });
+    if (!carro)
+      return fail("not_found", t("Veículo não encontrado no estoque."), 404, { requestId });
+    if (carro.status === "vendido")
+      return fail("conflict", t("Esse veículo já foi vendido."), 409, { requestId });
   }
   if (entrada.tipo === "compra") entrada.veiculo_id = null;
   if (entrada.tipo === "compra") entrada.troca = null;
@@ -94,7 +107,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         ...entrada,
         numero,
         organization_id: authz.org.orgId,
-        vendedor_user_id: authz.user.id,
+        vendedor_user_id: entrada.vendedor_user_id ?? authz.user.id,
         created_by: authz.user.id,
       })
       .select(COLUNAS_DA_NEGOCIACAO)

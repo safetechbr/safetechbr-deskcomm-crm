@@ -1,4 +1,5 @@
 import type { InterfaceSettings } from "@/lib/navigation/interface";
+import { loginDoEmail } from "@/lib/auth/login-vendedor";
 /**
  * GET /api/v1/team — list members of the active organization.
  *
@@ -29,6 +30,7 @@ interface MembershipRow {
 }
 
 interface MemberDto extends MembershipRow {
+  username?: string | null;
   email: string | null;
   full_name: string | null;
   last_sign_in_at: string | null;
@@ -77,7 +79,8 @@ export async function GET(_req: NextRequest): Promise<Response> {
       const u = userRes?.user;
       return {
         ...m,
-        email: u?.email ?? null,
+        email: loginDoEmail(u?.email) ? null : u?.email ?? null,
+        username: loginDoEmail(u?.email),
         full_name: (u?.user_metadata?.full_name as string | undefined) ?? null,
         last_sign_in_at: u?.last_sign_in_at ?? null,
       };
