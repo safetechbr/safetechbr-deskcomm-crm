@@ -2501,6 +2501,9 @@ export const DICIONARIO: Traducoes = {
       es: "Solo aplica a los tipos de cita que requieren confirmación. Mientras la solicitud espera, el horario queda reservado y nadie más puede tomarlo. Si pasa el plazo sin una decisión, el horario vuelve a ofrecerse. El cliente no recibe aviso y la solicitud sigue en la fila.",
     },
   Financeiro: { es: "Finanzas" },
+  Crediários: { es: "Créditos a plazo" },
+  Movimentações: { es: "Movimientos" },
+  Relatórios: { es: "Informes" },
   "Onde o dinheiro fica, como o cliente paga e como cada lançamento é classificado.": {
     es: "Dónde está el dinero, cómo paga el cliente y cómo se clasifica cada movimiento.",
   },

@@ -238,6 +238,7 @@ describe("painel do inbox — demandas abertas", () => {
   });
 });
 
+vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({ useAuth: () => ({ user: { support: null } }) }));
 
 

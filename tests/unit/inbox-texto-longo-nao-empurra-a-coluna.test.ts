@@ -91,8 +91,11 @@ describe("inbox — texto longo não empurra a coluna (#1802)", () => {
 
   it("régua 2: o fato da Memória do contato quebra em qualquer ponto, e não volta break-words", () => {
     const fonte = ler(PAINEL);
-    const linha = fonte.split("\n").find((l) => l.includes("f.headline"));
-    expect(linha, `não achei o bloco de fatos em ${PAINEL}`).toBeDefined();
+    const linhas = fonte.split("\n");
+    const i = linhas.findIndex((l) => l.includes("f.headline"));
+    expect(i, `não achei o bloco de fatos em ${PAINEL}`).toBeGreaterThanOrEqual(0);
+    // O formatador pode pôr o <summary> e o <p> em linhas vizinhas.
+    const linha = linhas.slice(i, i + 3).join("\n");
 
     const summary = linha!.match(/<summary[^>]*>/)?.[0] ?? "";
     expect(summary, `o <summary> do fato precisa de wrap-anywhere: ${summary}`).toContain(

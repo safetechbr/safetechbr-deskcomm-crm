@@ -43,6 +43,7 @@ vi.mock("@/hooks/contacts/useUpdateContact", () => ({
   useUpdateContact: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 // O portão de "Levar para outro funil" é `pipeline.move_card` (agent+).
+vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({
     user: { support: null, is_platform_admin: false },

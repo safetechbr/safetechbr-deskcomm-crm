@@ -52,6 +52,7 @@ vi.mock("@/lib/api/client", () => ({
     patch: (...args: unknown[]) => patch(...args),
   },
 }));
+vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   // A ficha lê o país da org; o painel, o papel do usuário (podeCriarTarefa).
   useActiveOrg: () => ({ currency: "BRL", country: null, orgId: "org-1" }),

@@ -1078,7 +1078,7 @@ function ColunaPagamento({
               minimumFractionDigits: 2,
             })}
             onChange={(e) => atualizar({ valor_cents: precoParaCentavos(e.target.value) ?? 0 })}
-            className="h-full w-0 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+            className="h-full w-0 min-w-0 flex-1 bg-transparent px-3 text-sm outline-hidden"
           />
           {seletorConta(
             atual?.conta_id ?? "",

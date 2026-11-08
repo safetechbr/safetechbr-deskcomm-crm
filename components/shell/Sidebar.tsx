@@ -169,7 +169,7 @@ export function SidebarContent({
         <Link
           href="/app/dashboard"
           aria-label={t("Ir para o Dashboard")}
-          className="flex min-w-0 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 items-center rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
         {(logo || logoEscuro) && !collapsed ? (
           // Sem arte própria para o escuro, preserva a proteção de contraste.

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ConversationHeader } from "@/components/inbox/ConversationHeader";
+import { AcoesDaConversa } from "@/components/inbox/AcoesDaConversa";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 
 /**
@@ -139,7 +139,7 @@ beforeEach(() => {
 describe("gate do botão pessoal no cabeçalho", () => {
   it("atendente não vê nem marcar nem desmarcar", () => {
     papel.atual = "agent";
-    const { unmount } = render(<ConversationHeader conversation={conversa(false)} />);
+    const { unmount } = render(<AcoesDaConversa conversation={conversa(false)} />);
     expect(screen.queryByTestId("marcar-pessoal")).toBeNull();
     expect(screen.queryByTestId("desmarcar-pessoal")).toBeNull();
     unmount();
@@ -147,7 +147,7 @@ describe("gate do botão pessoal no cabeçalho", () => {
 
   it("gerente vê marcar no contato normal", () => {
     papel.atual = "manager";
-    const { unmount } = render(<ConversationHeader conversation={conversa(false)} />);
+    const { unmount } = render(<AcoesDaConversa conversation={conversa(false)} />);
     expect(screen.getByTestId("marcar-pessoal")).toBeTruthy();
     expect(screen.queryByTestId("desmarcar-pessoal")).toBeNull();
     unmount();
@@ -155,7 +155,7 @@ describe("gate do botão pessoal no cabeçalho", () => {
 
   it("gerente vê desmarcar (e não marcar) no contato pessoal", () => {
     papel.atual = "manager";
-    const { unmount } = render(<ConversationHeader conversation={conversa(true)} />);
+    const { unmount } = render(<AcoesDaConversa conversation={conversa(true)} />);
     expect(screen.getByTestId("desmarcar-pessoal")).toBeTruthy();
     expect(screen.queryByTestId("marcar-pessoal")).toBeNull();
     unmount();
@@ -163,7 +163,7 @@ describe("gate do botão pessoal no cabeçalho", () => {
 
   it("sem contato, sem botão para ninguém", () => {
     papel.atual = "manager";
-    const { unmount } = render(<ConversationHeader conversation={conversa(null)} />);
+    const { unmount } = render(<AcoesDaConversa conversation={conversa(null)} />);
     expect(screen.queryByTestId("marcar-pessoal")).toBeNull();
     expect(screen.queryByTestId("desmarcar-pessoal")).toBeNull();
     unmount();
@@ -172,7 +172,7 @@ describe("gate do botão pessoal no cabeçalho", () => {
   it("marcar pede confirmação antes de mutar", async () => {
     papel.atual = "manager";
     const user = userEvent.setup();
-    const { unmount } = render(<ConversationHeader conversation={conversa(false)} />);
+    const { unmount } = render(<AcoesDaConversa conversation={conversa(false)} />);
     await user.click(screen.getByTestId("marcar-pessoal"));
     expect(marcarMutate).not.toHaveBeenCalled();
     expect(await screen.findByText("Marcar este contato como pessoal?")).toBeTruthy();
@@ -182,7 +182,7 @@ describe("gate do botão pessoal no cabeçalho", () => {
   it("desmarcar é direto no botão", async () => {
     papel.atual = "manager";
     const user = userEvent.setup();
-    const { unmount } = render(<ConversationHeader conversation={conversa(true)} />);
+    const { unmount } = render(<AcoesDaConversa conversation={conversa(true)} />);
     await user.click(screen.getByTestId("desmarcar-pessoal"));
     expect(desmarcarMutate).toHaveBeenCalledTimes(1);
     unmount();

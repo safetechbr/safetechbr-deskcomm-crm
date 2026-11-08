@@ -108,7 +108,7 @@ describe("contagem de arquivadas", () => {
 
 describe("o botão de arquivar", () => {
   it("oferece arquivar com confirmação e some quando já está arquivada", () => {
-    const header = fonte("components/inbox/ConversationHeader.tsx");
+    const header = fonte("components/inbox/AcoesDaConversa.tsx");
     expect(header).toContain('t("Arquivar")');
     expect(header).toContain('t("Arquivar esta conversa?")');
     expect(header).toMatch(/status !== "archived"/);

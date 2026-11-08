@@ -49,7 +49,7 @@ const RAIZ = process.cwd();
 const INBOUND = join(RAIZ, "lib/agent-engine/agent/inbound-turn.ts");
 const WORKER = join(RAIZ, "workers/agent-worker/main.ts");
 const DISPOSICAO = join(RAIZ, "workers/agent-worker/dispor-job-apos-falha.ts");
-const CABECALHO = join(RAIZ, "components/inbox/ConversationHeader.tsx");
+const CABECALHO = join(RAIZ, "components/inbox/AcoesDaConversa.tsx");
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 const LEAD = "22222222-2222-4222-8222-222222222222";

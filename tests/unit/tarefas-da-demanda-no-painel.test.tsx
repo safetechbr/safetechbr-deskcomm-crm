@@ -79,6 +79,7 @@ vi.mock("@/hooks/contacts/useUpdateContact", () => ({
 }));
 
 const sessao = vi.hoisted(() => ({ papel: "agent" as Role }));
+vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({
     user: { id: "u-1", is_platform_admin: false, support: null },

@@ -65,7 +65,7 @@ describe("a rede contra scroll horizontal não pode matar o sticky", () => {
       "utf8",
     );
     // Gruda abaixo das faixas de aviso (`--faixas-de-cima`), não em `top-0`.
-    expect(sidebar).toContain('"sticky top-[var(--faixas-de-cima,0px)] ');
+    expect(sidebar).toContain('sticky top-[var(--faixas-de-cima,0px)] ');
     expect(sidebar).not.toMatch(/className=\{?[^}]*"fixed /);
   });
 });

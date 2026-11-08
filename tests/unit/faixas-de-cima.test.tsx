@@ -93,9 +93,9 @@ describe("quem desconta as faixas", () => {
     // documento medir tela + faixa no computador.
     const topo = readFileSync("components/shell/TopBar.tsx", "utf8");
     const lateral = readFileSync("components/shell/Sidebar.tsx", "utf8");
-    expect(topo).toMatch(/<header className="sticky top-\[var\(--faixas-de-cima,0px\)\] /);
+    expect(topo).toMatch(/<header className="(?:app-topbar )?sticky top-\[var\(--faixas-de-cima,0px\)\] /);
     expect(lateral).toMatch(
-      /"sticky top-\[var\(--faixas-de-cima,0px\)\] z-30 flex h-\[calc\(100dvh-var\(--faixas-de-cima,0px\)\)\] /,
+      /"(?:app-sidebar )?sticky top-\[var\(--faixas-de-cima,0px\)\] z-30 flex h-\[calc\(100dvh-var\(--faixas-de-cima,0px\)\)\] /,
     );
   });
 

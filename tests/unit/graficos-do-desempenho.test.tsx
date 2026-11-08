@@ -75,8 +75,8 @@ describe("a evolução dos ganhos no Desempenho", () => {
     expect(celulas).toEqual(["02/10", "0"]);
 
     // O mesmo `Card` para os dois: o ancestral comum é o próprio Cartão.
-    const cartaoDoGrafico = grafico.closest("div.rounded-lg");
-    const cartaoDaTabela = linhaParada?.closest("div.rounded-lg");
+    const cartaoDoGrafico = grafico.closest("div.border.bg-surface");
+    const cartaoDaTabela = linhaParada?.closest("div.border.bg-surface");
     expect(cartaoDoGrafico).not.toBeNull();
     expect(cartaoDaTabela).toBe(cartaoDoGrafico);
     // …e o Cartão é o da série, com o título e o total — não outro qualquer.

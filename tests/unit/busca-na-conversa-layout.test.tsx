@@ -64,7 +64,6 @@ vi.mock("@/hooks/inbox/useClaimConversation", () => ({
 vi.mock("@/hooks/inbox/useCloseConversation", () => ({
   useCloseConversation: () => ({ mutate: vi.fn(), isPending: false }),
 }));
-vi.mock("@/components/inbox/CRMSidePanel", () => ({ CRMSidePanel: () => null }));
 vi.mock("@/components/inbox/ConversationList", () => ({
   ConversationList: ({ onSelect }: { onSelect: (id: string) => void }) => (
     <>
@@ -80,8 +79,10 @@ vi.mock("@/components/inbox/ChatThread", () => ({
   ),
 }));
 vi.mock("@/components/inbox/Composer", () => ({ Composer: () => null }));
-vi.mock("@/components/inbox/ConversationHeader", () => ({
-  ConversationHeader: ({
+vi.mock("@/components/inbox/ConversationHeader", () => ({ ConversationHeader: () => null }));
+// O botão da busca mora no painel lateral (Ações da conversa): a sonda é o painel.
+vi.mock("@/components/inbox/CRMSidePanel", () => ({
+  CRMSidePanel: ({
     onBuscar,
     buscaAberta,
     botaoBuscaRef,

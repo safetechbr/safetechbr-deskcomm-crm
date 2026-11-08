@@ -276,6 +276,7 @@ vi.mock("@/hooks/contacts/useContact", () => ({
     },
   }),
 }));
+vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({
     user: { is_platform_admin: false, support: null },

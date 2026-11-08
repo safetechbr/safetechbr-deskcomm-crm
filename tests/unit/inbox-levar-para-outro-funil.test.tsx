@@ -54,6 +54,7 @@ vi.mock("@/hooks/contacts/useContactTagVocabulary", () => ({
 vi.mock("@/hooks/contacts/useUpdateContact", () => ({
   useUpdateContact: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({
     user: { support: null, is_platform_admin: false },

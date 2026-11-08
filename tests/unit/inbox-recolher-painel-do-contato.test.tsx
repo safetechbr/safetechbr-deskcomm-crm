@@ -118,6 +118,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }));
+vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
 vi.mock("@/hooks/auth/AuthProvider", () => ({
   useAuth: () => ({
     user: { id: "u-1", role: "admin", support: null, is_platform_admin: false },

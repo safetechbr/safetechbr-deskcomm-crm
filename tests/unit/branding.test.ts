@@ -208,6 +208,31 @@ type EntradaDeMarca = {
 };
 
 const MARCA_CONGELADA: Record<string, EntradaDeMarca> = {
+  // ─── INFRA — chaves de storage/evento do bloco recolhível do Inbox. ───
+  "components/inbox/AcoesDaConversa.tsx": {
+    categoria: "INFRA",
+    motivo:
+      "chave de localStorage do bloco recolhível de ações; renomear perderia a preferência local de quem atende.",
+    marcas: ["deskcomm"],
+  },
+  "components/inbox/EstoqueDaConversa.tsx": {
+    categoria: "INFRA",
+    motivo:
+      "chave de localStorage do bloco de estoque; renomear perderia a preferência local de quem atende.",
+    marcas: ["deskcomm"],
+  },
+  "components/inbox/EstoqueDaConversa.test.tsx": {
+    categoria: "INFRA",
+    motivo:
+      "teste que confere a chave de localStorage do bloco de estoque.",
+    marcas: ["deskcomm"],
+  },
+  "hooks/inbox/useBlocoRecolhivel.ts": {
+    categoria: "INFRA",
+    motivo:
+      "nome do evento interno do navegador que sincroniza blocos recolhíveis; identificador técnico, não aparece em tela.",
+    marcas: ["deskcomm"],
+  },
   // ─── PROTOCOLO — contrato de fio. Renomear quebra integração alheia. ───
   "lib/ai/pontos/pkce-da-assinatura.ts": {
     categoria: "PROTOCOLO",
