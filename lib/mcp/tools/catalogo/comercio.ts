@@ -8,6 +8,16 @@ import { declararTools } from "./tipos";
 
 export const TOOLS_COMERCIO = declararTools([
   {
+    name: "crm_consultar_estoque",
+    category: "read",
+    rotulo: "Consultar estoque e preços",
+    explicacao:
+      "Consulta os veículos disponíveis, entende o orçamento e as preferências do cliente e ajuda a selecionar até três opções compatíveis, sem enviar o estoque inteiro.",
+    oQueToca: "Estoque de veículos",
+    risco: "seguro",
+    pacotes: ["vender", "atender"],
+  },
+  {
     name: "crm_list_contact_orders",
     category: "read",
     rotulo: "Ver as compras do cliente",

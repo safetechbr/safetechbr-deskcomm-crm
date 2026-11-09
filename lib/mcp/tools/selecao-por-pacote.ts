@@ -80,7 +80,10 @@ import { entraPorPacote, type ToolBundle, type ToolRisk } from "./pacotes";
  * que o bloco ⚠️ acima diz. O dia em que o `evoluir` exigir 28, o passo volta a
  * ser ele.
  */
-export const TETO_TOOLS_POR_AGENTE = 27;
+// A consulta do estoque novo acrescenta uma leitura ao pacote vender. O gate
+// pacote-reserva-vaga-da-critica mede 28 como o novo mínimo para o segundo
+// pacote evoluir continuar cabendo; 27 deixaria todas as jornadas bloqueadas.
+export const TETO_TOOLS_POR_AGENTE = 28;
 
 /** O mínimo que a regra precisa saber de uma capacidade. */
 export interface CapacidadeSelecionavel {

@@ -321,6 +321,8 @@ export const AUDIT_ACTIONS = [
   // `archived` só a escondeu porque conversas/mensagens ainda a referenciam.
   // A auditoria precisa distinguir o que sumiu do que continua no banco.
   "channel.deleted",
+  // Limpeza das conversas que sobraram de canais já removidos (arquivados).
+  "channel.removed_conversations_deleted",
   "channel.archived",
   // Contraparte de `archived`: a linha escondida voltou à vida (reconexão do
   // canal oficial, retomada do pareamento). Sem ela o histórico registra a

@@ -28,6 +28,7 @@ describe("segurança da prévia: leituras de cenário não podem virar escrita",
     // O dado é da organização, não de um contato: sem isto o Testar responde
     // "vou confirmar e te retorno" para qualquer pergunta de preço ou agenda.
     expect(SCENARIO_READS.has("crm_search_products")).toBe(true);
+    expect(SCENARIO_READS.has("crm_consultar_estoque")).toBe(true);
     expect(SCENARIO_READS.has("crm_search_knowledge")).toBe(true);
   });
 

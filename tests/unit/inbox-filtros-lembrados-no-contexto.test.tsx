@@ -156,6 +156,24 @@ describe("os efeitos do Inbox preservam a memória do contexto", () => {
 
 
 describe("navegação entre as seções da central", () => {
+  it.each(["/app/inbox", "/app/inbox?filter=invalido"])(
+    "entrar em %s abre Conversas e voltar pelo menu restaura essa visão",
+    async (url) => {
+      window.history.replaceState({}, "", url);
+      const view = montar();
+      expect(screen.getByRole("tab", { name: "Conversas" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByTestId("filtros")).toHaveTextContent('"tab":"all"');
+      view.mudarUrl("/app/inbox?filter=unassigned");
+      expect(screen.getByRole("tab", { name: "A fazer" })).toHaveAttribute("aria-selected", "true");
+      view.mudarUrl("/app/inbox?visao=funil");
+      expect(await screen.findByTestId("quadro-central")).toBeInTheDocument();
+      view.mudarUrl("/app/inbox");
+      expect(screen.getByRole("tab", { name: "Conversas" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.queryByTestId("quadro-central")).not.toBeInTheDocument();
+      expect(screen.getByTestId("filtros")).toHaveTextContent('"tab":"all"');
+    },
+  );
+
   it("ir para Conversas preserva o ID aberto e os filtros de trabalho", async () => {
     window.history.replaceState({}, "", "/app/inbox?filter=mine&id=conversa-1&tag=vip");
     try {

@@ -37,7 +37,7 @@
       "col": 1,
       "type": "frontend",
       "label": "InboxLayout + InboxFilters",
-      "sublabel": "filter e visao na URL; conversa e rascunho permanecem montados"
+      "sublabel": "Entrada padrão em Conversas; rótulo do contato prioriza nome e telefone completo; filter/visao preservados"
     },
     {
       "id": "conversas",

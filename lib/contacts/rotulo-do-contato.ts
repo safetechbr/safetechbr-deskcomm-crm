@@ -47,6 +47,10 @@ export const SEM_NOME = "Sem nome";
 export function ehIdentificadorTecnico(valor: string): boolean {
   const v = valor.trim();
   if (v === "") return true;
+  // Máscaras antigas chegaram ao display_name como se fossem nomes. Na
+  // tela da equipe, elas não podem vencer o telefone completo do cadastro.
+  // Só caracteres de telefone + máscara: nomes como "Loja • 24h" continuam válidos.
+  if (/^(?=.*\d)(?=.*[•·∙●*…])\+?[\d\s().+\-•·∙●*…]+$/.test(v)) return true;
   // Sufixos de endereçamento do WhatsApp em qualquer posição.
   if (/@(lid|c\.us|s\.whatsapp\.net|g\.us)\b/i.test(v)) return true;
   // O rótulo que o código antigo inventava: "Contato " + dígitos, e só isso.

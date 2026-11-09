@@ -153,3 +153,20 @@ describe("ConversationListItem — seleção em lote", () => {
     expect(linha.className).not.toContain("bg-accent-50");
   });
 });
+
+
+describe("ConversationListItem — nome cadastrado ou telefone completo", () => {
+  it.each([
+    { name: null, display_name: "+55∙∙∙∙∙∙∙∙65", address_book_name: null, esperado: "+5586994243765" },
+    { name: "Jeiel Oliveira", display_name: "+55∙∙∙∙∙∙∙∙65", address_book_name: null, esperado: "Jeiel Oliveira" },
+    { name: null, display_name: "+55∙∙∙∙∙∙∙∙65", address_book_name: "Jeiel da agenda", esperado: "Jeiel da agenda" },
+    { name: "+55••••65", display_name: "Jeiel do perfil", address_book_name: null, esperado: "Jeiel do perfil" },
+  ])("exibe $esperado sem usar a máscara como nome", ({ esperado, ...nomes }) => {
+    render(<ConversationListItem conversation={{
+      ...conversaDeExemplo.conversation,
+      contacts: { ...conversaDeExemplo.conversation.contacts!, ...nomes, phone_number: "+5586994243765" },
+    }} {...conversaDeExemplo.props} />);
+    expect(screen.getByText(esperado)).toBeInTheDocument();
+    expect(screen.queryByText(/\+55[∙•]/)).not.toBeInTheDocument();
+  });
+});

@@ -25,6 +25,7 @@ import {
 } from "@/lib/channels/capabilities";
 import type { ChannelProvider } from "@/lib/channels/capabilities";
 import { usePacingKnobs } from "@/hooks/channels/usePacingKnobs";
+import { ConversasDeCanaisRemovidos } from "./ConversasDeCanaisRemovidos";
 import { AntiBanSheet } from "./AntiBanSheet";
 import { GruposSheet } from "./GruposSheet";
 import { PairingOptions } from "./PairingOptions";
@@ -387,6 +388,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
 
   return (
     <div className="flex flex-col gap-4">
+      <ConversasDeCanaisRemovidos />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {isError

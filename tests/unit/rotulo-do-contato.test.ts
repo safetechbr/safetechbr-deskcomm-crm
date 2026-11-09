@@ -19,6 +19,18 @@ import { ehIdentificadorTecnico, nomeDoContato, rotuloDoContato, SEM_NOME } from
  */
 
 describe("ehIdentificadorTecnico", () => {
+  it.each(["+55∙∙∙∙∙∙∙∙65", "+55 •••••••• 65", "+55********65", "+55…65"])("não trata o telefone mascarado %s como nome", (nome) => {
+    expect(ehIdentificadorTecnico(nome)).toBe(true);
+    expect(nomeDoContato({ display_name: nome })).toBeNull();
+    expect(rotuloDoContato({ display_name: nome, phone_number: "+5586994243765" })).toBe("+5586994243765");
+  });
+
+  it("preserva nomes de gente e empresa com pontuação", () => {
+    expect(ehIdentificadorTecnico("Loja • 24h")).toBe(false);
+    expect(ehIdentificadorTecnico("Ana • Souza")).toBe(false);
+    expect(nomeDoContato({ name: "Cliente Anonimizado #1" })).toBe("Cliente Anonimizado #1");
+  });
+
   it("reconhece os sufixos de endereçamento do WhatsApp", () => {
     expect(ehIdentificadorTecnico("Contato 543134@lid")).toBe(true);
     expect(ehIdentificadorTecnico("5531988887777@c.us")).toBe(true);

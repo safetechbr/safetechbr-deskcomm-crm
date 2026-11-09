@@ -238,10 +238,11 @@ const FILTER_TABS: InboxTab[] = ["unassigned", "mine", "all", "closed", "archive
 
 /**
  * Lê ?filter= (G4-02, deep-link). ?filter=all é HONRADO mesmo para agent — a
- * lista volta RLS-scoped (a tab só some cosmeticamente); default: fila.
+ * lista volta RLS-scoped (a tab só some cosmeticamente). Sem filtro válido,
+ * a entrada pelo menu abre Conversas (Todas); A fazer exige escolha explícita.
  */
 function parseFilterParam(v: string | null): InboxTab {
-  return v && FILTER_TABS.includes(v as InboxTab) ? (v as InboxTab) : "unassigned";
+  return v && FILTER_TABS.includes(v as InboxTab) ? (v as InboxTab) : "all";
 }
 
 /**

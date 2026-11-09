@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Estoque no atendimento",
+    "subtitle": "Consulta selecionável e oferta progressiva",
+    "output": "estoque-no-atendimento.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "tela",
+      "label": "Configuração e atendimento"
+    },
+    {
+      "id": "consulta",
+      "label": "Capacidade"
+    },
+    {
+      "id": "dados",
+      "label": "Dados e evidências"
+    }
+  ],
+  "mainPath": [
+    "configuracao",
+    "consulta",
+    "oferta"
+  ],
+  "nodes": [
+    {
+      "id": "configuracao",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "AgentForm + ToolPicker",
+      "sublabel": "Consultar estoque e preços, marcável na criação e edição"
+    },
+    {
+      "id": "catalogo",
+      "lane": "consulta",
+      "col": 1,
+      "type": "api",
+      "label": "GET /api/v1/mcp/tools",
+      "sublabel": "Catálogo servido e registro do handler de leitura"
+    },
+    {
+      "id": "versao",
+      "lane": "consulta",
+      "col": 1,
+      "type": "database",
+      "label": "ai_agent_versions.tool_ids",
+      "sublabel": "Rascunho testável; publicação escolhida pela pessoa"
+    },
+    {
+      "id": "consulta",
+      "lane": "consulta",
+      "col": 2,
+      "type": "api",
+      "label": "crm_consultar_estoque",
+      "sublabel": "Filtros estruturados, tenant explícito, somente disponíveis"
+    },
+    {
+      "id": "estoque",
+      "lane": "dados",
+      "col": 3,
+      "type": "database",
+      "label": "veiculos",
+      "sublabel": "Dados comerciais; sem custos, placas ou arquivos"
+    },
+    {
+      "id": "oferta",
+      "lane": "tela",
+      "col": 4,
+      "type": "frontend",
+      "label": "Conversador / Testar",
+      "sublabel": "Resumo para afunilar; até três opções quando há direção"
+    },
+    {
+      "id": "evidencias",
+      "lane": "dados",
+      "col": 4,
+      "type": "api",
+      "label": "Evidências comerciais do turno",
+      "sublabel": "Preço e características consultados sustentam a conferência"
+    },
+    {
+      "id": "auditoria",
+      "lane": "dados",
+      "col": 3,
+      "type": "database",
+      "label": "api_audit_log",
+      "sublabel": "Invocação e motivo do vazio no painel de capacidades"
+    }
+  ],
+  "edges": [
+    {
+      "id": "abrir",
+      "from": "configuracao",
+      "to": "catalogo",
+      "label": "Lista capacidades marcáveis"
+    },
+    {
+      "id": "mostrar",
+      "from": "catalogo",
+      "to": "configuracao",
+      "label": "Rótulo, explicação e risco"
+    },
+    {
+      "id": "salvar",
+      "from": "configuracao",
+      "to": "versao",
+      "label": "Escolha explícita no rascunho"
+    },
+    {
+      "id": "montar",
+      "from": "versao",
+      "to": "consulta",
+      "label": "buildMcpTurnTools / pickToolsFromMcp"
+    },
+    {
+      "id": "ler",
+      "from": "consulta",
+      "to": "estoque",
+      "label": "organization_id da sessão e status disponível"
+    },
+    {
+      "id": "dados",
+      "from": "estoque",
+      "to": "consulta",
+      "label": "Paginação estável e ausência explícita"
+    },
+    {
+      "id": "resumir",
+      "from": "consulta",
+      "to": "oferta",
+      "label": "Sem lista bruta; resumo e seleção limitada"
+    },
+    {
+      "id": "refinar",
+      "from": "oferta",
+      "to": "consulta",
+      "label": "Critérios informados pelo cliente"
+    },
+    {
+      "id": "registrar",
+      "from": "consulta",
+      "to": "evidencias",
+      "label": "Mesmo contrato comercial do catálogo"
+    },
+    {
+      "id": "conferir",
+      "from": "evidencias",
+      "to": "oferta",
+      "label": "Conferência de fatos e condições da oferta"
+    },
+    {
+      "id": "auditar",
+      "from": "consulta",
+      "to": "auditoria",
+      "label": "Ponte MCP existente registra invocação"
+    },
+    {
+      "id": "ver",
+      "from": "auditoria",
+      "to": "configuracao",
+      "label": "Uso e falhas no painel do agente"
+    }
+  ]
+}

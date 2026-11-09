@@ -4951,7 +4951,7 @@ async function executarTurnoDoAgente(
           for (const [name, mcpTool] of Object.entries(mcp.tools)) {
             if (name in rawTools) continue;
             if (
-              (name === 'crm_search_products' || name === 'crm_search_knowledge') &&
+              (name === 'crm_search_products' || name === 'crm_consultar_estoque' || name === 'crm_search_knowledge') &&
               typeof mcpTool.execute === 'function'
             ) {
               const executeOriginal = mcpTool.execute.bind(mcpTool);
@@ -4961,7 +4961,7 @@ async function executarTurnoDoAgente(
                   const resultado = await executeOriginal(...args);
                   // O modelo escolhe a consulta, nunca fornece a autorização.
                   // A ponte MCP já aplica organização, papel e escopo de leitura.
-                  if (name === 'crm_search_products') evidenciasComerciais.registrarCatalogo(resultado);
+                  if (name === 'crm_search_products' || name === 'crm_consultar_estoque') evidenciasComerciais.registrarCatalogo(resultado);
                   else evidenciasComerciais.registrarConhecimento(resultado);
                   return resultado;
                 }) as typeof mcpTool.execute,
