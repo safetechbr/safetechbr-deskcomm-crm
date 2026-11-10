@@ -59,6 +59,8 @@ const customFieldsSchema = z
 export { isValidCpf };
 
 export const contactCreateSchema = z.object({
+  /** Cadastro manual pode completar o contato do atendimento com o mesmo telefone. */
+  reuse_existing_phone: z.boolean().optional(),
   name: z.string().min(1).max(200).optional(),
   display_name: z.string().min(1).max(200).optional(),
   email: z.string().email().optional(),

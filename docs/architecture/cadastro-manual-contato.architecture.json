@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Cadastro manual e contato do atendimento",
+    "subtitle": "Mesmo telefone, mesma identidade, dados complementados",
+    "output": "cadastro-manual-contato.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "tela",
+      "label": "Configuração e atendimento"
+    },
+    {
+      "id": "consulta",
+      "label": "Capacidade"
+    },
+    {
+      "id": "dados",
+      "label": "Dados e evidências"
+    }
+  ],
+  "mainPath": [
+    "form",
+    "handler",
+    "contato"
+  ],
+  "nodes": [
+    {
+      "id": "form",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "PDV / Novo cliente / Novo contato",
+      "sublabel": "Intenção explícita de completar cadastro existente"
+    },
+    {
+      "id": "handler",
+      "lane": "consulta",
+      "col": 1,
+      "type": "api",
+      "label": "POST contacts + atualizarCadastroManual",
+      "sublabel": "Telefone por organização, CPF e ambiguidade protegidos"
+    },
+    {
+      "id": "contato",
+      "lane": "dados",
+      "col": 2,
+      "type": "database",
+      "label": "contacts",
+      "sublabel": "Mesmo ID, nome manual, campos preenchidos"
+    },
+    {
+      "id": "central",
+      "lane": "tela",
+      "col": 3,
+      "type": "frontend",
+      "label": "Central de mensagens",
+      "sublabel": "Nome escolhido vence perfil; caches invalidados"
+    },
+    {
+      "id": "auditoria",
+      "lane": "dados",
+      "col": 3,
+      "type": "database",
+      "label": "api_audit_log / contact.updated",
+      "sublabel": "Patch canônico existente"
+    }
+  ],
+  "edges": [
+    {
+      "id": "cadastrar",
+      "from": "form",
+      "to": "handler",
+      "label": "Corpo validado e ator humano"
+    },
+    {
+      "id": "procurar",
+      "from": "handler",
+      "to": "contato",
+      "label": "Uma identidade viva nas variantes do telefone"
+    },
+    {
+      "id": "retornar",
+      "from": "contato",
+      "to": "handler",
+      "label": "Mesmo cadastro e verificação de documento"
+    },
+    {
+      "id": "atualizar",
+      "from": "handler",
+      "to": "contato",
+      "label": "Patch apenas dos dados informados"
+    },
+    {
+      "id": "selecionar",
+      "from": "handler",
+      "to": "form",
+      "label": "Mesmo ID selecionado na venda"
+    },
+    {
+      "id": "mostrar",
+      "from": "contato",
+      "to": "central",
+      "label": "Nome cadastrado e histórico preservado"
+    },
+    {
+      "id": "auditar",
+      "from": "handler",
+      "to": "auditoria",
+      "label": "Atualização existente, sem evento de nova pessoa"
+    },
+    {
+      "id": "reler",
+      "from": "form",
+      "to": "central",
+      "label": "Invalidação de listas e detalhe"
+    }
+  ]
+}

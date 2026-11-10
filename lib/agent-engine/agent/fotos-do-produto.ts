@@ -16,6 +16,11 @@
  */
 import { BUCKET_DAS_FOTOS, fotoPertenceAoProduto, mimeDaFoto } from '@/lib/catalogo/fotos';
 import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  arquivoPertenceAoVeiculo,
+  BUCKET_DAS_FOTOS_DE_VEICULO,
+  mimeDoArquivoDeVeiculo,
+} from '@/lib/veiculos/regras';
 
 import type { Queryable } from '../queue/queue';
 import { OK_KINDS, type BubbleOutcome } from './split-message';
@@ -67,16 +72,19 @@ export interface MidiaPreparada {
 }
 
 /** Copia do catálogo para a conversa. `true` = o arquivo está no destino. */
-export type CopiarFoto = (origem: string, destino: string) => Promise<boolean>;
+export type CopiarFoto = (origem: string, destino: string, bucketOrigem?: string) => Promise<boolean>;
+
+/** O prefixo que `crm_consultar_estoque` põe no `codigo` de um veículo. */
+export const PREFIXO_DO_VEICULO = 'veiculo:';
 
 interface Log {
   warn(msg: string, fields?: Record<string, unknown>): void;
 }
 
 export function copiarFotoNoStorage(log: Log): CopiarFoto {
-  return async (origem, destino) => {
+  return async (origem, destino, bucketOrigem = BUCKET_DAS_FOTOS) => {
     const { error } = await createAdminClient()
-      .storage.from(BUCKET_DAS_FOTOS)
+      .storage.from(bucketOrigem)
       .copy(origem, destino, { destinationBucket: BUCKET_DA_CONVERSA });
     if (!error) return true;
     // Já copiada antes para esta conversa: o arquivo que precisamos está lá.
@@ -105,6 +113,7 @@ export async function prepararFotosDoProduto(
   copiar: CopiarFoto,
   input: { tenantId: string; conversationId: string; codigo: string },
 ): Promise<FotosPreparadas> {
+  if (input.codigo.trim().startsWith(PREFIXO_DO_VEICULO)) return prepararFotosDoVeiculo(db, copiar, input);
   const { rows } = await db.query<{ id: string; fotos: string[] | null }>(
     'select id, fotos from catalog_products where organization_id = $1 and codigo = $2 and ativo',
     [input.tenantId, input.codigo.trim()],
@@ -128,6 +137,42 @@ export async function prepararFotosDoProduto(
   for (const origem of deste) {
     const destino = `${input.tenantId}/${input.conversationId}/catalogo-${origem.split('/').pop()}`;
     if (await copiar(origem, destino)) fotos.push({ storagePath: destino, mime: mimeDaFoto(origem) });
+  }
+  return { ok: true, fotos, tinha: deste.length };
+}
+
+/**
+ * O mesmo preparo para um VEÍCULO do estoque (`veiculo:<codigo>`, o `codigo` que
+ * `crm_consultar_estoque` devolve). Só veículo DISPONÍVEL da organização, e só
+ * arquivo que é dele (`arquivoPertenceAoVeiculo`): a cópia é por service role.
+ */
+async function prepararFotosDoVeiculo(
+  db: Queryable,
+  copiar: CopiarFoto,
+  input: { tenantId: string; conversationId: string; codigo: string },
+): Promise<FotosPreparadas> {
+  const codigoDoEstoque = input.codigo.trim().slice(PREFIXO_DO_VEICULO.length).trim();
+  const { rows } = await db.query<{ id: string; fotos: string[] | null }>(
+    "select id, fotos from veiculos v where organization_id = $1 and codigo = $2 and status = 'disponivel' and not exists (select 1 from reservas_de_veiculo r where r.organization_id = v.organization_id and r.veiculo_id = v.id and r.encerrada_em is null and r.expira_em > now())",
+    [input.tenantId, codigoDoEstoque],
+  );
+  const veiculo = rows[0];
+  if (!veiculo) {
+    return {
+      ok: false,
+      code: 'produto_nao_encontrado',
+      message:
+        `não há veículo disponível com o código ${JSON.stringify(input.codigo)} no estoque. Use o ` +
+        '`codigo` que crm_consultar_estoque devolveu, ou envie sem produto_codigo.',
+    };
+  }
+  const deste = (veiculo.fotos ?? []).filter((c) => arquivoPertenceAoVeiculo(c, input.tenantId, veiculo.id));
+  const fotos: FotoParaEnvio[] = [];
+  for (const origem of deste) {
+    const destino = `${input.tenantId}/${input.conversationId}/veiculo-${origem.split('/').pop()}`;
+    if (await copiar(origem, destino, BUCKET_DAS_FOTOS_DE_VEICULO)) {
+      fotos.push({ storagePath: destino, mime: mimeDoArquivoDeVeiculo(origem) });
+    }
   }
   return { ok: true, fotos, tinha: deste.length };
 }

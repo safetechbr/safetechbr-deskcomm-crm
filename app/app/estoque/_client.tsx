@@ -1,4 +1,5 @@
 "use client";
+import { reservaAtiva } from "@/lib/veiculos/reservas";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { ImageIcon, MagnifyingGlass } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
+import { CATEGORIAS_PADRAO, listaDeCategorias, mesmaCategoria, sugerirCategoria } from "@/lib/veiculos/categorias";
 import { interpretarModeloFipe, marcasDoCatalogo, modelosDaMarca } from "@/lib/veiculos/catalogo";
 import {
   formatarKm,
@@ -27,6 +29,7 @@ interface Rascunho {
   codigo: string;
   marca: string;
   modelo: string;
+  categoria: string;
   versao: string;
   ano_fabricacao: string;
   ano_modelo: string;
@@ -45,6 +48,7 @@ const VAZIO: Rascunho = {
   codigo: "",
   marca: "",
   modelo: "",
+  categoria: "",
   versao: "",
   ano_fabricacao: "",
   ano_modelo: "",
@@ -64,6 +68,7 @@ function doVeiculo(v: Veiculo): Rascunho {
     codigo: v.codigo,
     marca: v.marca ?? "",
     modelo: v.modelo,
+    categoria: v.categoria ?? "",
     versao: v.versao ?? "",
     ano_fabricacao: v.ano_fabricacao?.toString() ?? "",
     ano_modelo: v.ano_modelo?.toString() ?? "",
@@ -90,9 +95,11 @@ function corpoDe(r: Rascunho): Record<string, unknown> | { erro: string } {
   const preco = r.preco.trim() === "" ? 0 : precoParaCentavos(r.preco);
   if (preco === null) return { erro: "Preço inválido. Escreva assim: 59.900,00" };
   if (!r.modelo.trim()) return { erro: "O modelo é obrigatório." };
+  if (!r.categoria.trim()) return { erro: "Escolha a categoria do veículo." };
   const txt = (s: string) => (s.trim() === "" ? null : s.trim());
   return {
     modelo: r.modelo.trim(),
+    categoria: r.categoria.trim(),
     marca: txt(r.marca),
     versao: txt(r.versao),
     ano_fabricacao: numeroOuNulo(r.ano_fabricacao),
@@ -141,7 +148,7 @@ export function EstoqueClient({
   const [editando, setEditando] = React.useState<Veiculo | "novo" | null>(null);
 
   const visiveis = inicial.filter((v) => {
-    if (status !== "todos" && v.status !== status) return false;
+    if (status !== "todos" && (reservaAtiva(v.reserva) ? "reservado" : v.status) !== status) return false;
     const q = busca.trim().toLowerCase();
     return !q || `${v.codigo} ${tituloDoVeiculo(v)} ${v.cor ?? ""}`.toLowerCase().includes(q);
   });
@@ -240,11 +247,12 @@ export function EstoqueClient({
                     </div>
                   )}
                   <span className="absolute top-3 left-3 rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-medium text-text shadow-xs backdrop-blur-sm">
-                    {t(ROTULO_DO_STATUS[v.status as keyof typeof ROTULO_DO_STATUS] ?? v.status)}
+                    {reservaAtiva(v.reserva) ? t("Reservado para visita") : t(ROTULO_DO_STATUS[v.status as keyof typeof ROTULO_DO_STATUS] ?? v.status)}
                   </span>
                 </div>
                 <div className="space-y-2 p-5 text-sm">
                   <div className="leading-snug font-medium">{tituloDoVeiculo(v)}</div>
+                  {reservaAtiva(v.reserva) ? <p className="text-xs text-amber-600">{t("Reservado por")} {v.reserva.vendedor_nome || t("vendedor responsável")} · {t("Até")} {new Date(v.reserva.expira_em).toLocaleString("pt-BR")}</p> : null}
                   <div className="text-muted-foreground">
                     {[v.km != null ? `${formatarKm(v.km)} km` : null, v.motor, v.cambio]
                       .filter(Boolean)
@@ -325,6 +333,46 @@ function FormularioDoVeiculo({
     () => (r.marca ? modelosDaMarca(r.marca, r.modelo, 40) : []),
     [r.marca, r.modelo],
   );
+  // Categoria: sugerida pelo modelo enquanto a pessoa não escolher; sem sugestão, é obrigatório escolher.
+  const [categorias, setCategorias] = React.useState<string[]>(() => listaDeCategorias([]));
+  const [categoriaEscolhida, setCategoriaEscolhida] = React.useState(Boolean(veiculo?.categoria));
+  const [novaCategoria, setNovaCategoria] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    let vivo = true;
+    apiClient
+      .get<{ data: string[] }>("/api/v1/veiculos/categorias")
+      .then((res) => {
+        if (vivo && Array.isArray(res?.data)) setCategorias(listaDeCategorias(res.data));
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, []);
+  const sugerida = React.useMemo(() => sugerirCategoria(r.marca, r.modelo), [r.marca, r.modelo]);
+  React.useEffect(() => {
+    if (categoriaEscolhida) return;
+    setR((atual) => (atual.categoria === (sugerida ?? "") ? atual : { ...atual, categoria: sugerida ?? "" }));
+  }, [sugerida, categoriaEscolhida]);
+  function escolherCategoria(valor: string) {
+    if (valor === "__nova__") {
+      setNovaCategoria("");
+      return;
+    }
+    setNovaCategoria(null);
+    setCategoriaEscolhida(true);
+    setR((atual) => ({ ...atual, categoria: valor }));
+  }
+  function adicionarCategoria() {
+    const nome = (novaCategoria ?? "").trim().slice(0, 40);
+    if (!nome) return;
+    const existente = categorias.find((c) => mesmaCategoria(c, nome));
+    if (!existente) setCategorias((l) => listaDeCategorias([...l.filter((c) => !CATEGORIAS_PADRAO.some((p) => p === c)), nome]));
+    setCategoriaEscolhida(true);
+    setNovaCategoria(null);
+    setR((atual) => ({ ...atual, categoria: existente ?? nome }));
+  }
+
   const anos = React.useMemo(() => {
     const atual = new Date().getFullYear() + 1;
     return Array.from({ length: atual - 1979 }, (_, i) => String(atual - i));
@@ -502,6 +550,56 @@ function FormularioDoVeiculo({
               <option key={a} value={a} />
             ))}
           </datalist>
+          <div className="text-sm sm:col-span-2" data-testid="campo-categoria">
+            <label htmlFor="categoria-do-veiculo">{t("Categoria")}</label>
+            <select
+              id="categoria-do-veiculo"
+              value={r.categoria}
+              onChange={(e) => escolherCategoria(e.target.value)}
+              className="mt-1 h-9 w-full rounded-md border bg-background px-3"
+            >
+              <option value="" disabled>
+                {t("Escolha a categoria")}
+              </option>
+              {categorias.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+              {r.categoria && !categorias.some((c) => mesmaCategoria(c, r.categoria)) ? (
+                <option value={r.categoria}>{r.categoria}</option>
+              ) : null}
+              <option value="__nova__">{t("+ Adicionar outra categoria…")}</option>
+            </select>
+            {novaCategoria !== null ? (
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={novaCategoria}
+                  onChange={(e) => setNovaCategoria(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      adicionarCategoria();
+                    }
+                  }}
+                  maxLength={40}
+                  placeholder={t("Nome da nova categoria")}
+                  className="h-9 flex-1 rounded-md border bg-background px-3"
+                  data-testid="campo-nova-categoria"
+                />
+                <Button type="button" variant="outline" onClick={adicionarCategoria}>
+                  {t("Adicionar")}
+                </Button>
+              </div>
+            ) : null}
+            <p className="mt-1 text-xs text-muted-foreground">
+              {sugerida && !categoriaEscolhida
+                ? t("Sugerida pelo modelo. Você pode trocar.")
+                : !r.categoria
+                  ? t("Modelo fora da base: escolha a categoria (obrigatório).")
+                  : ""}
+            </p>
+          </div>
           {campo("versao", t("Versão"))}
           {campo("ano_fabricacao", t("Ano de fabricação"), undefined, "lista-anos")}
           {campo("ano_modelo", t("Ano do modelo"), undefined, "lista-anos")}

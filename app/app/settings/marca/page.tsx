@@ -33,6 +33,7 @@ import { redirect } from "next/navigation";
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { marcaDaInstalacao } from "@/lib/branding/instalacao";
+import { logoDasEmpresasBloqueado } from "@/lib/branding/logo-bloqueado";
 import { marcaDaOrganizacaoDeSettings } from "@/lib/branding/organizacao";
 import { env } from "@/lib/env";
 import { perfilDoPais } from "@/lib/legal/perfil-do-pais";
@@ -87,6 +88,7 @@ export default async function MarcaDaOrganizacaoPage() {
       </header>
 
       <FormularioDaMarcaDaOrganizacao
+        logoBloqueado={!user.is_platform_admin && (await logoDasEmpresasBloqueado())}
         gravada={{
           app_name: gravada?.app_name ?? null,
           accent_hex: gravada?.accent_hex ?? null,

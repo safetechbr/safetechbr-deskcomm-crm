@@ -1,3 +1,4 @@
+import { LogoAdaptativo } from "@/components/branding/LogoAdaptativo";
 import { LogotipoDoProduto } from "@/components/branding/MarcaDoProduto";
 import { marcaEhADoProduto } from "@/lib/branding";
 import { marcaDaSaida } from "@/lib/branding/saida";
@@ -55,7 +56,9 @@ export default async function PublicLayout({ children }: { children: React.React
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const locale = await idiomaDoVisitante((user?.user_metadata?.locale as string | undefined) ?? null);
+  const locale = await idiomaDoVisitante(
+    (user?.user_metadata?.locale as string | undefined) ?? null,
+  );
 
   return (
     <IdiomaProvider locale={locale}>
@@ -79,16 +82,9 @@ export default async function PublicLayout({ children }: { children: React.React
                 "primeira <img> da página", e uma asserção de negação com seletor
                 largo passa sozinha assim que outra imagem entra na tela.
               */}
-              <div
-                className={
-                  marca.logoDarkUrl
-                    ? "rounded-md"
-                    : "rounded-md dark:bg-white dark:px-3 dark:py-2 dark:shadow-sm"
-                }
-              >
+              <div className="rounded-md">
                 {marca.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <LogoAdaptativo
                     data-testid="logo-da-fachada"
                     src={marca.logoUrl}
                     alt={marca.nome}

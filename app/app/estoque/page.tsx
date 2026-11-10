@@ -1,3 +1,4 @@
+import { reservasAtivas } from "@/lib/veiculos/reservas-server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -41,6 +42,9 @@ export default async function EstoquePage() {
     .limit(500);
   if (error) throw new Error(`Não consegui ler o estoque: ${error.message}`);
   const veiculos = (data ?? []) as unknown as Veiculo[];
+
+  const reservas = await reservasAtivas(supabase, activeOrg.orgId, veiculos.map(v => v.id));
+  for (const v of veiculos) v.reserva = reservas.get(v.id) ?? null;
 
   const caminhos = veiculos.flatMap((v) =>
     (v.fotos ?? []).filter((c) => arquivoPertenceAoVeiculo(c, activeOrg.orgId, v.id, "foto")),

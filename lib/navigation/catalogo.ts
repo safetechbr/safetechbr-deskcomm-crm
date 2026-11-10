@@ -18,7 +18,7 @@ import type { CapacidadeDaOrganizacao } from "@/lib/organizacao/capacidades";
  * Doutrina: docs/doctrine/sistema-vivo.md — "por qual porta se chega até mim?"
  */
 
-export type NavGroupId = "acoes_rapidas" | "vendas" | "contatos" | "estoque" | "atendimento" | "crm" | "ia" | "canais" | "analise" | "financeiro" | "organizacao";
+export type NavGroupId = "acoes_rapidas" | "vendas" | "contatos" | "estoque" | "atendimento" | "crm" | "ia" | "canais" | "analise" | "financeiro" | "social" | "organizacao";
 
 export interface NavGroup {
   id: NavGroupId;
@@ -39,6 +39,12 @@ export interface NavMetadata {
   description: string;
   icon: string;
   group: NavGroupId;
+  /**
+   * Submenu dentro do grupo: destinos com o mesmo `pai` aparecem sob uma linha
+   * recolhível com esse nome (ex.: "Instagram" > Stories). Só existe no menu
+   * lateral; hub, ⌘K e barra inferior continuam vendo a lista plana.
+   */
+  pai?: "Instagram";
   /** Obrigatória em grupo com hub — é o agrupamento por jornada dentro dele. */
   section?: string;
   /** Ausente = viewer. Ver a regra de escolha abaixo. */
@@ -103,6 +109,7 @@ export const NAV_GROUPS: NavGroup[] = [
   { id: "canais", label: "Canais" },
   { id: "analise", label: "Análise", hub: { href: "/app/analise", label: "Ver tudo em Análise" } },
   { id: "financeiro", label: "Financeiro" },
+  { id: "social", label: "Redes sociais" },
   {
     id: "organizacao",
     label: "Organização",
@@ -822,10 +829,21 @@ export const NAV_CATALOG = [
   },
   {
     href: "/app/publicacoes",
-    label: "Publicações",
-    description: "Agende posts, carrosséis, Reels e Stories no Instagram e nas demais redes.",
+    label: "Reels / Feed / Carrossel",
+    description: "Agende Reels, posts de feed e carrosséis do Instagram com limite por dia e intervalo entre postagens.",
     icon: "CalendarBlank",
-    group: "canais",
+    group: "social",
+    pai: "Instagram",
+    minRole: "manager",
+    sidebar: true,
+  },
+  {
+    href: "/app/stories",
+    label: "Stories",
+    description: "Automação de Stories do Instagram: kanban semanal, calendário, janelas de horários, repetição e lote.",
+    icon: "ClockCountdown",
+    group: "social",
+    pai: "Instagram",
     minRole: "manager",
     sidebar: true,
   },
@@ -914,10 +932,17 @@ export const NAV_CATALOG = [
     modulo: "honorarios",
   },
   {
-    // Financeiro: só a porta. As telas são "Em breve" — ainda não existe funcionalidade.
+    href: "/app/financeiro/dashboard",
+    label: "Dashboard",
+    description: "Saldos, faturas, previsão, atrasos e fluxo de caixa do período.",
+    icon: "ChartBar",
+    group: "financeiro",
+    sidebar: true,
+  },
+  {
     href: "/app/financeiro/movimentacoes",
     label: "Movimentações",
-    description: "Entradas e saídas do caixa. Em breve.",
+    description: "Receitas e despesas do dia a dia da empresa, mês a mês.",
     icon: "Receipt",
     group: "financeiro",
     sidebar: true,
@@ -927,6 +952,14 @@ export const NAV_CATALOG = [
     label: "Relatórios",
     description: "Relatórios financeiros do período. Em breve.",
     icon: "ChartBar",
+    group: "financeiro",
+    sidebar: true,
+  },
+  {
+    href: "/app/financeiro/contas-e-cartoes",
+    label: "Contas e Cartões",
+    description: "Contas bancárias e cartões de crédito da empresa, com saldo e limite.",
+    icon: "Wallet",
     group: "financeiro",
     sidebar: true,
   },

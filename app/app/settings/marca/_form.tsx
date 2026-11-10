@@ -90,6 +90,11 @@ interface Props {
    * portuguesa conferir um campo com outro nome.
    */
   readonly vocabulario: VocabularioDaEmpresa;
+  /**
+   * A trava do admin mestre: `true` = esta empresa não troca o logo, vê o da
+   * instalação. A rota recusa de qualquer forma; aqui a tela só deixa de oferecer.
+   */
+  readonly logoBloqueado?: boolean;
 }
 
 /** Mensagem por código de recusa da server action. */
@@ -144,7 +149,13 @@ function LinhaDeOrigem({ campo, valor }: { campo: string; valor: string }) {
   );
 }
 
-export function FormularioDaMarcaDaOrganizacao({ gravada, instalacao, ambiente, vocabulario }: Props) {
+export function FormularioDaMarcaDaOrganizacao({
+  gravada,
+  instalacao,
+  ambiente,
+  vocabulario,
+  logoBloqueado = false,
+}: Props) {
   const t = useT();
   const router = useRouter();
   const [nome, setNome] = useState(gravada.app_name ?? "");
@@ -455,22 +466,37 @@ export function FormularioDaMarcaDaOrganizacao({ gravada, instalacao, ambiente, 
           aparece"). O que o separa é o mecanismo — ele sobe na hora, sem passar
           pelo Salvar —, e isso a própria caixa explica.
         */}
-        <CampoDeLogo
-          escopo="organizacao"
-          // Literal, nunca memoizado: a identidade deste objeto é o que diz ao
-          // campo que houve render NOVO do servidor. Ver os Props de CampoDeLogo.
-          logoDaCamada={{
-            url: resolvida.origens.logoUrl === "organizacao" ? resolvida.logoUrl : null,
-            escuraUrl:
-              resolvida.origens.logoDarkUrl === "organizacao" ? resolvida.logoDarkUrl : null,
-          }}
-          logoHerdado={semAOrganizacao.logoUrl}
-          logoEscuroHerdado={semAOrganizacao.logoDarkUrl}
-          // Texto-fonte cru, não traduzido aqui: CampoDeLogo já chama t()
-          // internamente sobre esta prop (ver componente compartilhado).
-          origemDoHerdado="de quem instalou o sistema"
-          nomeEmVigor={resolvida.name}
-        />
+        {logoBloqueado ? (
+          <div className="space-y-2" data-testid="logo-bloqueado">
+            <p className="text-sm font-medium">{t("Logo")}</p>
+            {semAOrganizacao.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={semAOrganizacao.logoUrl} alt={resolvida.name} className="h-10 w-auto" />
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "O logo do sistema é definido pelo administrador da plataforma e não pode ser trocado por aqui.",
+              )}
+            </p>
+          </div>
+        ) : (
+          <CampoDeLogo
+            escopo="organizacao"
+            // Literal, nunca memoizado: a identidade deste objeto é o que diz ao
+            // campo que houve render NOVO do servidor. Ver os Props de CampoDeLogo.
+            logoDaCamada={{
+              url: resolvida.origens.logoUrl === "organizacao" ? resolvida.logoUrl : null,
+              escuraUrl:
+                resolvida.origens.logoDarkUrl === "organizacao" ? resolvida.logoDarkUrl : null,
+            }}
+            logoHerdado={semAOrganizacao.logoUrl}
+            logoEscuroHerdado={semAOrganizacao.logoDarkUrl}
+            // Texto-fonte cru, não traduzido aqui: CampoDeLogo já chama t()
+            // internamente sobre esta prop (ver componente compartilhado).
+            origemDoHerdado="de quem instalou o sistema"
+            nomeEmVigor={resolvida.name}
+          />
+        )}
       </Card>
 
       {/*
@@ -525,7 +551,9 @@ export function FormularioDaMarcaDaOrganizacao({ gravada, instalacao, ambiente, 
             </span>
           ) : null}
           <p className="text-xs text-text-muted">
-            {t("Para onde vai a resposta do cliente. Deixe em branco para usar o endereço do sistema.")}
+            {t(
+              "Para onde vai a resposta do cliente. Deixe em branco para usar o endereço do sistema.",
+            )}
           </p>
         </div>
       </Card>
@@ -647,7 +675,10 @@ export function FormularioDaMarcaDaOrganizacao({ gravada, instalacao, ambiente, 
         {erroTecnico ? (
           <span className="font-mono text-xs text-text-muted">{erroTecnico}</span>
         ) : null}
-        <Button type="submit" disabled={isPending || !hexValido || !hexEscuroValido || !responderParaValido}>
+        <Button
+          type="submit"
+          disabled={isPending || !hexValido || !hexEscuroValido || !responderParaValido}
+        >
           {isPending ? t("Salvando…") : t("Salvar")}
         </Button>
       </div>

@@ -30,7 +30,9 @@ export const dynamic = "force-dynamic";
 const LIMITE_MAXIMO = 500;
 
 const criarSchema = z.object({
-  account_id: z.string().uuid(),
+  // Com `card_id` a conta é a do cartão (quem paga a fatura) e o campo é ignorado.
+  account_id: z.string().uuid().optional(),
+  card_id: z.string().uuid().nullish(),
   account_plan_id: z.string().uuid().nullish(),
   direction: z.enum(["in", "out"]),
   // O CHECK do banco exige positivo, e quem dá o sinal é `direction`. Recusar
@@ -56,7 +58,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   let q = supabase
     .from("financial_entries")
     .select(
-      "id, account_id, account_plan_id, sale_id, direction, amount_cents, currency, description, entry_date, status, paid_at, origin, reverses_entry_id, created_at",
+      "id, account_id, card_id, account_plan_id, sale_id, direction, amount_cents, currency, description, entry_date, status, paid_at, origin, reverses_entry_id, created_at",
     )
     .order("entry_date", { ascending: false })
     .limit(LIMITE_MAXIMO);
@@ -87,22 +89,46 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const supabase = await createClient();
+
+  // COMPRA NO CARTÃO: só saída, e nasce PENDENTE na conta que paga a fatura. O
+  // dinheiro só sai da conta quando a fatura é paga (baixa do lançamento); antes
+  // disso a compra consome o limite do cartão, não o saldo da conta.
+  let accountId = lido.data.account_id;
+  let status = lido.data.status;
+  if (lido.data.card_id) {
+    if (lido.data.direction !== "out") {
+      return fail("validation_failed", "Cartão só aceita saída.", 422, { requestId });
+    }
+    const { data: cartao } = await supabase
+      .from("credit_cards")
+      .select("account_id")
+      .eq("id", lido.data.card_id)
+      .eq("organization_id", authz.org.orgId)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!cartao) return fail("validation_failed", "Cartão inválido.", 422, { requestId });
+    accountId = cartao.account_id;
+    status = "pending";
+  }
+  if (!accountId) return fail("validation_failed", "Escolha a conta.", 422, { requestId });
+
   const { data, error } = await supabase
     .from("financial_entries")
     .insert({
       organization_id: authz.org.orgId,
-      account_id: lido.data.account_id,
+      card_id: lido.data.card_id ?? null,
+      account_id: accountId,
       account_plan_id: lido.data.account_plan_id ?? null,
       direction: lido.data.direction,
       amount_cents: lido.data.amount_cents,
       description: lido.data.description,
       entry_date: lido.data.entry_date,
-      status: lido.data.status,
+      status,
       // Nasce pago só se quem lançou disse que já pagou. `paid_at` acompanha o
       // status e não vem do corpo: uma data de pagamento que não corresponde ao
       // status é a linha que faz o relatório e o extrato contarem histórias
       // diferentes.
-      paid_at: lido.data.status === "paid" ? new Date().toISOString() : null,
+      paid_at: status === "paid" ? new Date().toISOString() : null,
       origin: "manual",
       created_by_user_id: authz.user.id,
     })

@@ -74,6 +74,7 @@ import {
   baseDoStorage,
 } from "@/lib/branding/logo";
 import { extensaoDe, farejarTipo, pareceSvg, podeApagar } from "@/lib/branding/logo-arquivo";
+import { logoDasEmpresasBloqueado } from "@/lib/branding/logo-bloqueado";
 import { marcaDaOrganizacaoDeSettings } from "@/lib/branding/organizacao";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { logger } from "@/lib/logger";
@@ -208,6 +209,18 @@ async function abrirContexto(escopo: Escopo): Promise<{ ctx: Contexto } | { recu
       recusa: {
         codigo: "forbidden_role",
         mensagem: "Só quem administra a empresa pode trocar o logo dela.",
+        status: 403,
+      },
+    };
+  }
+  // A TRAVA do admin mestre: com ela ligada (o padrão) as empresas veem o logo do
+  // revendedor e não o trocam. Depois do papel, para quem nem é admin da empresa
+  // receber `forbidden_role`; o admin mestre passa sempre.
+  if (!escreveComoPlatformAdmin(user) && (await logoDasEmpresasBloqueado())) {
+    return {
+      recusa: {
+        codigo: "logo_bloqueado",
+        mensagem: traduzir("O logo do sistema está bloqueado para troca nesta instalação.", user.idioma),
         status: 403,
       },
     };

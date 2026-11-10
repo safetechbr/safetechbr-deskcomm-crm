@@ -196,3 +196,25 @@ describe("corpoDoEnvio — a foto chega ao handler como imagem da conversa", () 
     expect(corpoDoEnvio({ ...base, body: "oi" }, "k")).toMatchObject({ type: "text", body: "oi" });
   });
 });
+
+describe("prepararFotosDoProduto — veículo do estoque (veiculo:<codigo>)", () => {
+  const VEICULO = "dddddddd-0000-4000-8000-000000000001";
+  const FOTO = `${ORG}/${VEICULO}/11111111-2222-4333-8444-555555555555.jpg`;
+
+  it("busca em veiculos e copia do bucket de veículos", async () => {
+    const { db, query } = banco({ id: VEICULO, fotos: [FOTO, `${OUTRA_ORG}/${VEICULO}/66666666-7777-4888-8999-000000000000.jpg`] });
+    const copiar = vi.fn(async () => true);
+    const r = await prepararFotosDoProduto(db, copiar, { tenantId: ORG, conversationId: CONVERSA, codigo: "veiculo:AMA01" });
+    expect(query.mock.calls[0]![0]).toMatch(/from veiculos/);
+    expect(query.mock.calls[0]![1]).toEqual([ORG, "AMA01"]);
+    expect(copiar).toHaveBeenCalledTimes(1);
+    expect(copiar).toHaveBeenCalledWith(FOTO, `${ORG}/${CONVERSA}/veiculo-11111111-2222-4333-8444-555555555555.jpg`, "vehicle-photos");
+    expect(r).toMatchObject({ ok: true, tinha: 1 });
+  });
+
+  it("veículo inexistente volta como erro de ensino", async () => {
+    const { db } = banco(null);
+    const r = await prepararFotosDoProduto(db, vi.fn(async () => true), { tenantId: ORG, conversationId: CONVERSA, codigo: "veiculo:X" });
+    expect(r).toMatchObject({ ok: false, code: "produto_nao_encontrado" });
+  });
+});

@@ -63,22 +63,34 @@ export function validarPublicacao(input: PublicacaoInput, contas: Conta[], agora
     throw new SocialError("A legenda do Instagram vai até 2.200 caracteres.", 422);
 }
 
-/** Corpo do `POST /v1/posts`. Pura, para testar sem rede. */
-export function montarCorpoDoPost(input: PublicacaoInput, contas: Conta[]) {
-  const story = input.tipo === "story";
+type Conteudo = { tipo: TipoDePublicacao; legenda: string; midias: PublicacaoInput["midias"] };
+
+function corpoBase(c: Conteudo, contas: Conta[]) {
+  const story = c.tipo === "story";
   return {
-    content: input.legenda,
-    mediaItems: input.midias,
-    platforms: contas.map((c) => ({
-      platform: c.platform,
-      accountId: c.id,
+    content: c.legenda,
+    mediaItems: c.midias,
+    platforms: contas.map((conta) => ({
+      platform: conta.platform,
+      accountId: conta.id,
       ...(story
-        ? { customMedia: input.midias, platformSpecificData: { contentType: "story" } }
+        ? { customMedia: c.midias, platformSpecificData: { contentType: "story" } }
         : {}),
     })),
-    scheduledFor: input.agendada_para,
-    timezone: input.fuso,
   };
+}
+
+/** Corpo do `POST /v1/posts` agendado no provedor. Pura, para testar sem rede. */
+export function montarCorpoDoPost(input: PublicacaoInput, contas: Conta[]) {
+  return { ...corpoBase(input, contas), scheduledFor: input.agendada_para, timezone: input.fuso };
+}
+
+/**
+ * Corpo da ENTREGA: o Deskcomm já decidiu que é a hora (regras de segurança), então o
+ * provedor publica na hora. Nunca leva `scheduledFor`: quem agenda é o Deskcomm.
+ */
+export function montarCorpoDeEntrega(c: Conteudo, contas: Conta[]) {
+  return { ...corpoBase(c, contas), publishNow: true };
 }
 
 export async function presignarMidia(
@@ -113,9 +125,9 @@ export async function criarPublicacao(
     contas.push({ id: conta._id, platform: conta.platform });
   }
   validarPublicacao(input, contas);
-  const resposta = z
-    .object({ post: z.object({ _id: z.string() }) })
-    .parse(await socialRequest(config.key, "posts", montarCorpoDoPost(input, contas)));
+  // A publicação fica AQUI até a hora: o cron de entrega a manda ao provedor quando as
+  // regras de segurança (limite diário, intervalo, lote) permitem. Agendar direto no
+  // provedor pularia essas regras, e o provedor publica tudo o que recebe, no horário.
   const { data, error } = await db
     .from("social_publicacoes")
     .insert({
@@ -127,24 +139,21 @@ export async function criarPublicacao(
       agendada_para: input.agendada_para,
       fuso: input.fuso,
       status: "agendada",
-      provedor_post_id: resposta.post._id,
       criada_por: userId,
     })
     .select("id")
     .single();
-  if (error || !data)
-    throw new SocialError(
-      "Agendada no provedor, mas não foi possível registrar aqui. Confira no provedor antes de repetir.",
-      500,
-    );
-  return { id: data.id as string, provedor_post_id: resposta.post._id };
+  if (error || !data) throw new SocialError("Não foi possível agendar a publicação.", 500);
+  return { id: data.id as string };
 }
 
 export async function listarPublicacoes(db: SupabaseClient, org: string) {
   const { data, error } = await db
     .from("social_publicacoes")
-    .select("id, tipo, legenda, midias, contas, agendada_para, fuso, status, erro")
+    .select("id, tipo, legenda, midias, contas, agendada_para, fuso, status, erro, aguardando_motivo, publicada_em")
     .eq("organization_id", org)
+    // Stories têm tela própria (/app/stories), com kanban, calendário e janelas.
+    .neq("tipo", "story")
     .order("agendada_para", { ascending: true, nullsFirst: false })
     .limit(200);
   if (error) throw new SocialError("Não foi possível ler as publicações.", 500);
@@ -162,14 +171,22 @@ export async function cancelarPublicacao(db: SupabaseClient, org: string, id: st
   if (!data) throw new SocialError("Publicação não encontrada.", 404);
   if (data.status !== "agendada")
     throw new SocialError("Só dá para cancelar publicações agendadas.", 409);
-  const config = await readSocialIntegration(db, org);
-  if (config && data.provedor_post_id)
-    await socialRequest(config.key, `posts/${data.provedor_post_id}/unpublish`, {});
-  const { error: upd } = await db
+  // O estado é conferido na própria escrita: se o cron travou a publicação entre a
+  // leitura e agora, o cancelamento não pega e o usuário é avisado em vez de ver "cancelada"
+  // uma postagem que saiu.
+  const { data: cancelada, error: upd } = await db
     .from("social_publicacoes")
     .update({ status: "cancelada" })
     .eq("organization_id", org)
-    .eq("id", id);
-  if (upd) throw new SocialError("Cancelada no provedor, mas não foi possível registrar aqui.", 500);
+    .eq("id", id)
+    .eq("status", "agendada")
+    .select("id");
+  if (upd) throw new SocialError("Não foi possível cancelar a publicação.", 500);
+  if (!cancelada || cancelada.length === 0)
+    throw new SocialError("Esta publicação já está sendo enviada e não dá mais para cancelar.", 409);
+  // Legado: publicação agendada direto no provedor antes das regras de segurança.
+  const config = await readSocialIntegration(db, org);
+  if (config && data.provedor_post_id)
+    await socialRequest(config.key, `posts/${data.provedor_post_id}/unpublish`, {});
   return { id };
 }

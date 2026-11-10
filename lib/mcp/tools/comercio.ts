@@ -184,8 +184,12 @@ export function motivoDoVazioDaBusca(resultado: unknown): string | null {
 export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
   name: "crm_search_products",
   description:
-    "Busca no catálogo da loja e devolve o PREÇO EXATO, o que está disponível e o código de cada " +
-    "produto. Use SEMPRE que a pessoa perguntar preço, e responda com o valor que voltar aqui — " +
+    "Busca no catálogo de PRODUTOS da loja (itens de prateleira, não veículos) e devolve o PREÇO " +
+    "EXATO, o que está disponível e o código de cada produto. " +
+    "⚠️ Para VEÍCULOS (carro, moto, modelo, marca de carro) NÃO use esta ferramenta: o estoque de " +
+    "veículos fica em `crm_consultar_estoque`. Se esta voltar vazia e a pessoa falava de veículo, " +
+    "consulte o estoque em vez de dizer que não tem. " +
+    "Use para preço de produto, e responda com o valor que voltar aqui — " +
     "nunca com um valor que você lembra ou estima: preço errado dito a um cliente é promessa que a " +
     "loja terá de cumprir ou desfazer. " +
     "Passe o que a pessoa escreveu, do jeito que ela escreveu: a busca entende erro de digitação " +
@@ -197,7 +201,7 @@ export const crmSearchProducts: McpToolDefinition<typeof produtosInputShape> = {
     "tem — diga que vai confirmar com a equipe. Em qualquer caso, não invente preço e nunca " +
     "invente um valor que você lembra. " +
     "Produto com `fotos` tem foto cadastrada: ao apresentá-lo, passe o `codigo` dele em " +
-    "`produto_codigo` no send_message, e a foto vai junto com o texto.",
+    "`produto_codigo` no send_message, e a foto vai junto com o texto. Para VEÍCULO, passe o `codigo` (veiculo:...) de crm_consultar_estoque.",
   inputSchema: produtosInputShape,
   category: "read",
   requiresRole: "agent",

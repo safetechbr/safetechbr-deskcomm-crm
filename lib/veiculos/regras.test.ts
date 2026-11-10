@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { arquivoPertenceAoVeiculo, fichaDoVeiculo, proximoCodigoDeVeiculo, tituloDoVeiculo, type Veiculo } from "./regras";
 
 const base: Veiculo = {
-  id: "v1", codigo: "A1", marca: "Fiat", modelo: "Pulse", versao: "Turbo 200", ano_fabricacao: 2023, ano_modelo: 2024,
+  id: "v1", codigo: "A1", marca: "Fiat", modelo: "Pulse", categoria: "SUV", versao: "Turbo 200", ano_fabricacao: 2023, ano_modelo: 2024,
   km: 32500, motor: "1.0 turbo", cambio: "automático", combustivel: "Flex", cor: "Branco", placa_final: null,
   preco_cents: 8990000, moeda: "BRL", opcionais: null, descricao: null, status: "disponivel",
   fotos: [], video: null, entrada_em: "2026-11-01", vendido_em: null, created_at: "2026-11-01",

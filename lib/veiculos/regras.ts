@@ -58,6 +58,8 @@ export const veiculoCreateSchema = z.object({
   codigo: z.string().trim().min(1).max(40).optional(),
   marca: textoOpcional(60),
   modelo: z.string().trim().min(1).max(80),
+  /** Obrigatória: o formulário sugere pelo modelo e, sem sugestão, exige a escolha. */
+  categoria: z.string().trim().min(1).max(40),
   versao: textoOpcional(120),
   ano_fabricacao: anoOpcional,
   ano_modelo: anoOpcional,
@@ -75,13 +77,16 @@ export const veiculoCreateSchema = z.object({
 export const veiculoPatchSchema = veiculoCreateSchema.partial();
 
 export const COLUNAS_DO_VEICULO =
-  "id, codigo, marca, modelo, versao, ano_fabricacao, ano_modelo, km, motor, cambio, combustivel, cor, placa_final, preco_cents, moeda, opcionais, descricao, status, fotos, video, entrada_em, vendido_em, created_at";
+  "id, codigo, marca, modelo, categoria, versao, ano_fabricacao, ano_modelo, km, motor, cambio, combustivel, cor, placa_final, preco_cents, moeda, opcionais, descricao, status, fotos, video, entrada_em, vendido_em, created_at";
 
 export interface Veiculo {
+  reserva?: import("./reservas").ReservaDeVeiculo | null;
   id: string;
   codigo: string;
   marca: string | null;
   modelo: string;
+  /** Nula nos veículos cadastrados antes da categoria existir. */
+  categoria: string | null;
   versao: string | null;
   ano_fabricacao: number | null;
   ano_modelo: number | null;

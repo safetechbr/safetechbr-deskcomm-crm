@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 
 import { loadAuthUser, orgAtivaSemPortao } from "@/lib/auth/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logoDasEmpresasBloqueado } from "@/lib/branding/logo-bloqueado";
 import { logger } from "@/lib/logger";
 import type { AuthUser } from "@/lib/auth/types";
 
@@ -62,6 +63,7 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@/lib/ai/dispatcher/rate-limit", () => ({
   checkRateLimit: vi.fn(async () => ({ allowed: true })),
 }));
+vi.mock("@/lib/branding/logo-bloqueado", () => ({ logoDasEmpresasBloqueado: vi.fn(async () => false) }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
 
 const ORG_ID = "22222222-2222-4222-8222-222222222222";
@@ -391,5 +393,39 @@ describe("peca=icone — o ícone da aba grava favicon_path, e só na instalaç�
 
     expect(res.status).toBe(422);
     expect(espiao.upsertChamadas).toHaveLength(0);
+  });
+});
+
+describe("trava do logo — só o dono do servidor troca enquanto ela estiver ligada", () => {
+  async function enviar(metodo: "POST" | "DELETE") {
+    const { POST, DELETE } = await import("./route");
+    if (metodo === "DELETE") {
+      return DELETE(new NextRequest("http://localhost/api/v1/marca/logo?escopo=organizacao", { method: "DELETE" }));
+    }
+    const form = new FormData();
+    form.set("escopo", "organizacao");
+    form.set("file", arquivoPng());
+    return POST(new NextRequest("http://localhost/api/v1/marca/logo", { method: "POST", body: form }));
+  }
+
+  it.each(["POST", "DELETE"] as const)("admin da empresa leva 403 logo_bloqueado no %s, sem tocar banco", async (metodo) => {
+    vi.mocked(logoDasEmpresasBloqueado).mockResolvedValue(true);
+    vi.mocked(loadAuthUser).mockResolvedValue(usuarioAdminDeOrganizacao());
+    const espiao = criarAdminEspiao(LOGO_DA_ORGANIZACAO);
+    vi.mocked(createAdminClient).mockReturnValue(espiao.client as never);
+    const res = await enviar(metodo);
+    expect(res.status).toBe(403);
+    expect(JSON.stringify(await res.json())).toContain("logo_bloqueado");
+    expect(espiao.rpcChamadas).toHaveLength(0);
+    expect(espiao.removeChamadas).toHaveLength(0);
+  });
+
+  it("trava desligada pelo dono: a empresa volta a trocar", async () => {
+    vi.mocked(logoDasEmpresasBloqueado).mockResolvedValue(false);
+    vi.mocked(loadAuthUser).mockResolvedValue(usuarioAdminDeOrganizacao());
+    const espiao = criarAdminEspiao();
+    vi.mocked(createAdminClient).mockReturnValue(espiao.client as never);
+    const res = await enviar("POST");
+    expect(res.status).toBe(200);
   });
 });

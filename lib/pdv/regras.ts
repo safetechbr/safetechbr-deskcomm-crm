@@ -301,8 +301,10 @@ export function pendenciasParaConcluir(
   if (n.tipo === "venda" && n.troca && !n.troca.modelo.trim())
     faltas.push("Informe o modelo do veículo da troca.");
   for (const p of n.pagamentos) {
-    if (n.pagamentos.some((x) => x.forma === "crediario") && p.valor_cents > 0 && !p.conta_id)
-      faltas.push("Selecione a conta de cada pagamento.");
+    // Toda forma de pagamento precisa da conta: é por ela que a venda entra nas
+    // Movimentações do financeiro. Sem conta o trigger não gera o lançamento e o
+    // dinheiro some do caixa.
+    if (p.valor_cents > 0 && !p.conta_id) faltas.push("Selecione a conta de cada pagamento.");
     if (
       p.forma === "crediario" &&
       (!p.primeiro_vencimento || !p.conta_id || p.valor_cents < p.parcelas)

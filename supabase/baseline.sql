@@ -66124,3 +66124,354 @@ drop trigger if exists trg_social_publicacoes_updated_at on public.social_public
 create trigger trg_social_publicacoes_updated_at
   before update on public.social_publicacoes
   for each row execute function public.fn_set_updated_at();
+
+-- ---- cartões de crédito (migration 9033) ----
+create table if not exists public.credit_cards (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  name text not null,
+  last_digits text check (last_digits is null or last_digits ~ '^[0-9]{4}$'),
+  credit_limit_cents bigint not null default 0 check (credit_limit_cents >= 0),
+  closing_day int not null check (closing_day between 1 and 31),
+  due_day int not null check (due_day between 1 and 31),
+  -- Conta de onde a fatura é paga. `restrict`: apagar a conta deixaria o cartão sem destino.
+  account_id uuid not null references public.financial_accounts(id) on delete restrict,
+  currency text not null default 'BRL' check (char_length(currency) = 3),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists credit_cards_org_nome_key
+  on public.credit_cards (organization_id, lower(name)) where is_active;
+create index if not exists credit_cards_org_idx
+  on public.credit_cards (organization_id, is_active);
+
+alter table public.credit_cards enable row level security;
+drop policy if exists tenant_isolation_credit_cards_all on public.credit_cards;
+create policy tenant_isolation_credit_cards_all on public.credit_cards
+  for all
+  using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin())
+  with check (
+    public.fn_is_platform_admin()
+    or (organization_id in (select public.fn_user_org_ids())
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+revoke all on public.credit_cards from anon;
+
+do $$
+begin
+  if exists (select 1 from pg_proc where proname = 'fn_touch_updated_at') then
+    drop trigger if exists trg_credit_cards_touch on public.credit_cards;
+    create trigger trg_credit_cards_touch before update on public.credit_cards
+      for each row execute function public.fn_touch_updated_at();
+  end if;
+end $$;
+
+alter table public.financial_entries
+  add column if not exists card_id uuid references public.credit_cards(id) on delete restrict;
+create index if not exists financial_entries_card_idx
+  on public.financial_entries (card_id, status) where card_id is not null;
+
+-- Saldo por conta (inicial + entradas pagas − saídas pagas) e usado por cartão
+-- (saídas pendentes no cartão). `security invoker`: a RLS decide o que se vê.
+create or replace function public.fn_resumo_contas_e_cartoes(p_org uuid)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'contas', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', a.id,
+        'balance_cents', a.opening_balance_cents + coalesce((
+          select sum(case when e.direction = 'in' then e.amount_cents else -e.amount_cents end)
+            from public.financial_entries e
+           where e.account_id = a.id and e.status = 'paid' and e.organization_id = p_org
+        ), 0)))
+        from public.financial_accounts a where a.organization_id = p_org
+    ), '[]'::jsonb),
+    'cartoes', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', c.id,
+        'used_cents', coalesce((
+          select sum(e.amount_cents)
+            from public.financial_entries e
+           where e.card_id = c.id and e.status = 'pending' and e.direction = 'out'
+             and e.organization_id = p_org
+        ), 0)))
+        from public.credit_cards c where c.organization_id = p_org
+    ), '[]'::jsonb)
+  );
+$$;
+revoke execute on function public.fn_resumo_contas_e_cartoes(uuid) from public, anon;
+grant execute on function public.fn_resumo_contas_e_cartoes(uuid) to authenticated, service_role;
+
+comment on table public.credit_cards is
+  'Cartão de crédito da empresa. Compra = lançamento de saída pendente com card_id; "usado" é derivado por soma, nunca gravado.';
+
+-- ---- categoria do veículo (migration 9034) ----
+create table if not exists public.veiculo_categorias (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  nome text not null check (char_length(btrim(nome)) between 1 and 40),
+  created_at timestamptz not null default now()
+);
+create unique index if not exists veiculo_categorias_org_nome_key
+  on public.veiculo_categorias (organization_id, lower(btrim(nome)));
+
+alter table public.veiculo_categorias enable row level security;
+drop policy if exists tenant_isolation_veiculo_categorias_all on public.veiculo_categorias;
+create policy tenant_isolation_veiculo_categorias_all on public.veiculo_categorias
+  for all
+  using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin())
+  with check (
+    public.fn_is_platform_admin()
+    or (organization_id in (select public.fn_user_org_ids())
+        and public.fn_role_at_least(organization_id, 'manager'))
+  );
+revoke all on public.veiculo_categorias from anon;
+grant select, insert, update, delete on public.veiculo_categorias to authenticated;
+grant all on public.veiculo_categorias to service_role;
+
+-- Nula nos veículos antigos; a rota exige categoria em todo cadastro novo.
+alter table public.veiculos add column if not exists categoria text;
+create index if not exists veiculos_org_categoria_idx
+  on public.veiculos (organization_id, categoria) where categoria is not null;
+
+comment on column public.veiculos.categoria is
+  'Categoria do veículo (Hatch, Sedã, SUV, Picape...): sugerida pelo modelo (lib/veiculos/categorias.ts) ou escolhida no cadastro; lista própria da loja em veiculo_categorias.';
+alter table public.platform_branding
+  add column if not exists logo_bloqueado boolean not null default true;
+
+comment on column public.platform_branding.logo_bloqueado is
+  'true = as empresas (organizações) não podem trocar o logo; todas mostram o logo da instalação. Só o admin mestre desliga. Lida por lib/branding/logo-bloqueado.ts.';
+
+-- ---- Reserva temporária de veículo (migration 9036) ----
+-- manifest: Reserva de visita por vendedor por até 24h, com histórico, aquisição atômica, expiração por prazo e proteção de envio/venda na organização.
+create table if not exists public.reservas_de_veiculo (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  veiculo_id uuid not null references public.veiculos(id) on delete cascade,
+  vendedor_user_id uuid not null references auth.users(id),
+  conversation_id uuid references public.conversations(id) on delete set null,
+  criada_em timestamptz not null default now(),
+  expira_em timestamptz not null default (now() + interval '24 hours'),
+  visita_em timestamptz,
+  encerrada_em timestamptz,
+  motivo_encerramento text,
+  constraint reservas_veiculo_prazo check (expira_em > criada_em and expira_em <= criada_em + interval '24 hours')
+);
+create unique index if not exists reservas_veiculo_aberta on public.reservas_de_veiculo(veiculo_id) where encerrada_em is null;
+create index if not exists reservas_veiculo_org_prazo on public.reservas_de_veiculo(organization_id,expira_em) where encerrada_em is null;
+alter table public.reservas_de_veiculo enable row level security;
+drop policy if exists tenant_isolation_reservas_de_veiculo_all on public.reservas_de_veiculo;
+create policy tenant_isolation_reservas_de_veiculo_all on public.reservas_de_veiculo for select to authenticated
+  using (organization_id in (select public.fn_user_org_ids()) or (select public.fn_is_platform_admin()));
+-- Escrita só pela função: um vendedor não recebe UPDATE de preço/status.
+revoke all on public.reservas_de_veiculo from public, anon, authenticated;
+grant select on public.reservas_de_veiculo to authenticated;
+grant all on public.reservas_de_veiculo to service_role;
+
+create or replace function public.fn_reservar_veiculo(
+  p_org uuid, p_veiculo uuid, p_conversa uuid, p_horas integer default 24, p_visita timestamptz default null
+) returns jsonb language plpgsql security definer set search_path = '' as $$
+declare v public.veiculos%rowtype; r public.reservas_de_veiculo%rowtype;
+begin
+  if auth.uid() is null or not (p_org in (select public.fn_user_org_ids()) and public.fn_role_at_least(p_org,'agent')) then
+    raise exception 'Sem permissão para reservar.' using errcode='42501';
+  end if;
+  if p_horas is null or p_horas < 1 or p_horas > 24 then
+    raise exception 'A reserva deve durar de 1 a 24 horas.' using errcode='PT422';
+  end if;
+  select * into v from public.veiculos where id=p_veiculo and organization_id=p_org for update;
+  if not found then raise exception 'Veículo não encontrado.' using errcode='P0002'; end if;
+  if v.status <> 'disponivel' then raise exception 'Veículo indisponível.' using errcode='PT409'; end if;
+  if not exists(select 1 from public.conversations where id=p_conversa and organization_id=p_org and not is_group) then
+    raise exception 'Conversa não encontrada.' using errcode='P0002';
+  end if;
+  if p_visita is not null and (p_visita < now() or p_visita > now()+make_interval(hours=>p_horas)) then
+    raise exception 'A visita deve ocorrer dentro do prazo da reserva.' using errcode='PT422';
+  end if;
+  select * into r from public.reservas_de_veiculo where veiculo_id=p_veiculo and encerrada_em is null for update;
+  if found and r.expira_em > now() then
+    if r.vendedor_user_id = auth.uid() then return to_jsonb(r); end if;
+    raise exception 'Este veículo já está reservado por outro vendedor.' using errcode='PT409';
+  end if;
+  update public.reservas_de_veiculo set encerrada_em=expira_em,motivo_encerramento='expirada'
+    where veiculo_id=p_veiculo and organization_id=p_org and encerrada_em is null;
+  insert into public.reservas_de_veiculo(organization_id,veiculo_id,vendedor_user_id,conversation_id,expira_em,visita_em)
+    values(p_org,p_veiculo,auth.uid(),p_conversa,now()+make_interval(hours=>p_horas),p_visita) returning * into r;
+  return to_jsonb(r);
+end; $$;
+revoke execute on function public.fn_reservar_veiculo(uuid,uuid,uuid,integer,timestamptz) from public,anon;
+grant execute on function public.fn_reservar_veiculo(uuid,uuid,uuid,integer,timestamptz) to authenticated;
+
+create or replace function public.fn_liberar_reserva_veiculo(p_org uuid,p_veiculo uuid,p_reserva uuid)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare r public.reservas_de_veiculo%rowtype;
+begin
+  if auth.uid() is null or not (p_org in (select public.fn_user_org_ids()) and public.fn_role_at_least(p_org,'agent')) then
+    raise exception 'Sem permissão para liberar.' using errcode='42501';
+  end if;
+  perform 1 from public.veiculos where id=p_veiculo and organization_id=p_org for update;
+  select * into r from public.reservas_de_veiculo where id=p_reserva and veiculo_id=p_veiculo and organization_id=p_org for update;
+  if not found then raise exception 'Reserva não encontrada.' using errcode='P0002'; end if;
+  if r.vendedor_user_id <> auth.uid() and not public.fn_role_at_least(p_org,'manager') then
+    raise exception 'Somente o responsável ou gerente pode liberar.' using errcode='42501';
+  end if;
+  if r.encerrada_em is not null or r.expira_em <= now() then return false; end if;
+  update public.reservas_de_veiculo set encerrada_em=now(),motivo_encerramento='liberada' where id=r.id and organization_id=p_org;
+  return true;
+end; $$;
+revoke execute on function public.fn_liberar_reserva_veiculo(uuid,uuid,uuid) from public,anon;
+grant execute on function public.fn_liberar_reserva_veiculo(uuid,uuid,uuid) to authenticated;
+
+-- Toda conclusão do PDV já bloqueia a linha de veiculos; a mesma linha serializa a reserva.
+create or replace function public.fn_reserva_veiculo_ao_mudar_status()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare r public.reservas_de_veiculo%rowtype;
+begin
+  if new.status is distinct from old.status and new.status <> 'disponivel' then
+    select * into r from public.reservas_de_veiculo where organization_id=old.organization_id and veiculo_id=old.id
+      and encerrada_em is null and expira_em>now() for update;
+    if found and r.vendedor_user_id is distinct from auth.uid() then
+      raise exception 'Libere a reserva do outro vendedor antes de alterar a disponibilidade.' using errcode='PT409';
+    end if;
+    update public.reservas_de_veiculo set encerrada_em=now(),motivo_encerramento=case when new.status='vendido' then 'vendida' else 'indisponivel' end
+      where organization_id=old.organization_id and veiculo_id=old.id and encerrada_em is null and expira_em>now();
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.fn_reserva_veiculo_ao_mudar_status() from public,anon,authenticated;
+drop trigger if exists trg_reserva_veiculo_status on public.veiculos;
+create trigger trg_reserva_veiculo_status before update of status on public.veiculos for each row execute function public.fn_reserva_veiculo_ao_mudar_status();
+
+-- Defesa na persistência: mesmo mídia preparada ANTES da reserva não pode sair por outro vendedor.
+create or replace function public.fn_mensagem_confere_reserva_veiculo()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare vid uuid; v_status text; dono uuid;
+begin
+  if new.direction <> 'outbound' then return new; end if;
+  if new.metadata->>'veiculo_id' is not null then
+    begin vid := (new.metadata->>'veiculo_id')::uuid;
+    exception when invalid_text_representation then raise exception 'Veículo inválido.' using errcode='PT422'; end;
+  elsif new.media_storage_path like '%/veiculo-%' then
+    select v.id into vid from public.veiculos v where v.organization_id=new.organization_id
+      and (exists(select 1 from unnest(v.fotos) f where split_part(new.media_storage_path,'/veiculo-',2)=split_part(f,'/',3))
+        or split_part(new.media_storage_path,'/veiculo-',2)=split_part(v.video,'/',3)) limit 1;
+  end if;
+  if vid is null then return new; end if;
+  select status into v_status from public.veiculos where id=vid and organization_id=new.organization_id for share;
+  if not found or v_status <> 'disponivel' then raise exception 'Veículo indisponível.' using errcode='PT409'; end if;
+  select vendedor_user_id into dono from public.reservas_de_veiculo where veiculo_id=vid and organization_id=new.organization_id
+    and encerrada_em is null and expira_em>now();
+  if found and dono is distinct from coalesce(auth.uid(),new.sent_by_user_id) then
+    raise exception 'Este veículo está reservado por outro vendedor.' using errcode='PT409';
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.fn_mensagem_confere_reserva_veiculo() from public,anon,authenticated;
+drop trigger if exists trg_mensagem_confere_reserva_veiculo on public.messages;
+create trigger trg_mensagem_confere_reserva_veiculo before insert on public.messages for each row execute function public.fn_mensagem_confere_reserva_veiculo();
+
+do $$ begin
+  if exists(select 1 from pg_publication where pubname='supabase_realtime') and not exists(
+    select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='reservas_de_veiculo') then
+    alter publication supabase_realtime add table public.reservas_de_veiculo;
+  end if;
+end $$;
+
+-- ---- agendamento de postagens: regras de segurança (migration 9037) ----
+create table if not exists public.social_seguranca (
+  organization_id uuid primary key references public.organizations(id) on delete cascade,
+  limite_diario integer not null default 20,
+  intervalo_min_s integer not null default 30,
+  intervalo_max_s integer not null default 120,
+  lote integer not null default 5,
+  pausa_lote_s integer not null default 300,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint social_seguranca_limite check (limite_diario between 1 and 100),
+  constraint social_seguranca_intervalo check (intervalo_min_s between 10 and 3600 and intervalo_max_s between intervalo_min_s and 3600),
+  constraint social_seguranca_lote check (lote between 1 and 50),
+  constraint social_seguranca_pausa check (pausa_lote_s between 30 and 7200 and pausa_lote_s >= intervalo_max_s)
+);
+
+alter table public.social_seguranca enable row level security;
+
+drop policy if exists social_seguranca_select on public.social_seguranca;
+create policy social_seguranca_select on public.social_seguranca
+  for select using (
+    (organization_id in (select public.fn_user_org_ids())) or (select public.fn_is_platform_admin())
+  );
+
+revoke all on public.social_seguranca from anon;
+revoke all on public.social_seguranca from authenticated;
+grant select on public.social_seguranca to authenticated;
+grant all on public.social_seguranca to service_role;
+
+drop trigger if exists trg_social_seguranca_updated_at on public.social_seguranca;
+create trigger trg_social_seguranca_updated_at
+  before update on public.social_seguranca
+  for each row execute function public.fn_set_updated_at();
+
+alter table public.social_publicacoes add column if not exists publicada_em timestamptz;
+alter table public.social_publicacoes add column if not exists tentativas integer not null default 0;
+alter table public.social_publicacoes add column if not exists aguardando_motivo text;
+
+alter table public.social_publicacoes drop constraint if exists social_publicacoes_status;
+alter table public.social_publicacoes add constraint social_publicacoes_status
+  check (status in ('agendada', 'publicando', 'publicada', 'falhou', 'cancelada'));
+
+-- O cron lê "o que está vencido e ainda não saiu", por organização.
+create index if not exists social_publicacoes_fila_idx
+  on public.social_publicacoes (organization_id, agendada_para)
+  where status in ('agendada', 'publicando');
+
+-- ---- automação de stories (migration 9038) ----
+create table if not exists public.social_story_janelas (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  nome text not null,
+  inicio text not null,
+  fim text not null,
+  intervalo_min integer not null default 3,
+  dias_semana integer[] not null default '{0,1,2,3,4,5,6}',
+  ativa boolean not null default true,
+  posicao integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint social_story_janelas_nome check (char_length(nome) between 1 and 60),
+  constraint social_story_janelas_hora check (inicio ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' and fim ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' and fim > inicio),
+  constraint social_story_janelas_intervalo check (intervalo_min between 1 and 240)
+);
+
+create index if not exists social_story_janelas_org_idx
+  on public.social_story_janelas (organization_id, posicao);
+
+alter table public.social_story_janelas enable row level security;
+
+drop policy if exists social_story_janelas_select on public.social_story_janelas;
+create policy social_story_janelas_select on public.social_story_janelas
+  for select using (
+    (organization_id in (select public.fn_user_org_ids())) or (select public.fn_is_platform_admin())
+  );
+
+revoke all on public.social_story_janelas from anon;
+revoke all on public.social_story_janelas from authenticated;
+grant select on public.social_story_janelas to authenticated;
+grant all on public.social_story_janelas to service_role;
+
+drop trigger if exists trg_social_story_janelas_updated_at on public.social_story_janelas;
+create trigger trg_social_story_janelas_updated_at
+  before update on public.social_story_janelas
+  for each row execute function public.fn_set_updated_at();
+
+-- Série: Stories criados juntos pela repetição (dias da semana ou datas escolhidas).
+alter table public.social_publicacoes add column if not exists serie_id uuid;
+create index if not exists social_publicacoes_serie_idx
+  on public.social_publicacoes (organization_id, serie_id)
+  where serie_id is not null;

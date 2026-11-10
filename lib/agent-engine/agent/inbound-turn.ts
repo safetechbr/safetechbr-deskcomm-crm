@@ -356,7 +356,7 @@ export const AGENT_TOOL_DEFS = {
         .string()
         .optional()
         .describe(
-          'código de um produto do catálogo (o `codigo` de crm_search_products) que tem `fotos`: ' +
+          'código de um produto do catálogo (o `codigo` de crm_search_products) ou de um VEÍCULO do estoque (o `codigo` de crm_consultar_estoque, começa com `veiculo:`) que tem `fotos`: ' +
             'as fotos dele vão junto, e o texto vira a legenda da primeira',
         ),
     }),

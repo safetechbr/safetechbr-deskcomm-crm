@@ -9,6 +9,7 @@ import { audit } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/ai/dispatcher/rate-limit";
 import { SOCIAL_NETWORKS } from "@/lib/channels/social/catalog";
 import { listSocialAccounts, SocialError } from "@/lib/channels/social/client";
+import { lerSeguranca, segurancaSchema } from "@/lib/channels/social/seguranca";
 import { readSocialIntegration } from "@/lib/channels/social/store";
 import {
   cancelarPublicacao,
@@ -32,6 +33,7 @@ const inputSchema = z.discriminatedUnion("action", [
     .strict(),
   z.object({ action: z.literal("create"), publicacao: publicacaoSchema }).strict(),
   z.object({ action: z.literal("cancel"), id: z.uuid() }).strict(),
+  z.object({ action: z.literal("seguranca"), seguranca: segurancaSchema }).strict(),
 ]);
 function failure(error: unknown, requestId: string) {
   return fail(
@@ -59,8 +61,18 @@ export async function GET() {
             name: a.username ?? a.displayName ?? a._id,
           }))
       : [];
+    const { data: seg } = await db
+      .from("social_seguranca")
+      .select("limite_diario, intervalo_min_s, intervalo_max_s, lote, pausa_lote_s")
+      .eq("organization_id", auth.org.orgId)
+      .maybeSingle();
     return ok(
-      { configured: !!config, accounts: contas, items: await listarPublicacoes(db, auth.org.orgId) },
+      {
+        configured: !!config,
+        accounts: contas,
+        items: await listarPublicacoes(db, auth.org.orgId),
+        seguranca: lerSeguranca(seg),
+      },
       { requestId, headers },
     );
   } catch (error) {
@@ -112,6 +124,25 @@ export async function POST(req: Request) {
         metadata: { tipo: body.publicacao.tipo, contas: body.publicacao.account_ids.length },
       });
       return ok(r, { requestId, headers });
+    }
+    if (body.action === "seguranca") {
+      const { error } = await db
+        .from("social_seguranca")
+        .upsert(
+          { organization_id: auth.org.orgId, ...body.seguranca, updated_at: new Date().toISOString() },
+          { onConflict: "organization_id" },
+        );
+      if (error) throw new SocialError("Não foi possível salvar as regras de segurança.", 500);
+      void audit({
+        action: "channel.social_seguranca_atualizada",
+        organizationId: auth.org.orgId,
+        actorUserId: auth.user.id,
+        resourceType: "social_seguranca",
+        resourceId: auth.org.orgId,
+        requestId,
+        metadata: { ...body.seguranca },
+      });
+      return ok(body.seguranca, { requestId, headers });
     }
     const r = await cancelarPublicacao(db, auth.org.orgId, body.id);
     void audit({

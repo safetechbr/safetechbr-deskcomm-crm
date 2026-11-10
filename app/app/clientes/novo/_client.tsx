@@ -40,7 +40,7 @@ export function NovoClienteClient() {
     if (!v.name.trim()) return setErro(t("Informe o nome do cliente."));
     if (!v.phone_number.trim() && !v.email.trim()) return setErro(t("Informe o telefone ou o e-mail."));
 
-    const payload: Record<string, unknown> = { source: "manual", contact_type: "cliente", name: v.name.trim() };
+    const payload: Record<string, unknown> = { reuse_existing_phone: true, source: "manual", contact_type: "cliente", name: v.name.trim() };
     if (v.email.trim()) payload.email = v.email.trim();
     if (v.phone_number.trim()) payload.phone_number = v.phone_number.trim();
     if (v.cpf.trim()) payload.cpf = v.cpf.trim();
@@ -54,7 +54,7 @@ export function NovoClienteClient() {
     } catch {
       return; // o toast de erro já saiu pelo hook
     }
-    toast.success(t("Cliente cadastrado"));
+    toast.success(t("Cadastro do cliente salvo"));
     router.push("/app/clientes");
   }
 

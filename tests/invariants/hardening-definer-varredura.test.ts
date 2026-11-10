@@ -67,6 +67,22 @@ const ANON_PERMITIDO: readonly Excecao[] = [];
  */
 const AUTHENTICATED_PERMITIDO: readonly Excecao[] = [
   {
+    fn: "fn_reservar_veiculo(uuid,uuid,uuid,integer,timestampwithtimezone)",
+    razao: "POST app/api/v1/veiculos/[id]/reserva/route.ts usa createClient da sessão. Definer permite ao agent reservar sem UPDATE de preço/status. Revalida auth.uid, membership e agent na organização, prazo máximo 24h e veículo/conversa da organização; FOR UPDATE serializa a disputa. Invariantes em reserva-de-veiculo.test.ts.",
+  },
+  {
+    fn: "fn_liberar_reserva_veiculo(uuid,uuid,uuid)",
+    razao: "DELETE app/api/v1/veiculos/[id]/reserva/route.ts usa a sessão. Definer altera somente a reserva identificada; revalida organização e agent, exige dono ou manager e não alcança outra reserva pela mesma chave de veículo. Invariantes em reserva-de-veiculo.test.ts.",
+  },
+  {
+    fn: "fn_concluir_negociacao_de_veiculo(uuid)",
+    razao: "POST app/api/v1/pdv/negociacoes/[id]/concluir/route.ts chama pelo client de sessão. Definer necessário ao vendedor agent, que conclui a venda mas não recebe UPDATE direto de veiculos. Confere organização/papel da negociação e bloqueia veículo; reserva-de-veiculo.test.ts exercita conclusão autorizada e recusa de outro vendedor.",
+  },
+  {
+    fn: "fn_pdv_crediario_operar(uuid,text,jsonb)",
+    razao: "POST app/api/v1/pdv/crediarios/[id]/route.ts chama com createClient da sessão. Definer permite receber/recalcular parcelas derivadas da venda; corpo verifica papel e organização da negociação. pdv-crediario.test.ts prova viewer e outra organização recusados, recebimento único e preservação das parcelas pagas.",
+  },
+  {
     fn: "encrypt_cpf(text)",
     razao:
       "POST/PATCH app/api/v1/contacts/route.ts e app/api/v1/contacts/[id]/route.ts, " +

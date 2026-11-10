@@ -5,6 +5,8 @@ import { crmConsultarEstoque, estoqueInputShape, type ItemDoEstoque, type resumi
 import { catalogEntry } from "./catalog";
 import { criarEvidenciasComerciaisDoTurno } from "@/lib/agent-engine/guardrails/promise/evidencias-comerciais";
 
+const reservas = vi.hoisted(() => vi.fn(async () => new Map()));
+vi.mock("@/lib/veiculos/reservas-server", () => ({ reservasAtivas: reservas }));
 const ORG = "11111111-1111-4111-8111-111111111111";
 const OUTRA = "22222222-2222-4222-8222-222222222222";
 function item(id: string, extra: Partial<ItemDoEstoque> = {}): ItemDoEstoque {
@@ -148,5 +150,46 @@ describe("estoque novo no atendimento", () => {
     const c = contexto([]);
     await expect(crmConsultarEstoque.handler(filtros(input), c.ctx)).rejects.toThrow("filtros_de_estoque_inconsistentes");
     expect(c.consultas).toHaveLength(0);
+  });
+});
+
+describe("crm_consultar_estoque — listar títulos", () => {
+  it("com listar=true devolve só código e título dos compatíveis, sem preço", async () => {
+    const { resumirEstoque } = await import("./estoque");
+    const base = { organization_id: "o", marca: "Renault", versao: null, ano_fabricacao: 2020, ano_modelo: 2020, km: 1, cambio: null, combustivel: null, cor: null, preco_cents: 5790000, moeda: "BRL", descricao: null, opcionais: null, status: "disponivel" };
+    const itens = [
+      { ...base, id: "1", codigo: "A1", modelo: "Logan" },
+      { ...base, id: "2", codigo: "A2", modelo: "Sandero" },
+      { ...base, id: "3", codigo: "A3", modelo: "Duster" },
+      { ...base, id: "4", codigo: "A4", modelo: "Kwid" },
+    ];
+    const r = resumirEstoque(itens, estoqueInputShape_parse({ listar: true, marca: "Renault" }), true) as { lista?: { codigo: string; titulo: string }[] };
+    expect(r.lista).toHaveLength(4);
+    expect(r.lista![0]).toEqual({ codigo: expect.stringMatching(/^veiculo:A/), titulo: expect.any(String) });
+    expect(JSON.stringify(r.lista)).not.toMatch(/5790000|57\.900/);
+  });
+  it("filtra por categoria cadastrada e, nos antigos sem categoria, pela inferida do modelo", async () => {
+    const { resumirEstoque } = await import("./estoque");
+    const base = { organization_id: "o", marca: "X", versao: null, ano_fabricacao: 2020, ano_modelo: 2020, km: 1, cambio: null, combustivel: null, cor: null, preco_cents: 5790000, moeda: "BRL", descricao: null, opcionais: null, status: "disponivel" };
+    const itens = [
+      { ...base, id: "1", codigo: "A1", modelo: "Creta", categoria: "SUV" },
+      { ...base, id: "2", codigo: "A2", modelo: "Compass", categoria: null },
+      { ...base, id: "3", codigo: "A3", modelo: "Onix", categoria: "Hatch" },
+      { ...base, id: "4", codigo: "A4", modelo: "Zzxq", categoria: null },
+    ];
+    const r = resumirEstoque(itens, estoqueInputShape_parse({ listar: true, categoria: "suv" }), true) as { lista?: { codigo: string }[] };
+    expect(r.lista?.map((l) => l.codigo)).toEqual(["veiculo:A1", "veiculo:A2"]);
+  });
+});
+function estoqueInputShape_parse(i: Record<string, unknown>) {
+  return z.object(estoqueInputShape).parse(i);
+}
+
+describe("reservas no estoque da IA", () => {
+  it("não oferece carro reservado e mantém os demais", async () => {
+    reservas.mockResolvedValueOnce(new Map([["R1", { id: "reserva" }]]));
+    const { resultado } = await consultar([item("R1"), item("L1")], { modelo: "Logan" });
+    expect(resultado.total_disponivel).toBe(1);
+    expect(resultado.produtos.map(p => p.veiculo_id)).toEqual(["L1"]);
   });
 });

@@ -1,8 +1,12 @@
 "use client";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { useUser, useActiveOrg } from "@/hooks/auth/AuthProvider";
+import { useRealtimeChannel } from "@/hooks/realtime/useRealtimeChannel";
+import { roleAtLeast } from "@/lib/auth/types";
+import { bloqueioDoVeiculo, reservaAtiva, type ReservaDeVeiculo } from "@/lib/veiculos/reservas";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,7 +34,7 @@ interface Preparado {
   fotos_faltando: boolean;
 }
 
-type VeiculoComCapa = Veiculo & { capa_url?: string | null };
+type VeiculoComCapa = Veiculo & { capa_url?: string | null; reserva?: ReservaDeVeiculo | null };
 
 const MODOS: Array<{ id: ModoDeEnvio; rotulo: string }> = [
   { id: "completo", rotulo: "Fotos + ficha" },
@@ -90,6 +94,40 @@ export function EstoqueDaConversa({ conversationId }: { conversationId: string }
 function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
   const t = useT();
   const send = useSendMessage();
+  const usuario = useUser();
+  const org = useActiveOrg();
+  const qc = useQueryClient();
+  const [reservando, setReservando] = useState<VeiculoComCapa | null>(null);
+  const [horas, setHoras] = useState(24);
+  const [visita, setVisita] = useState("");
+  const [salvandoReserva, setSalvandoReserva] = useState(false);
+  const recarregar = () => qc.invalidateQueries({ queryKey: ["veiculos"] });
+  useRealtimeChannel({ name: `reservas-estoque-${org?.orgId}`, enabled: !!org?.orgId,
+    postgresChanges: { event: "*", table: "reservas_de_veiculo", filter: `organization_id=eq.${org?.orgId}` },
+    onChange: () => { void recarregar(); },
+  });
+  async function salvarReserva() {
+    if (!reservando) return;
+    setSalvandoReserva(true);
+    try {
+      await apiClient.post(`/api/v1/veiculos/${reservando.id}/reserva`, {
+        conversation_id: conversationId, duracao_horas: horas,
+        ...(visita ? { visita_em: new Date(visita).toISOString() } : {}),
+      });
+      await recarregar(); setReservando(null);
+      toast.success(t("Veículo reservado. O prazo começa agora."));
+    } catch (e) { showApiError(e); await recarregar(); }
+    finally { setSalvandoReserva(false); }
+  }
+  async function liberar(v: VeiculoComCapa) {
+    if (!v.reserva) return;
+    setSalvandoReserva(true);
+    try {
+      await apiClient.delete(`/api/v1/veiculos/${v.id}/reserva`, { reserva_id: v.reserva.id });
+      await recarregar(); toast.success(t("Reserva liberada. Veículo disponível para a equipe."));
+    } catch (e) { showApiError(e); await recarregar(); }
+    finally { setSalvandoReserva(false); }
+  }
   const [busca, setBusca] = useState("");
   const [modo, setModo] = useState<ModoDeEnvio>("completo");
   const [comVideo, setComVideo] = useState(false);
@@ -98,14 +136,15 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
   const [revisao, setRevisao] = useState<{ veiculo: Veiculo; texto: string } | null>(null);
 
   const lista = useQuery({
-    queryKey: ["veiculos", "disponiveis"],
+    queryKey: ["veiculos", "central", org?.orgId],
     queryFn: async () => {
       const r = await apiClient.get<{ data: VeiculoComCapa[] }>(
-        "/api/v1/veiculos?status=disponivel&capas=1",
+        "/api/v1/veiculos?capas=1",
       );
-      return r.data;
+      return r.data.filter(v => v.status !== "vendido");
     },
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchInterval: 5_000,
   });
 
   const q = busca.trim().toLowerCase();
@@ -114,7 +153,8 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
   );
 
   /** Modos com texto passam pela revisão; só fotos sai direto. */
-  async function aoClicarEnviar(v: Veiculo) {
+  async function aoClicarEnviar(v: VeiculoComCapa) {
+    if (bloqueioDoVeiculo(v.status, v.reserva, usuario.id)) return;
     if (modo === "fotos") return void enviar(v);
     setEnviando(v.id);
     try {
@@ -199,7 +239,8 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
           {lista.isPending ? (
             <li className="text-sm text-muted-foreground">{t("Carregando…")}</li>
           ) : null}
-          {!lista.isPending && veiculos.length === 0 ? (
+          {lista.isError ? <li role="alert" className="text-sm text-destructive">{t("Não foi possível conferir o estoque e as reservas.")} <button onClick={() => void lista.refetch()}>{t("Tentar novamente")}</button></li> : null}
+          {!lista.isPending && !lista.isError && veiculos.length === 0 ? (
             <li className="text-sm text-muted-foreground">{t("Nenhum veículo disponível.")}</li>
           ) : null}
           {veiculos.map((v) => (
@@ -224,11 +265,24 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
                   </div>
                 </div>
               </div>
+              {reservaAtiva(v.reserva) ? (
+                <div role="status" className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+                  <strong>{t("Reservado por")} {v.reserva.vendedor_nome || t("vendedor responsável")}{v.reserva.vendedor_user_id === usuario.id ? ` (${t("você")})` : ""}</strong>
+                  <div>{t("Até")} {new Date(v.reserva.expira_em).toLocaleString("pt-BR")}</div>
+                  {v.reserva.visita_em ? <div>{t("Visita")}: {new Date(v.reserva.visita_em).toLocaleString("pt-BR")}</div> : null}
+                  {v.reserva.vendedor_user_id === usuario.id || roleAtLeast(org?.role, "manager") ? (
+                    <Button size="sm" variant="ghost" disabled={salvandoReserva} onClick={() => void liberar(v)}>{t("Liberar reserva")}</Button>
+                  ) : <p>{t("Envio de fotos, vídeo e ficha bloqueado durante a reserva.")}</p>}
+                </div>
+              ) : v.status === "disponivel" && roleAtLeast(org?.role, "agent") ? (
+                <Button size="sm" variant="outline" disabled={salvandoReserva} onClick={() => { setReservando(v); setHoras(24); setVisita(""); }}>{t("Reservar para visita")}</Button>
+              ) : v.status !== "disponivel" ? <p className="text-xs text-muted-foreground">{t("Indisponível no estoque")}</p> : null}
               <Button
                 size="sm"
                 variant="outline"
                 className="w-full"
-                disabled={enviando !== null}
+                title={bloqueioDoVeiculo(v.status, v.reserva, usuario.id) ?? undefined}
+                disabled={enviando !== null || !!bloqueioDoVeiculo(v.status, v.reserva, usuario.id)}
                 onClick={() => void aoClicarEnviar(v)}
               >
                 {enviando === v.id ? t("Enviando…") : t("Enviar")}
@@ -237,6 +291,23 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
           ))}
         </ul>
       </div>
+      {reservando ? (
+        <Dialog open onOpenChange={(aberto) => !aberto && !salvandoReserva && setReservando(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{t("Reservar veículo para visita")}</DialogTitle></DialogHeader>
+            <p className="text-sm">{tituloDoVeiculo(reservando)}</p>
+            <p className="text-sm text-muted-foreground">{t("A reserva ficará em seu nome. Ao vencer, o veículo volta automaticamente a ficar disponível para os outros vendedores.")}</p>
+            <label className="grid gap-1 text-sm">{t("Prazo da reserva (horas)")}
+              <input type="number" min={1} max={24} value={horas} onChange={e => setHoras(Number(e.target.value))} className="rounded-md border bg-background p-2" />
+            </label>
+            <label className="grid gap-1 text-sm">{t("Horário da visita (opcional)")}
+              <input type="datetime-local" value={visita} onChange={e => setVisita(e.target.value)} className="rounded-md border bg-background p-2" />
+            </label>
+            <p className="text-xs text-muted-foreground">{t("Prazo máximo: 24 horas. A visita deve ocorrer dentro desse período.")}</p>
+            <Button disabled={salvandoReserva || horas < 1 || horas > 24 || !Number.isInteger(horas)} onClick={() => void salvarReserva()}>{salvandoReserva ? t("Salvando…") : t("Confirmar reserva")}</Button>
+          </DialogContent>
+        </Dialog>
+      ) : null}
       {revisao ? (
         <Dialog open onOpenChange={(a) => !a && !enviando && setRevisao(null)}>
           <DialogContent className="sm:max-w-lg">
@@ -263,7 +334,7 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
               </Button>
               <Button
                 size="sm"
-                disabled={enviando !== null || revisao.texto.trim() === ""}
+                disabled={enviando !== null || revisao.texto.trim() === "" || !!bloqueioDoVeiculo((lista.data?.find(v => v.id === revisao.veiculo.id) ?? revisao.veiculo).status, lista.data?.find(v => v.id === revisao.veiculo.id)?.reserva, usuario.id)}
                 onClick={() => void enviar(revisao.veiculo, revisao.texto.trim())}
               >
                 {enviando ? t("Enviando…") : t("Enviar")}

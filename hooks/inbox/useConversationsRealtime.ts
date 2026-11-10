@@ -236,6 +236,16 @@ export function useConversationsRealtime(
   });
 
   const onChange = useCallback(() => agendarRecargaDasConversas(qc), [qc]);
+  const contatoMudou = useCallback(() => {
+    agendarRecargaDasConversas(qc);
+    void qc.invalidateQueries({ queryKey: ["conversation"] });
+  }, [qc]);
+  useRealtimeChannel({
+    name: orgId ? `inbox-contatos-${orgId}` : "inbox-contatos-disabled",
+    postgresChanges: orgId ? { event: "UPDATE", schema: "public", table: "contacts", filter: `organization_id=eq.${orgId}` } : undefined,
+    onChange: contatoMudou,
+    enabled: habilitada && !!orgId,
+  });
 
   // G4-01 (visibility_mode): a subscription postgres_changes HERDA a RLS de
   // SELECT de `conversations` — o Supabase Realtime avalia as policies do usuário

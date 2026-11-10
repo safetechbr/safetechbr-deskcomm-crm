@@ -9,6 +9,8 @@
  *
  * modo: completo (todas as fotos sem legenda, depois a ficha em mensagem de texto à parte) | fotos | ficha | preco.
  */
+import { conferirEnvioDeVeiculo } from "@/lib/veiculos/reservas-server";
+import { ApiError } from "@/lib/api/types";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { z } from "zod";
@@ -83,6 +85,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!v) return fail("not_found", t("Veículo não encontrado."), 404, { requestId });
   if (!conversa) return fail("not_found", t("Conversa não encontrada."), 404, { requestId });
   const veiculo = v as unknown as Veiculo;
+  try {
+    await conferirEnvioDeVeiculo(supabase, { organization_id: orgId, requestId, actor: { type: "user", id: authz.user.id } }, id);
+  } catch (e) {
+    if (e instanceof ApiError) return fail(e.status === 409 ? "conflict" : e.status === 404 ? "not_found" : "internal_error", e.message, e.status, { requestId });
+    return fail("internal_error", "Não foi possível conferir a disponibilidade.", 500, { requestId });
+  }
+
 
   const ficha = texto ?? fichaDoVeiculo(veiculo, modo);
   if (previa) {

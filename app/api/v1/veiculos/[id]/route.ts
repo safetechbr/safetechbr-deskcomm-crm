@@ -6,6 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
+import { registrarCategoriaDaLoja } from "@/lib/veiculos/categorias-da-loja";
 import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
@@ -54,11 +55,13 @@ export async function PATCH(
     .select(COLUNAS_DO_VEICULO)
     .maybeSingle();
   if (error) {
+    if (error.code === "PT409") return fail("conflict", error.message, 409, { requestId });
     if (error.code === "23505") return fail("conflict", t("Já existe um veículo com esse código."), 409, { requestId });
     return fail("internal_error", "Erro ao salvar o veículo.", 500, { requestId });
   }
   if (!data) return fail("not_found", t("Veículo não encontrado."), 404, { requestId });
 
+  if (parsed.data.categoria) await registrarCategoriaDaLoja(supabase, authz.org.orgId, parsed.data.categoria);
   await audit({
     organizationId: authz.org.orgId,
     actorUserId: authz.user.id,

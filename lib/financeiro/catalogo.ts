@@ -26,6 +26,9 @@ export const ENTIDADES_DO_CATALOGO = {
   // O MOLDE do lançamento que se repete. Entra aqui pelo mesmo motivo das
   // outras: é o que o negócio define uma vez e o cron consome todo mês.
   recorrencias: "recurring_entries",
+  // O cartão de crédito da empresa: limite, fechamento, vencimento e a conta que
+  // paga a fatura. Compra no cartão é lançamento pendente com `card_id`.
+  cartoes: "credit_cards",
 } as const;
 
 export type EntidadeDoCatalogo = keyof typeof ENTIDADES_DO_CATALOGO;
@@ -110,12 +113,29 @@ export const recorrenciaSchema = z.object({
   day_of_month: z.number().int().min(1).max(31),
 });
 
+const diaDoMes = z.number().int().min(1).max(31);
+
+export const cartaoSchema = z.object({
+  name: nome,
+  /** Só os 4 últimos dígitos, para reconhecer o cartão. Nunca o número inteiro. */
+  last_digits: z
+    .string()
+    .regex(/^\d{4}$/, "Informe os 4 últimos dígitos do cartão")
+    .nullish(),
+  credit_limit_cents: z.number().int().min(0).max(1_000_000_000_000),
+  closing_day: diaDoMes,
+  due_day: diaDoMes,
+  /** Conta de onde a fatura é paga. */
+  account_id: z.string().uuid(),
+});
+
 export const SCHEMA_POR_ENTIDADE = {
   contas: contaSchema,
   formas_de_pagamento: formaDePagamentoSchema,
   planos_de_conta: planoDeContaSchema,
   regras_de_comissao: regraDeComissaoSchema,
   recorrencias: recorrenciaSchema,
+  cartoes: cartaoSchema,
 } as const;
 
 /**
@@ -135,6 +155,7 @@ const SCHEMA_PARCIAL_POR_ENTIDADE = {
     .partial()
     .refine((v) => !("attendant_user_id" in v && "event_type_id" in v) || temAlvo(v), SEM_ALVO),
   recorrencias: recorrenciaSchema.partial(),
+  cartoes: cartaoSchema.partial(),
 } as const;
 
 /**
@@ -165,6 +186,8 @@ export const COLUNAS_POR_ENTIDADE: Record<EntidadeDoCatalogo, string> = {
     "id, name, attendant_user_id, event_type_id, percent, is_active, created_at",
   recorrencias:
     "id, name, account_id, account_plan_id, direction, amount_cents, currency, day_of_month, is_active, created_at",
+  cartoes:
+    "id, name, last_digits, credit_limit_cents, closing_day, due_day, account_id, currency, is_active, created_at",
 };
 
 /** O que a tela chama cada coisa. Nunca o nome da tabela. */
@@ -174,6 +197,7 @@ export const ROTULO_DA_ENTIDADE: Record<EntidadeDoCatalogo, string> = {
   planos_de_conta: "Plano de contas",
   regras_de_comissao: "Regra de comissão",
   recorrencias: "Lançamento recorrente",
+  cartoes: "Cartão",
 };
 
 export function ehEntidadeDoCatalogo(v: string): v is EntidadeDoCatalogo {

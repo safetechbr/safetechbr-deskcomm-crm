@@ -27,7 +27,10 @@ export function useCreateContact() {
         input,
       ),
     onError: showApiError,
-    onSuccess: () => {
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation"] });
+      qc.invalidateQueries({ queryKey: ["contact", res.data.contact.id] });
       qc.invalidateQueries({ queryKey: ["contacts"] });
     },
   });

@@ -7,6 +7,8 @@ import {
   validarCssPersonalizado,
 } from "@/lib/branding/css-personalizado";
 import { marcaDaInstalacao } from "@/lib/branding/instalacao";
+import { logoDasEmpresasBloqueado } from "@/lib/branding/logo-bloqueado";
+import { TravaDoLogo } from "./_trava-do-logo";
 import { logoDaCamada } from "@/lib/branding/logo";
 import { REGUA_DO_PRODUTO } from "@/lib/branding/regua-do-produto";
 import { camadaDaInstalacao, camadaDoAmbiente, resolverMarca } from "@/lib/branding/resolve";
@@ -121,6 +123,7 @@ export default async function Page() {
         fallbackEm={instanteLegivel(linha?.fallback_at ?? null, tagDeIdioma(idioma))}
         fallbackMotivo={linha?.fallback_reason ?? null}
       />
+      <TravaDoLogo bloqueadoInicial={await logoDasEmpresasBloqueado()} />
       <CssPersonalizado gravado={cssPersonalizado} erroAtual={validacaoCss.erro} />
     </div>
   );

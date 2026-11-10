@@ -1,9 +1,10 @@
 "use client";
+import { LogoAdaptativo } from "@/components/branding/LogoAdaptativo";
 import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, CaretDown, Gear } from "@/lib/ui/icons";
+import { ArrowRight, CaretDoubleLeft, CaretDoubleRight, CaretDown, Gear, InstagramLogo } from "@/lib/ui/icons";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
@@ -71,17 +72,31 @@ export function SidebarContent({
     () => new Set([GRUPO_SEMPRE_ABERTO]),
   );
   const [itemClicado, setItemClicado] = useState<string | null>(null);
+  // Submenus (ex.: Instagram) recolhidos; abrem por padrão, como a lista de funis.
+  const [paisFechados, setPaisFechados] = useState<Set<string>>(() => new Set());
+  function togglePai(nome: string) {
+    setPaisFechados((prev) => {
+      const next = new Set(prev);
+      if (next.has(nome)) next.delete(nome);
+      else next.add(nome);
+      return next;
+    });
+  }
   // Um destino pode aparecer nas Ações rápidas e no seu grupo original.
   // Só uma ocorrência visível recebe o destaque; o clique escolhe qual delas.
   const candidatosAtivos = grupos
     .filter(({ group }) => collapsed || gruposAbertos.has(group.id))
-    .flatMap(({ group, items }) => items
-      .filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
-      .map((item) => ({ chave: `${group.id}:${item.href}`, href: item.href })))
+    .flatMap(({ group, items }) =>
+      items
+        .filter((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
+        .map((item) => ({ chave: `${group.id}:${item.href}`, href: item.href })),
+    )
     .sort((a, b) => b.href.length - a.href.length);
   const destinoMaisEspecifico = candidatosAtivos[0]?.href;
-  const itemAtivo = candidatosAtivos.find((item) => item.chave === itemClicado && item.href === destinoMaisEspecifico)?.chave
-    ?? candidatosAtivos[0]?.chave;
+  const itemAtivo =
+    candidatosAtivos.find(
+      (item) => item.chave === itemClicado && item.href === destinoMaisEspecifico,
+    )?.chave ?? candidatosAtivos[0]?.chave;
   function toggleGrupo(id: string) {
     setGruposAbertos((prev) => {
       const next = new Set(prev);
@@ -169,91 +184,89 @@ export function SidebarContent({
         <Link
           href="/app/dashboard"
           aria-label={t("Ir para o Dashboard")}
-          className="flex min-w-0 items-center rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 items-center rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
         >
-        {(logo || logoEscuro) && !collapsed ? (
-          // Sem arte própria para o escuro, preserva a proteção de contraste.
-          <div
-            className={cn(
-              // `min-w-0`: item de flex não encolhe abaixo do `min-width: auto`,
-              // que é o valor padrão — sem isso, uma arte própria larga empurra o
-              // botão de recolher para fora da barra em vez de encolher.
-              "min-w-0 rounded-md",
-              !logoEscuro && "dark:bg-white dark:px-2 dark:py-1 dark:shadow-sm",
-            )}
-          >
-            {/* <img> em vez de next/image de propósito: a URL vem de quem hospeda
+          {(logo || logoEscuro) && !collapsed ? (
+            // Sem arte própria para o escuro, o LogoAdaptativo clareia a arte escura (sem caixa).
+            <div
+              className={cn(
+                // `min-w-0`: item de flex não encolhe abaixo do `min-width: auto`,
+                // que é o valor padrão — sem isso, uma arte própria larga empurra o
+                // botão de recolher para fora da barra em vez de encolher.
+                "min-w-0 rounded-md",
+              )}
+            >
+              {/* <img> em vez de next/image de propósito: a URL vem de quem hospeda
               (banco ou .env), e next/image exige allowlist de domínios fechada em
               build — a imagem pré-buildada rejeitaria o domínio do self-hoster.
               Altura fixa e largura livre porque a arte enviada tem proporção
               desconhecida; forçar as duas distorceria o logo de quem configurou. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {logo ? (
-              <img
-                src={logo}
-                alt={nome}
-                className={cn(
-                  // `max-w-[min(10rem,100%)]` e não `max-w-[10rem]` sozinho, como o
-                  // review mediu (#2723): a linha da logo tem ~207px úteis na barra
-                  // aberta e o botão de recolher disputa o mesmo espaço. Uma arte
-                  // própria larga (160px) vazava 7px do fundo claro e ficava a 1px
-                  // do botão. O teto de 10rem continua valendo, mas agora a imagem
-                  // encolhe antes de estourar.
-                  //
-                  // `max-w-[10rem]` + `max-w-full` não valem os dois: disputam a
-                  // MESMA propriedade no CSS e só um sobrevive — a pegadinha que o
-                  // review apontou, e por isso o teto é um único `min()`.
-                  "h-7 w-auto max-w-[min(10rem,100%)] object-contain",
-                  logoEscuro && "dark:hidden",
-                )}
-              />
+              {logo ? (
+                <LogoAdaptativo
+                  src={logo}
+                  alt={nome}
+                  className={cn(
+                    // `max-w-[min(10rem,100%)]` e não `max-w-[10rem]` sozinho, como o
+                    // review mediu (#2723): a linha da logo tem ~207px úteis na barra
+                    // aberta e o botão de recolher disputa o mesmo espaço. Uma arte
+                    // própria larga (160px) vazava 7px do fundo claro e ficava a 1px
+                    // do botão. O teto de 10rem continua valendo, mas agora a imagem
+                    // encolhe antes de estourar.
+                    //
+                    // `max-w-[10rem]` + `max-w-full` não valem os dois: disputam a
+                    // MESMA propriedade no CSS e só um sobrevive — a pegadinha que o
+                    // review apontou, e por isso o teto é um único `min()`.
+                    "h-7 w-auto max-w-[min(10rem,100%)] object-contain",
+                    logoEscuro && "dark:hidden",
+                  )}
+                />
+              ) : (
+                // `truncate` + `title`: o nome longo (uma clínica com nome grande,
+                // medido no review) virava 3 linhas dentro de uma linha de 56px e
+                // estourava a barra. Uma linha com reticências, e o nome completo
+                // continua no tooltip. `block` porque este wrapper não é flex: inline,
+                // o `truncate` não corta e o nome passa por cima do botão.
+                <span className="block min-w-0 truncate dark:hidden" title={nome}>
+                  {nome}
+                </span>
+              )}
+              {logoEscuro ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoEscuro}
+                  alt={nome}
+                  className="hidden h-7 w-auto max-w-[min(10rem,100%)] object-contain dark:block"
+                />
+              ) : null}
+            </div>
+          ) : marcaDoProduto ? (
+            // O desenho do produto, inline (ver `components/branding/MarcaDoProduto.tsx`):
+            // logotipo com a barra aberta, só o símbolo com ela recolhida.
+            collapsed ? (
+              <SimboloDoProduto nome={nome} className="h-8 w-8" />
             ) : (
-              // `truncate` + `title`: o nome longo (uma clínica com nome grande,
-              // medido no review) virava 3 linhas dentro de uma linha de 56px e
-              // estourava a barra. Uma linha com reticências, e o nome completo
-              // continua no tooltip. `block` porque este wrapper não é flex: inline,
-              // o `truncate` não corta e o nome passa por cima do botão.
-              <span className="block min-w-0 truncate dark:hidden" title={nome}>
-                {nome}
-              </span>
-            )}
-            {logoEscuro ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoEscuro}
-                alt={nome}
-                className="hidden h-7 w-auto max-w-[min(10rem,100%)] object-contain dark:block"
-              />
-            ) : null}
-          </div>
-        ) : marcaDoProduto ? (
-          // O desenho do produto, inline (ver `components/branding/MarcaDoProduto.tsx`):
-          // logotipo com a barra aberta, só o símbolo com ela recolhida.
-          collapsed ? (
-            <SimboloDoProduto nome={nome} className="h-8 w-8" />
+              <LogotipoDoProduto nome={nome} className="h-8 w-auto" />
+            )
           ) : (
-            <LogotipoDoProduto nome={nome} className="h-8 w-auto" />
-          )
-        ) : (
-          <span
-            className={cn(
-              "min-w-0 truncate font-semibold tracking-tight",
-              collapsed && "sr-only",
-            )}
-            title={nome}
-          >
-            {nome}
-          </span>
-        )}
-        {collapsed && !marcaDoProduto && (
-          <span aria-hidden className="text-lg font-bold text-primary">
-            {/* Spread e não `[0]`: nome começando com emoji ou acento composto
+            <span
+              className={cn(
+                "min-w-0 truncate font-semibold tracking-tight",
+                collapsed && "sr-only",
+              )}
+              title={nome}
+            >
+              {nome}
+            </span>
+          )}
+          {collapsed && !marcaDoProduto && (
+            <span aria-hidden className="text-lg font-bold text-primary">
+              {/* Spread e não `[0]`: nome começando com emoji ou acento composto
                 quebraria no meio do code point. Mesma regra de `resolveBranding`
                 — a inicial precisa acompanhar o nome que a barra mostra, senão
                 recolher o menu troca a marca. */}
-            {[...nome][0]?.toUpperCase() ?? brand.initial}
-          </span>
-        )}
+              {[...nome][0]?.toUpperCase() ?? brand.initial}
+            </span>
+          )}
         </Link>
         {/* Issue #2722 — o controle de recolher mora no ALTO, como no
             mercado: na linha da logo, à direita, quando a barra está aberta. */}
@@ -344,7 +357,7 @@ export function SidebarContent({
                     type="button"
                     onClick={() => toggleGrupo(group.id)}
                     aria-expanded={aberto}
-                    className="flex w-full items-center justify-between rounded-md px-3 py-1 text-[11px] font-semibold uppercase leading-4 tracking-[0.08em] text-text-subtle transition-colors hover:text-foreground"
+                    className="flex w-full items-center justify-between rounded-md px-3 py-1 text-[11px] leading-4 font-semibold tracking-[0.08em] text-text-subtle uppercase transition-colors hover:text-foreground"
                   >
                     {t(group.label)}
                     <CaretDown
@@ -376,62 +389,143 @@ export function SidebarContent({
                     const chaveDoItem = `${group.id}:${item.href}`;
                     const isActive = itemAtivo === chaveDoItem;
                     const Icon = item.icon;
-                    // O atalho "CRM principal" das Ações rápidas é só porta: a lista dos
-                    // funis fica no item original, dentro do menu CRM.
-                    const ehFunis =
-                      item.href === HREF_DOS_FUNIS && !collapsed && group.id !== GRUPO_SEMPRE_ABERTO;
-                    return (
-                      <li key={item.href}>
-                        <div className="relative">
-                        <Link
-                          href={item.href}
-                          {...(item.novaAba ? { target: "_blank", rel: "noopener" } : {})}
-                          title={collapsed ? t(item.label) : undefined}
-                          aria-current={isActive ? "page" : undefined}
-                          onClick={(event) => {
-                            if (!item.novaAba && !event.defaultPrevented && event.button === 0 &&
-                                !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
-                              setItemClicado(chaveDoItem);
-                            }
-                            onNavigate?.();
-                          }}
-                          className={cn(
-                            "relative flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-[background-color,color,box-shadow] duration-base ease-out-slow",
-                            isActive
-                              ? "bg-accent font-medium text-accent-foreground shadow-sm"
-                              : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
-                            collapsed && "justify-center px-2",
-                          )}
-                        >
-                          <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
-                          {!collapsed && <span className="truncate">{t(item.label)}</span>}
-                          {item.healthDot && (
-                            <ConnectionHealthDot
-                              className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
-                            />
-                          )}
-                          {item.contador === "casos" && <ContadorDeCasos compacto={collapsed} />}
-                          {item.contador === "fila" && <ContadorDaFila compacto={collapsed} />}
-                        </Link>
-                        {ehFunis && (
+                    // Submenu (Redes sociais > Instagram > …): uma linha-mãe recolhível
+                    // desenhada no lugar do primeiro filho. Recolhida a barra não tem
+                    // onde aninhar, então ali os filhos seguem como ícones soltos.
+                    if (item.pai && !collapsed) {
+                      const irmaos = items.filter((i) => i.pai === item.pai);
+                      if (irmaos[0] !== item) return null;
+                      const fechado = paisFechados.has(item.pai);
+                      const algumAtivo = irmaos.some((i) => itemAtivo === `${group.id}:${i.href}`);
+                      return (
+                        <li key={`pai:${item.pai}`}>
                           <button
                             type="button"
-                            onClick={toggleFunis}
-                            aria-expanded={!funisFechados}
-                            aria-label={funisFechados ? t("Mostrar funis") : t("Esconder funis")}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-subtle hover:bg-foreground/[0.05] hover:text-foreground"
+                            onClick={() => togglePai(item.pai!)}
+                            aria-expanded={!fechado}
+                            className={cn(
+                              "flex w-full items-center gap-3 rounded-md px-3 py-1 text-sm transition-[background-color,color] duration-base ease-out-slow",
+                              algumAtivo && fechado
+                                ? "bg-accent font-medium text-accent-foreground"
+                                : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
+                            )}
                           >
+                            <InstagramLogo size={18} aria-hidden />
+                            <span className="truncate">{t(item.pai)}</span>
                             <CaretDown
                               size={12}
                               weight="bold"
-                              className={cn("transition-transform", funisFechados && "-rotate-90")}
+                              className={cn("ml-auto transition-transform", fechado && "-rotate-90")}
                               aria-hidden
                             />
                           </button>
-                        )}
+                          {!fechado && (
+                            <ul
+                              className="mt-1 ml-5 space-y-1 border-l border-border/70 pl-2"
+                              aria-label={t(item.pai)}
+                            >
+                              {irmaos.map((filho) => {
+                                const chaveFilho = `${group.id}:${filho.href}`;
+                                const ativo = itemAtivo === chaveFilho;
+                                return (
+                                  <li key={filho.href}>
+                                    <Link
+                                      href={filho.href}
+                                      aria-current={ativo ? "page" : undefined}
+                                      onClick={(event) => {
+                                        if (event.button === 0 && !event.metaKey && !event.ctrlKey) {
+                                          setItemClicado(chaveFilho);
+                                        }
+                                        onNavigate?.();
+                                      }}
+                                      className={cn(
+                                        "flex items-center rounded-md px-2 py-1 text-sm transition-[background-color,color,box-shadow] duration-base ease-out-slow",
+                                        ativo
+                                          ? "bg-accent font-medium text-accent-foreground shadow-sm"
+                                          : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
+                                      )}
+                                    >
+                                      <span className="truncate">{t(filho.label)}</span>
+                                    </Link>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    }
+                    // O atalho "CRM principal" das Ações rápidas é só porta: a lista dos
+                    // funis fica no item original, dentro do menu CRM.
+                    const ehFunis =
+                      item.href === HREF_DOS_FUNIS &&
+                      !collapsed &&
+                      group.id !== GRUPO_SEMPRE_ABERTO;
+                    return (
+                      <li key={item.href}>
+                        <div className="relative">
+                          <Link
+                            href={item.href}
+                            {...(item.novaAba ? { target: "_blank", rel: "noopener" } : {})}
+                            title={collapsed ? t(item.label) : undefined}
+                            aria-current={isActive ? "page" : undefined}
+                            onClick={(event) => {
+                              if (
+                                !item.novaAba &&
+                                !event.defaultPrevented &&
+                                event.button === 0 &&
+                                !event.metaKey &&
+                                !event.ctrlKey &&
+                                !event.shiftKey &&
+                                !event.altKey
+                              ) {
+                                setItemClicado(chaveDoItem);
+                              }
+                              onNavigate?.();
+                            }}
+                            className={cn(
+                              "relative flex items-center gap-3 rounded-md px-3 py-1 text-sm transition-[background-color,color,box-shadow] duration-base ease-out-slow",
+                              isActive
+                                ? "bg-accent font-medium text-accent-foreground shadow-sm"
+                                : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground",
+                              collapsed && "justify-center px-2",
+                            )}
+                          >
+                            <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
+                            {!collapsed && <span className="truncate">{t(item.label)}</span>}
+                            {item.healthDot && (
+                              <ConnectionHealthDot
+                                className={cn(collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}
+                              />
+                            )}
+                            {item.contador === "casos" && <ContadorDeCasos compacto={collapsed} />}
+                            {item.contador === "fila" && <ContadorDaFila compacto={collapsed} />}
+                          </Link>
+                          {ehFunis && (
+                            <button
+                              type="button"
+                              onClick={toggleFunis}
+                              aria-expanded={!funisFechados}
+                              aria-label={funisFechados ? t("Mostrar funis") : t("Esconder funis")}
+                              className="absolute top-1/2 right-1 -translate-y-1/2 rounded-md p-1 text-text-subtle hover:bg-foreground/[0.05] hover:text-foreground"
+                            >
+                              <CaretDown
+                                size={12}
+                                weight="bold"
+                                className={cn(
+                                  "transition-transform",
+                                  funisFechados && "-rotate-90",
+                                )}
+                                aria-hidden
+                              />
+                            </button>
+                          )}
                         </div>
                         {ehFunis && !funisFechados && funis.length > 0 && (
-                          <ul className="mt-1 ml-5 space-y-1 border-l border-border/70 pl-2" aria-label={t("Funis")}>
+                          <ul
+                            className="mt-1 ml-5 space-y-1 border-l border-border/70 pl-2"
+                            aria-label={t("Funis")}
+                          >
                             {funis.map((f) => {
                               const href = `/app/pipelines/${f.id}`;
                               const ativo = pathname === href || pathname.startsWith(href + "/");

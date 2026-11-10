@@ -1,3 +1,4 @@
+import { conferirEnvioDeVeiculo } from "@/lib/veiculos/reservas-server";
 import { assertProspectingDelivery } from "@/lib/prospecting/guard";
 import { assertAgentOperationSupabase, mesmaOperacao } from "@/lib/ai/agents/operation";
 import {
@@ -850,6 +851,9 @@ export async function sendMessageHandler(
     );
   }
 
+  if (typeof input.metadata?.veiculo_id === "string") {
+    await conferirEnvioDeVeiculo(supabase, ctx, input.metadata.veiculo_id);
+  }
   const insertRow = {
     ...(ctx.internalMessageId ? { id: ctx.internalMessageId } : {}),
     organization_id: c.organization_id,
@@ -917,6 +921,7 @@ export async function sendMessageHandler(
     )
       return created as unknown as Message;
   }
+  if (insErr?.code === "PT409") throw new ApiError(409, "conflict", undefined, ctx.requestId, insErr.message);
   if (insErr || !created) {
     throw new ApiError(
       500,
@@ -1041,6 +1046,7 @@ export async function sendMessageHandler(
       const fronteiraJaConferida = mesmaFronteira(currentExecutionBoundary(), ctx.serviceBoundary ?? null);
       const operacaoJaConferida = mesmaOperacao(currentExecutionAgentOperation(), ctx.agentOperation);
       const checkBoundary = async () => {
+        if (typeof input.metadata?.veiculo_id === "string") await conferirEnvioDeVeiculo(supabase, ctx, input.metadata.veiculo_id);
         await guardServiceEffect();
         await guardAgendaEffect();
         if (ctx.prospectingDelivery) await assertProspectingDelivery(supabase, ctx.prospectingDelivery);

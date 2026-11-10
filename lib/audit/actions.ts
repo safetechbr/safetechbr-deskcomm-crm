@@ -302,6 +302,16 @@ export const AUDIT_ACTIONS = [
   "channel.social_desvinculado",
   "channel.social_publicacao_agendada",
   "channel.social_publicacao_cancelada",
+  "channel.social_publicacao_entregue",
+  "channel.social_seguranca_atualizada",
+  "channel.social_publicacao_falhou",
+  "channel.social_story_agendado",
+  "channel.social_story_lote_agendado",
+  "channel.social_story_editado",
+  "channel.social_story_cancelado",
+  "channel.social_story_reenviado",
+  "channel.social_story_janela_salva",
+  "channel.social_story_janela_excluida",
   // Reescreve a URL da assinatura de webhook do canal social pela origem atual
   // (#2863): não arquiva a linha nem cria canal — só reconcilia o endereço.
   "channel.social_webhook_ressincronizado",
@@ -819,6 +829,8 @@ export const AUDIT_ACTIONS = [
   "veiculo.video_set",
   "veiculo.video_removed",
   "veiculo.presented",
+  "veiculo.reservado",
+  "veiculo.reserva_liberada",
   // O PDV da loja de carros (migration 9031): venda/compra de veículo.
   "negociacao_veiculo.created",
   "negociacao_veiculo.updated",

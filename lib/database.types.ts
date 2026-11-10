@@ -3,6 +3,29 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      reservas_de_veiculo: {
+        Row: {
+          id: string; organization_id: string; veiculo_id: string; vendedor_user_id: string;
+          conversation_id: string | null; criada_em: string; expira_em: string;
+          visita_em: string | null; encerrada_em: string | null; motivo_encerramento: string | null;
+        };
+        Insert: {
+          id?: string; organization_id: string; veiculo_id: string; vendedor_user_id: string;
+          conversation_id?: string | null; criada_em?: string; expira_em?: string;
+          visita_em?: string | null; encerrada_em?: string | null; motivo_encerramento?: string | null;
+        };
+        Update: {
+          id?: string; organization_id?: string; veiculo_id?: string; vendedor_user_id?: string;
+          conversation_id?: string | null; criada_em?: string; expira_em?: string;
+          visita_em?: string | null; encerrada_em?: string | null; motivo_encerramento?: string | null;
+        };
+        Relationships: [
+          { foreignKeyName: "reservas_de_veiculo_organization_id_fkey"; columns: ["organization_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
+          { foreignKeyName: "reservas_de_veiculo_veiculo_id_fkey"; columns: ["veiculo_id"]; isOneToOne: false; referencedRelation: "veiculos"; referencedColumns: ["id"] },
+          { foreignKeyName: "reservas_de_veiculo_conversation_id_fkey"; columns: ["conversation_id"]; isOneToOne: false; referencedRelation: "conversations"; referencedColumns: ["id"] },
+        ];
+      };
+
       account_plans: {
         Row: {
           created_at: string;
@@ -8259,6 +8282,67 @@ export type Database = {
           },
         ];
       };
+      credit_cards: {
+        Row: {
+          account_id: string;
+          closing_day: number;
+          created_at: string;
+          credit_limit_cents: number;
+          currency: string;
+          due_day: number;
+          id: string;
+          is_active: boolean;
+          last_digits: string | null;
+          name: string;
+          organization_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          account_id: string;
+          closing_day: number;
+          created_at?: string;
+          credit_limit_cents?: number;
+          currency?: string;
+          due_day: number;
+          id?: string;
+          is_active?: boolean;
+          last_digits?: string | null;
+          name: string;
+          organization_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          account_id?: string;
+          closing_day?: number;
+          created_at?: string;
+          credit_limit_cents?: number;
+          currency?: string;
+          due_day?: number;
+          id?: string;
+          is_active?: boolean;
+          last_digits?: string | null;
+          name?: string;
+          organization_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "credit_cards_account_id_fkey";
+            columns: ["account_id"];
+            isOneToOne: false;
+            referencedRelation: "financial_accounts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "credit_cards_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       financial_accounts: {
         Row: {
           created_at: string;
@@ -8309,6 +8393,7 @@ export type Database = {
           account_id: string;
           account_plan_id: string | null;
           amount_cents: number;
+          card_id: string | null;
           created_at: string;
           created_by_user_id: string | null;
           currency: string;
@@ -8330,6 +8415,7 @@ export type Database = {
           account_id: string;
           account_plan_id?: string | null;
           amount_cents: number;
+          card_id?: string | null;
           created_at?: string;
           created_by_user_id?: string | null;
           currency?: string;
@@ -8350,6 +8436,7 @@ export type Database = {
           account_id?: string;
           account_plan_id?: string | null;
           amount_cents?: number;
+          card_id?: string | null;
           created_at?: string;
           created_by_user_id?: string | null;
           currency?: string;
@@ -11874,6 +11961,7 @@ export type Database = {
           fallback_reason: string | null;
           favicon_path: string | null;
           id: number;
+          logo_bloqueado: boolean;
           logo_dark_path: string | null;
           logo_path: string | null;
           logo_url: string | null;
@@ -11891,6 +11979,7 @@ export type Database = {
           fallback_reason?: string | null;
           favicon_path?: string | null;
           id?: number;
+          logo_bloqueado?: boolean;
           logo_dark_path?: string | null;
           logo_path?: string | null;
           logo_url?: string | null;
@@ -11907,6 +11996,7 @@ export type Database = {
           fallback_reason?: string | null;
           favicon_path?: string | null;
           id?: number;
+          logo_bloqueado?: boolean;
           logo_dark_path?: string | null;
           logo_path?: string | null;
           logo_url?: string | null;
@@ -14506,6 +14596,12 @@ export type Database = {
       };
     };
     Functions: {
+      fn_reservar_veiculo: {
+        Args: { p_org: string; p_veiculo: string; p_conversa: string; p_horas?: number; p_visita?: string | null };
+        Returns: Json;
+      };
+      fn_liberar_reserva_veiculo: { Args: { p_org: string; p_veiculo: string; p_reserva: string }; Returns: boolean };
+
       activate_kb_version: {
         Args: { p_agent_id: string; p_version_id: string };
         Returns: undefined;
@@ -15587,6 +15683,10 @@ export type Database = {
         Returns: string;
       };
       fn_registrar_jid_do_aviso: { Args: { p_jid: string; p_org: string }; Returns: undefined };
+      fn_resumo_contas_e_cartoes: {
+        Args: { p_org: string };
+        Returns: Json;
+      };
       fn_relatorio_financeiro: {
         Args: { p_ate: string; p_de: string; p_org: string };
         Returns: Json;

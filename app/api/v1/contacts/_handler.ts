@@ -8,6 +8,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { atualizarCadastroManual } from "@/lib/contacts/cadastro-manual";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { observeServiceOrigin } from "@/lib/atendimento/origem";
 import { ApiError } from "@/lib/api/types";
@@ -579,7 +580,7 @@ async function erroDeConflitoUnico(
 
 export interface CreateContactResult {
   contact: Contact;
-  action: "created";
+  action: "created" | "updated";
 }
 
 export async function createContactHandler(
@@ -587,6 +588,9 @@ export async function createContactHandler(
   ctx: HandlerCtx,
   input: ContactCreate,
 ): Promise<CreateContactResult> {
+  const reaproveitado = await atualizarCadastroManual(supabase, ctx, input, patchContactHandler);
+  if (reaproveitado) return { contact: reaproveitado, action: "updated" };
+
   // ── O PADRÃO (#2730) — a MESMA régua do formulário, aqui no SERVIDOR ──────
   //
   // O form é a primeira porta, não a garantia: dá para POSTar direto na API.
@@ -641,6 +645,10 @@ export async function createContactHandler(
     .single();
 
   if (insErr) {
+    if (insErr.code === "23505") {
+      const concorrente = await atualizarCadastroManual(supabase, ctx, input, patchContactHandler);
+      if (concorrente) return { contact: concorrente, action: "updated" };
+    }
     // 409 quando o dado já pertence a um contato vivo desta organização (#3084).
     //
     // O índice parcial `uniq_contacts_org_phone` (organization_id, phone_number)

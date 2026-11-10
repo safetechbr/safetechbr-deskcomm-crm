@@ -167,7 +167,7 @@ export function NewContactDialog({
       ...(etiquetaPendente ? [etiquetaPendente] : []),
     ]);
 
-    const payload: Record<string, unknown> = { source: "manual" };
+    const payload: Record<string, unknown> = { source: "manual", reuse_existing_phone: true };
     if (values.name?.trim()) payload.name = values.name.trim();
     if (values.email?.trim()) payload.email = values.email.trim();
     if (values.phone_number?.trim()) payload.phone_number = values.phone_number.trim();
@@ -198,7 +198,7 @@ export function NewContactDialog({
       return;
     }
 
-    toast.success(t("Contato criado"));
+    toast.success(t("Cadastro salvo"));
     form.reset();
     setEtiquetaPendente(null);
     onOpenChange(false);

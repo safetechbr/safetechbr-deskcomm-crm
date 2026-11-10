@@ -14,7 +14,7 @@ describe("cadastro de cliente do PDV", () => {
   });
 
   it("monta o corpo omitindo campos vazios", () => {
-    expect(corpoDoContato({ nome: " Ana ", telefone: " ", email: "" })).toEqual({ name: "Ana" });
+    expect(corpoDoContato({ nome: " Ana ", telefone: " ", email: "" })).toEqual({ name: "Ana", reuse_existing_phone: true });
   });
 
   it("envia só o que o contato guarda", () => {
@@ -29,6 +29,7 @@ describe("cadastro de cliente do PDV", () => {
     });
     expect(corpo).toEqual({
       name: "Ana",
+      reuse_existing_phone: true,
       phone_number: "11999990000",
       email: "a@b.co",
       cpf: "52998224725",

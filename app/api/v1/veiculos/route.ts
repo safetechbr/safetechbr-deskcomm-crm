@@ -6,6 +6,8 @@
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
+import { reservasAtivas } from "@/lib/veiculos/reservas-server";
+import { registrarCategoriaDaLoja } from "@/lib/veiculos/categorias-da-loja";
 import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
@@ -45,7 +47,11 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const { data, error } = await q.order("status").order("modelo").order("id").limit(500);
   if (error) return fail("internal_error", "Erro ao listar o estoque.", 500, { requestId });
-  const lista = (data ?? []) as unknown as Array<{ id: string; fotos: string[] | null }>;
+  const linhas = (data ?? []) as unknown as Array<{ id: string; fotos: string[] | null }>;
+  let reservas;
+  try { reservas = await reservasAtivas(supabase, authz.org.orgId, linhas.map(v => v.id)); }
+  catch { return fail("internal_error", "Não foi possível conferir as reservas do estoque.", 500, { requestId }); }
+  const lista = linhas.map(v => ({ ...v, reserva: reservas.get(v.id) ?? null }));
   // `?capas=1`: acrescenta `capa_url` (miniatura assinada da 1ª foto) para o seletor do Inbox.
   if (params.get("capas") === "1") {
     const caminhos = lista
@@ -114,6 +120,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     return fail("internal_error", "Erro ao salvar o veículo.", 500, { requestId });
   }
 
+  await registrarCategoriaDaLoja(supabase, authz.org.orgId, parsed.data.categoria);
   await audit({
     organizationId: authz.org.orgId,
     actorUserId: authz.user.id,

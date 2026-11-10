@@ -19,6 +19,7 @@ import { MfaEnrollGate } from "@/components/auth/MfaEnrollGate";
 import { cssDaMarca, ESCOPO_DA_ORGANIZACAO } from "@/lib/branding/css";
 import { cssDaExtensaoDeTema, linhaBrutaDeTema, temaAplicavel } from "@/lib/extensions/tema";
 import { marcaDaInstalacao } from "@/lib/branding/instalacao";
+import { logoDasEmpresasBloqueado, semOsLogosDaOrganizacao } from "@/lib/branding/logo-bloqueado";
 import { resolverMarcaDaOrganizacao } from "@/lib/branding/organizacao";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -208,8 +209,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // instalacao.ts`), e a derivação da cor é cacheada por régua+semente em
     // `resolve.ts` — a marca custa uma consulta a cada 30s e um lookup de Map
     // por render, não uma derivação de rampa por requisição.
+    // Trava do admin mestre: com ela ligada, o logo que a empresa já tenha subido
+    // deixa de valer e todas mostram o da instalação.
+    const logoTravado = await logoDasEmpresasBloqueado();
     const marca = resolverMarcaDaOrganizacao(
-      orgRow?.settings ?? null,
+      logoTravado ? semOsLogosDaOrganizacao(orgRow?.settings ?? null) : (orgRow?.settings ?? null),
       await marcaDaInstalacao(),
       env,
     );

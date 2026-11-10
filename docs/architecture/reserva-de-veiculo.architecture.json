@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Reserva temporária de veículos",
+    "subtitle": "Visita, exclusividade com prazo e disponibilidade compartilhada",
+    "output": "reserva-de-veiculo.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "tela",
+      "label": "Configuração e atendimento"
+    },
+    {
+      "id": "consulta",
+      "label": "Capacidade"
+    },
+    {
+      "id": "dados",
+      "label": "Dados e evidências"
+    }
+  ],
+  "mainPath": [
+    "form",
+    "handler",
+    "contato"
+  ],
+  "nodes": [
+    {
+      "id": "form",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "Central / EstoqueDaConversa",
+      "sublabel": "Prazo 1–24h, visita e liberação"
+    },
+    {
+      "id": "handler",
+      "lane": "consulta",
+      "col": 1,
+      "type": "api",
+      "label": "RPCs de reserva + bloqueio do veículo",
+      "sublabel": "Identidade e papel revalidados; aquisição serializada"
+    },
+    {
+      "id": "contato",
+      "lane": "dados",
+      "col": 2,
+      "type": "database",
+      "label": "reservas_de_veiculo / veiculos",
+      "sublabel": "Prazo calculado, histórico e status administrativo"
+    },
+    {
+      "id": "central",
+      "lane": "tela",
+      "col": 3,
+      "type": "frontend",
+      "label": "Equipe / IA / envio / PDV",
+      "sublabel": "Bloqueio de ofertas e vendas; libera ao vencer"
+    },
+    {
+      "id": "auditoria",
+      "lane": "dados",
+      "col": 3,
+      "type": "database",
+      "label": "api_audit_log",
+      "sublabel": "Reserva e liberação com responsável"
+    }
+  ],
+  "edges": [
+    {
+      "id": "cadastrar",
+      "from": "form",
+      "to": "handler",
+      "label": "Reservar ou liberar"
+    },
+    {
+      "id": "procurar",
+      "from": "handler",
+      "to": "contato",
+      "label": "Mesma linha do estoque, sem duplicidade"
+    },
+    {
+      "id": "retornar",
+      "from": "contato",
+      "to": "handler",
+      "label": "Conflito ou sucesso visível"
+    },
+    {
+      "id": "atualizar",
+      "from": "handler",
+      "to": "contato",
+      "label": "Prazo, dono e disponibilidade"
+    },
+    {
+      "id": "selecionar",
+      "from": "handler",
+      "to": "form",
+      "label": "Auditar ação humana"
+    },
+    {
+      "id": "mostrar",
+      "from": "contato",
+      "to": "central",
+      "label": "Recarregar equipe via realtime / refetch"
+    },
+    {
+      "id": "auditar",
+      "from": "handler",
+      "to": "auditoria",
+      "label": "Atualização existente, sem evento de nova pessoa"
+    },
+    {
+      "id": "reler",
+      "from": "form",
+      "to": "central",
+      "label": "Invalidação de listas e detalhe"
+    }
+  ]
+}

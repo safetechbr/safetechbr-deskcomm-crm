@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -48,6 +49,7 @@ function Formulario({
   onSalvando,
 }: Pick<Props, "onOpenChange" | "onSalvo"> & { onSalvando: (v: boolean) => void }) {
   const t = useT();
+  const qc = useQueryClient();
   const [c, setC] = React.useState<ClienteDaNegociacao>(VAZIO);
   const [aba, setAba] = React.useState("pessoais");
   const [tentou, setTentou] = React.useState(false);
@@ -78,7 +80,11 @@ function Formulario({
       );
       const id = res?.data?.contact?.id;
       if (!id) throw new Error(t("Não foi possível cadastrar o cliente."));
-      toast.success(t("Cliente cadastrado."));
+      qc.invalidateQueries({ queryKey: ["contacts"] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["conversation"] });
+      qc.invalidateQueries({ queryKey: ["contact", id] });
+      toast.success(t("Cadastro do cliente salvo."));
       onSalvo({ ...c, nome: c.nome.trim() }, id);
       // O wrapper guarda o "salvando" que bloqueia o fechar: sem soltar aqui, a
       // próxima abertura nasceria presa (Escape e clique fora ignorados).

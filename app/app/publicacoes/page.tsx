@@ -8,7 +8,7 @@ import { PublicacoesClient } from "@/components/publicacoes/PublicacoesClient";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Publicações" };
+export const metadata: Metadata = { title: "Agendamento de postagens" };
 
 export default async function PublicacoesPage() {
   const user = await requireAuth();
@@ -25,9 +25,9 @@ export default async function PublicacoesPage() {
           <IconeDoTitulo size={22} weight="duotone" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Publicações", idioma)}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Agendamento de postagens", idioma)}</h1>
           <p className="text-sm text-muted-foreground">
-            {traduzir("Agende posts, carrosséis, Reels e Stories nas suas redes sociais.", idioma)}
+            {traduzir("Agende Reels, posts de feed e carrosséis nas suas redes sociais.", idioma)}
           </p>
         </div>
       </header>

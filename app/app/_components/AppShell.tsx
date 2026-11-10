@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { BarraInferior } from "@/components/shell/BarraInferior";
+import { DocaDeBolinhas } from "@/components/inbox/bolinhas/DocaDeBolinhas";
 import { BarraDeProgressoNavegacao } from "@/components/shell/BarraDeProgressoNavegacao";
 import { useSinalDePresenca } from "@/hooks/atendimento/useSinalDePresenca";
 import { useInboundMessageAlerts } from "@/hooks/notifications/useInboundMessageAlerts";
@@ -131,6 +132,7 @@ export function AppShell({ sidebarCollapsed, podeAtender, children }: AppShellPr
         lateral aparece, logo acima.
       */}
       <BarraInferior />
+      <DocaDeBolinhas />
     </div>
   );
 }
