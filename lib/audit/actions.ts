@@ -1029,6 +1029,9 @@ export const AUDIT_ACTIONS = [
   // Rodada do canal-mudo-watcher que ABRIU ou FECHOU aviso (doc 11, decisão B).
   // Só com efeito: varredura diária que não achou nada não é mutação.
   "channel.canal_mudo_watcher_run",
+  // Rodada do session-silencio-watcher que avisou, reiniciou ou fechou aviso de
+  // sessão WORKING sem receber mensagens. Só com efeito.
+  "channel.session_silencio_watcher_run",
   // A rodada do cron `followup-sem-agente` que MEXEU em alguma coisa: abriu
   // aviso de fluxo publicado que nenhum agente arma, fechou aviso cujo vínculo
   // apareceu, ou os dois. Rodada sem efeito não audita (CLAUDE.md §Audit log),

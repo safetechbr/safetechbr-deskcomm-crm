@@ -54,6 +54,7 @@ const SEM_FILTRO: Record<string, string> = {
   "agent-dispatcher": "no-op permanente desde a convergência; não há o que filtrar",
   "canal-mudo-watcher": "só abre aviso na Central da própria org; sem custo nem saída",
   "case-stale-watcher": "só reabre aviso de caso na Central; sem custo nem saída",
+  "session-silencio-watcher": "só avisa na Central e reinicia a sessão muda do WAHA; nenhuma mensagem ao cliente",
   "channel-health": "só pergunta ao transporte se a sessão está de pé; nenhuma mensagem ao cliente",
   "contact-avatars": "baixa a foto de perfil: deliberadamente não gatilhado (spec §4)",
   "contact-birthdays": "só emite contact.birthday; o consumidor (automationRulesHandler) é 'pula'",
