@@ -1650,7 +1650,19 @@ async function handleOutboundFromUserPhone(
     }
   }
 
-  await markConversation(admin, session.organization_id, conversationId, "outbound", previewFromMessage(p), now);
+  // ⚠️ A DATA É A DA MENSAGEM, não a de agora. Quando o WhatsApp reconecta, o
+  // aparelho entrega o que enviou enquanto o canal estava fora; carimbar isso com
+  // `now` faz uma fala de ontem parecer a última da conversa e empurra a prévia
+  // da lista (e `last_outbound_at`) para cima de mensagens mais novas. A entrada
+  // já usava o timestamp do canal; a RPC só aceita a prévia de quem é mais novo.
+  await markConversation(
+    admin,
+    session.organization_id,
+    conversationId,
+    "outbound",
+    previewFromMessage(p),
+    dataDoTimestamp(p.timestamp, now),
+  );
 
   // ── CONTROLE DO AUTOMÁTICO NESTA CONVERSA ─────────────────────────────────
   //
