@@ -783,3 +783,10 @@ Antes de declarar uma task pronta:
     extensão não autoriza remover nem desligar o que já foi distribuído.
 
 Um staff engineer aprovaria? Se não, itera.
+
+## Colaboração com o Codex
+
+O Codex edita o mesmo repositório. **Claude Code cuida da estrutura** (`app/api`, `lib`, `hooks`, `supabase`,
+migrations, dependências, deploy); o **Codex cuida do visual** (`components`, páginas, estilos, branding).
+Não edite a área do outro; funcionalidade que cruza as duas é feita em sequência. Regras completas em
+[`docs/colaboracao-codex-claude.md`](docs/colaboracao-codex-claude.md).
