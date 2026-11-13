@@ -4052,3 +4052,42 @@ terão trace/vídeo. Não foi medido download na janela anterior à persistênci
 do worker, viewer PDF ou aplicativo externo. O PASS de UX deste head não
 substitui os cinco checks obrigatórios: o verify antigo falhou no teste de
 relógio, cujo reparo central entra pela composição da main, sem repetir a rodada antiga.
+
+## Contrato de veículos — modelo da loja
+
+Cadastros em Configurações › Empresa e Estoque alimentam o PDV; revisão do contrato e PDF por negociação. Unitários de snapshot/validação e invariantes de compra, RLS e tipos JSON passaram. Baseline install/update passou. PDF sintético de três páginas renderizado em `evidence/contrato-modelo/`. Validação manual autenticada no localhost realizada: edição, rascunho, recarga/reabertura pelo histórico e PDF baixado com os dados salvos. Identificada e aplicada uma migração anterior de crediário ausente no desenvolvimento (`modalidade`), que impedia salvar. Não equivale ao E2E Playwright com app completa em instalação fresca. Detalhes em `docs/features/contrato-de-veiculos.md`.
+
+
+### Cadastro único do cliente no PDV
+
+O modal existente reúne nacionalidade, dados pessoais/empresa e endereço, com edição do contato selecionado e preenchimento completo pela busca. Removido o formulário Cliente no contrato. Testes em `app/pdv/cadastro-cliente-modal.test.tsx`, `tests/unit/pdv-cadastro-cliente.test.ts` e `lib/contacts/dados-cadastrais-do-cliente.test.ts` cobrem as duas portas de gravação e a fotografia da negociação. A anonimização continua usando a proteção existente de `contacts.custom_fields`.
+
+Prova manual no localhost: contato de teste criado/atualizado pelo modal; busca em outra aba recuperou CNPJ, nacionalidade, RG editado, CNH e endereço completo. Modal contido na viewport (576 × 426 px na aba Endereço); zero ocorrências do antigo formulário Cliente no contrato ao expandir os Dados do contrato. Capturas e recibo em `evidence/cadastro-cliente-unificado/`. Não equivale a execução Playwright em instalação completa fresca.
+
+### Cliente pelo documento no PDV
+
+O botão Anexar documento no cadastro existente foi exercitado no localhost autenticado com CNH em PNG, identidade em PDF digital e CNH em PDF escaneado, todos fictícios. O motor local preenche os campos encontrados e conserva o nome digitado antes da leitura. Evidências em `evidence/documento-do-cliente/`; detalhes, arquivos reproduzíveis e limites em `docs/features/documento-do-cliente-no-pdv.md`. Unitários adicionais cobrem cancelamento, resposta tardia, falha, CPF ambíguo/inválido e caminho de gravação canônico. Nenhum documento real foi armazenado e nenhum cadastro foi salvo no banco nesta rodada; não equivale a uma instalação Docker fresca.
+
+
+### Documentos permanentes e comprovante de residência
+
+O cadastro do PDV lê o comprovante e preenche o endereço. Identidade e residência são armazenadas ao salvar, com metadados no contato e originais em bucket privado, reaparecendo na edição. Prova no localhost: cliente sintético com dois PDFs, extração de endereço e reabertura. Bytes baixados do Storage conferidos com os originais (SHA256), rota de abertura respondeu 302 para link temporário; a tentativa de download pelo controle do navegador excedeu o tempo da ferramenta. O PDF de contrato gerado com o cadastro salvo contém rua, número, bairro, CEP, cidade/UF e RG; página conferida visualmente. Evidências em `evidence/documento-do-cliente/`. RLS e fila de expurgo passaram no banco descartável (baseline install/update). Não mede precisão em todos os modelos de comprovantes reais. Detalhes em `docs/features/documento-do-cliente-no-pdv.md`.
+
+
+### Correção da CNH-e em PDF
+
+Motor real confirmou os cinco campos no PDF do usuário, com referência privada e sem criar contato. `lib/pdv/leitura-real-documento.test.ts` adapta apenas canvas/worker para Node; texto e OCR não são dublados. O navegador não estava disponível via CUA nesta rodada, então a interface não foi revalidada. Testes sintéticos protegem recorte de regiões, nome ao lado da primeira habilitação e remoção de progresso após leitura sem dados. Dados pessoais não viraram fixtures ou evidência no Git.
+
+### Declaração de residência em texto corrido
+
+O leitor de comprovantes seleciona o endereço declarado pela pessoa no corpo do texto, em vez do cabeçalho do emissor, e interpreta Rua/Avenida e CEP pontuado. A declaração real fornecida foi processada pelo leitor de produção com adaptadores de PDF/canvas para Node: logradouro, número, bairro, CEP, cidade e UF conferidos por referência privada, sem criar cadastro ou enviar a serviço OCR. Testes sintéticos em `lib/pdv/dados-do-documento.test.ts` protegem seleção, múltiplas linhas e recusa de endereços ambíguos. A interface não foi revalidada nesta rodada porque a conexão de navegador não estava disponível.
+
+
+### Atendimento por vendedor com substituição protegida
+
+Cartão Atendimento da Central/ficha → serviço autenticado → transação de carteira e conversas → etiqueta do vendedor e eventos de atribuição. O dono libera; outro vendedor informa a senha configurada por admin em Segurança. Provas: `lib/atendimento/banco.integration.test.ts`, `lib/atendimento/servidor.test.ts`, `components/contacts/CartaoDaCarteira.atendimento.test.tsx` e `app/api/v1/settings/atendimento/route.test.ts`. Integração real usa dados sintéticos com rollback integral. Conferência pela tela pendente por indisponibilidade do conector do navegador.
+
+
+### Envio do estoque sem bloquear a revisão
+
+Confirmar ficha → revisão fecha imediatamente → preparação e itens em fila por conversa → progresso, histórico e conclusão/erro. Trocar de conversa e recolher o bloco preserva a tarefa e o destino. Provas em `components/inbox/EstoqueDaConversa.test.tsx` e `hooks/inbox/useEnvioDeVeiculo.test.tsx`; limite e execução em `docs/testing/envio-veiculo-segundo-plano.md`. Controle sem fechamento imediato fica vermelho. Não houve envio real nem QA visual (conector de navegador indisponível).

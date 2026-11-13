@@ -8,6 +8,7 @@
  */
 import { Document, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
+import { ContratoModelo } from "./contrato-modelo";
 
 import { formatarKm, formatarPreco } from "@/lib/veiculos/regras";
 
@@ -262,6 +263,6 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
 }
 
 export async function renderContratoPdf(input: ContratoInput): Promise<Buffer> {
-  const buf = await renderToBuffer(<ContratoDoc d={input} />);
+  const buf = await renderToBuffer(input.negociacao.contrato?.empresa ? <ContratoModelo n={input.negociacao} /> : <ContratoDoc d={input} />);
   return buf as Buffer;
 }

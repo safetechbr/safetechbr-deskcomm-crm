@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { corpoDoContato, validarCadastroDeCliente } from "@/lib/pdv/cadastro-cliente";
+import {
+  corpoDoContato,
+  validarCadastroDeCliente,
+  clienteDoContato,
+} from "@/lib/pdv/cadastro-cliente";
 
 describe("cadastro de cliente do PDV", () => {
   it("exige o nome", () => {
@@ -14,10 +18,13 @@ describe("cadastro de cliente do PDV", () => {
   });
 
   it("monta o corpo omitindo campos vazios", () => {
-    expect(corpoDoContato({ nome: " Ana ", telefone: " ", email: "" })).toEqual({ name: "Ana", reuse_existing_phone: true });
+    expect(corpoDoContato({ nome: " Ana ", telefone: " ", email: "" })).toEqual({
+      name: "Ana",
+      reuse_existing_phone: true,
+    });
   });
 
-  it("envia só o que o contato guarda", () => {
+  it("persiste os dados complementares no mesmo cadastro", () => {
     const corpo = corpoDoContato({
       nome: "Ana",
       telefone: "11999990000",
@@ -34,6 +41,7 @@ describe("cadastro de cliente do PDV", () => {
       email: "a@b.co",
       cpf: "52998224725",
       birthdate: "1990-05-01",
+      custom_fields: { cadastro_cliente: { rg: "123", cep: "01000-000", cnpj: null } },
     });
   });
 
@@ -43,7 +51,47 @@ describe("cadastro de cliente do PDV", () => {
       documento: "11.222.333/0001-81",
       nascimento: "01/05/1990",
     });
+    expect(corpo.custom_fields?.cadastro_cliente.cnpj).toBe("11222333000181");
     expect(corpo.cpf).toBeUndefined();
     expect(corpo.birthdate).toBeUndefined();
+  });
+  it("reutiliza cadastro completo para preencher outra negociação", () => {
+    const cliente = clienteDoContato({
+      id: "c",
+      name: "Empresa Exemplo",
+      email: "loja@example.test",
+      custom_fields: {
+        cadastro_cliente: {
+          cnpj: "11222333000181",
+          nacionalidade: "Brasileira",
+          rg: "RG",
+          cnh: "CNH",
+          endereco: "Rua Exemplo",
+          numero: "123",
+          cidade: "Cidade",
+          uf: "PI",
+        },
+      },
+    });
+    expect(cliente).toMatchObject({
+      nome: "Empresa Exemplo",
+      documento: "11222333000181",
+      nacionalidade: "Brasileira",
+      rg: "RG",
+      cnh: "CNH",
+      endereco: "Rua Exemplo",
+      numero: "123",
+      cidade: "Cidade",
+      uf: "PI",
+    });
+    expect(
+      clienteDoContato({ id: "c", name: "Pessoa", cpf_decrypted: "52998224725" }).documento,
+    ).toBe("52998224725");
+  });
+  it("permite limpar complementos na edição explícita sem apagar no cadastro por telefone", () => {
+    expect(corpoDoContato({ nome: "Cliente", rg: "" }).custom_fields).toBeUndefined();
+    expect(
+      corpoDoContato({ nome: "Cliente", rg: "" }, true).custom_fields?.cadastro_cliente.rg,
+    ).toBeNull();
   });
 });

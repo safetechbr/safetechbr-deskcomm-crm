@@ -177,7 +177,9 @@ export async function cascadeRedactContact(args: CascadeArgs): Promise<CascadeRe
     .eq("organization_id", args.organizationId)
     .eq("contact_id", args.contactId);
   if (conversasErro) {
-    throw new Error(`[lgpd-redact-cascade] conversas do contato não lidas: ${conversasErro.message}`);
+    throw new Error(
+      `[lgpd-redact-cascade] conversas do contato não lidas: ${conversasErro.message}`,
+    );
   }
   const idsDasConversas = (conversasDoContato ?? []).map((linha) => linha.id);
   if (idsDasConversas.length > 0) {
@@ -201,6 +203,29 @@ export async function cascadeRedactContact(args: CascadeArgs): Promise<CascadeRe
       });
     }
   }
+
+  // Documentos cadastrais do titular: não deixar originais após anonimização.
+  const { data: documentos, error: documentosErro } = await admin
+    .from("contact_documents")
+    .select("id,storage_path")
+    .eq("organization_id", args.organizationId)
+    .eq("contact_id", args.contactId);
+  if (documentosErro) throw new Error("Não foi possível ler documentos para anonimização.");
+  for (const doc of documentos ?? []) {
+    if (doc.storage_path.startsWith(`${args.organizationId}/contacts/${args.contactId}/`))
+      await enfileirarMidiaNaFila(admin, {
+        organizationId: args.organizationId,
+        requestId: args.requestId,
+        bucket: "client-documents",
+        objectPath: doc.storage_path,
+      });
+  }
+  const { error: limparDocsErro } = await admin
+    .from("contact_documents")
+    .delete()
+    .eq("organization_id", args.organizationId)
+    .eq("contact_id", args.contactId);
+  if (limparDocsErro) throw new Error("Não foi possível anonimizar os documentos.");
 
   // ANEXOS DE NEGÓCIOS / LEADS (crm_lead_attachments) — LGPD
   const { data: leadsDoContato, error: leadsErro } = await admin
@@ -248,11 +273,14 @@ export async function cascadeRedactContact(args: CascadeArgs): Promise<CascadeRe
     }
   }
 
-  const { data, error } = await admin.rpc("fn_lgpd_cascade_redact_contact" as never, {
-    p_organization_id: args.organizationId,
-    p_contact_id: args.contactId,
-    p_request_id: args.requestId,
-  } as never);
+  const { data, error } = await admin.rpc(
+    "fn_lgpd_cascade_redact_contact" as never,
+    {
+      p_organization_id: args.organizationId,
+      p_contact_id: args.contactId,
+      p_request_id: args.requestId,
+    } as never,
+  );
 
   if (error) {
     throw new Error(`[lgpd-redact-cascade] rpc failed: ${error.message}`);

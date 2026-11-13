@@ -1,4 +1,5 @@
 "use client";
+import { EditorRegularizacao } from "@/components/pdv/dados-do-contrato";
 import { reservaAtiva } from "@/lib/veiculos/reservas";
 
 import * as React from "react";
@@ -38,6 +39,9 @@ interface Rascunho {
   cambio: string;
   combustivel: string;
   cor: string;
+  placa: string;
+  chassi: string;
+  renavam: string;
   placa_final: string;
   preco: string;
   opcionais: string;
@@ -57,6 +61,9 @@ const VAZIO: Rascunho = {
   cambio: "",
   combustivel: "",
   cor: "",
+  placa: "",
+  chassi: "",
+  renavam: "",
   placa_final: "",
   preco: "",
   opcionais: "",
@@ -77,6 +84,9 @@ function doVeiculo(v: Veiculo): Rascunho {
     cambio: v.cambio ?? "",
     combustivel: v.combustivel ?? "",
     cor: v.cor ?? "",
+    placa: v.placa ?? "",
+    chassi: v.chassi ?? "",
+    renavam: v.renavam ?? "",
     placa_final: v.placa_final ?? "",
     preco: v.preco_cents
       ? (v.preco_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
@@ -109,6 +119,9 @@ function corpoDe(r: Rascunho): Record<string, unknown> | { erro: string } {
     cambio: txt(r.cambio),
     combustivel: txt(r.combustivel),
     cor: txt(r.cor),
+    placa: txt(r.placa),
+    chassi: txt(r.chassi),
+    renavam: txt(r.renavam),
     placa_final: txt(r.placa_final),
     preco_cents: preco,
     opcionais: txt(r.opcionais),
@@ -322,6 +335,8 @@ function FormularioDoVeiculo({
   const t = useT();
   const router = useRouter();
   const [r, setR] = React.useState<Rascunho>(() => (veiculo ? doVeiculo(veiculo) : VAZIO));
+  const [condicao, setCondicao] = React.useState(veiculo?.condicao ?? "");
+  const [regularizacao, setRegularizacao] = React.useState(veiculo?.regularizacao ?? []);
   const [ocupado, setOcupado] = React.useState(false);
   const [fotos, setFotos] = React.useState<string[]>(veiculo?.fotos ?? []);
   const [temVideo, setTemVideo] = React.useState(Boolean(veiculo?.video));
@@ -418,6 +433,7 @@ function FormularioDoVeiculo({
 
   async function salvar() {
     const corpo = corpoDe(r);
+    if (!("erro" in corpo)) { corpo.condicao = condicao || null; corpo.regularizacao = regularizacao; }
     if ("erro" in corpo) {
       toast.error(t(corpo.erro as string));
       return;
@@ -609,7 +625,16 @@ function FormularioDoVeiculo({
           {campo("cambio", t("Câmbio (ex.: automático)"))}
           {campo("combustivel", t("Combustível"))}
           {campo("cor", t("Cor"))}
+          {campo("placa", t("Placa completa"))}
+          {campo("chassi", t("Chassi"))}
+          {campo("renavam", t("Renavam"))}
           {campo("placa_final", t("Final da placa"))}
+          <label className="text-sm">Condição
+            <select value={condicao} onChange={(e) => setCondicao(e.target.value as "novo" | "usado" | "")} className="mt-1 h-9 w-full rounded-md border bg-background px-3">
+              <option value="">Selecione</option><option value="novo">Novo</option><option value="usado">Usado</option>
+            </select>
+          </label>
+          <div className="sm:col-span-2"><EditorRegularizacao valor={regularizacao} onChange={setRegularizacao} /></div>
           <label className="text-sm sm:col-span-2">
             {t("Opcionais")}
             <textarea

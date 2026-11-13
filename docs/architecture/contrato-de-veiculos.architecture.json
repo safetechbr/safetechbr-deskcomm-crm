@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Contrato de veículos da loja",
+    "subtitle": "Cadastro → fotografia revisável → PDF",
+    "output": "contrato-de-veiculos.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "tela",
+      "label": "Cadastros e negociação"
+    },
+    {
+      "id": "dados",
+      "label": "Persistência e saída"
+    }
+  ],
+  "mainPath": [
+    "empresa",
+    "pdv",
+    "snapshot",
+    "pdf"
+  ],
+  "nodes": [
+    {
+      "id": "empresa",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "Configurações › Empresa",
+      "sublabel": "Dados da loja e cláusulas padrão"
+    },
+    {
+      "id": "estoque",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "Estoque › Editar veículo",
+      "sublabel": "Identificação, condição e regularização"
+    },
+    {
+      "id": "pdv",
+      "lane": "tela",
+      "col": 1,
+      "type": "frontend",
+      "label": "PDV › Dados do contrato",
+      "sublabel": "Revisão por negociação e valores do PDV"
+    },
+    {
+      "id": "snapshot",
+      "lane": "dados",
+      "col": 2,
+      "type": "database",
+      "label": "negociacoes_de_veiculo.contrato",
+      "sublabel": "Fotografia JSONB validada; autorização existente"
+    },
+    {
+      "id": "pdf",
+      "lane": "dados",
+      "col": 3,
+      "type": "database",
+      "label": "GET negociação/:id/contrato",
+      "sublabel": "Modelo da loja; histórico sem snapshot mantém modelo anterior"
+    },
+    {
+      "id": "auditoria",
+      "lane": "dados",
+      "col": 3,
+      "type": "database",
+      "label": "api_audit_log",
+      "sublabel": "org.updated e negociacao_veiculo.created/updated"
+    },
+    {
+      "id": "recebido",
+      "lane": "dados",
+      "col": 3,
+      "type": "database",
+      "label": "Veículo comprado / na troca",
+      "sublabel": "Trigger transacional complementa condição e débitos"
+    },
+    {
+      "id": "cliente",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "Cadastro único do cliente",
+      "sublabel": "Mesmo modal cria/edita contacts; complementos em custom_fields.cadastro_cliente"
+    },
+    {
+      "id": "leitor-documento",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "Leitor local de CNH / identidade",
+      "sublabel": "PDF por áreas ampliadas / foto → OCR com rótulos → campos vazios; revisão antes de salvar"
+    },
+    {
+      "id": "documentos-cliente",
+      "lane": "dados",
+      "col": 1,
+      "type": "database",
+      "label": "contact_documents + bucket privado",
+      "sublabel": "Originais por cliente/empresa, link autenticado, expurgo LGPD"
+    }
+  ],
+  "edges": [
+    {
+      "id": "empresa-pdv",
+      "from": "empresa",
+      "to": "pdv",
+      "label": "Padrões apenas na abertura"
+    },
+    {
+      "id": "estoque-pdv",
+      "from": "estoque",
+      "to": "pdv",
+      "label": "Copia dados do veículo"
+    },
+    {
+      "id": "pdv-snapshot",
+      "from": "pdv",
+      "to": "snapshot",
+      "label": "Salvar rascunho validado e auditado"
+    },
+    {
+      "id": "snapshot-pdf",
+      "from": "snapshot",
+      "to": "pdf",
+      "label": "Reimprimir fotografia"
+    },
+    {
+      "id": "snapshot-auditoria",
+      "from": "snapshot",
+      "to": "auditoria",
+      "label": "Auditoria canônica sem dados pessoais"
+    },
+    {
+      "id": "snapshot-recebido",
+      "from": "snapshot",
+      "to": "recebido",
+      "label": "Concluir compra/troca na mesma transação"
+    },
+    {
+      "id": "snapshot-pdv",
+      "from": "snapshot",
+      "to": "pdv",
+      "label": "Reabrir e corrigir rascunho"
+    },
+    {
+      "id": "pdv-empresa",
+      "from": "pdv",
+      "to": "empresa",
+      "label": "Corrigir padrão para futuras negociações"
+    },
+    {
+      "id": "cliente-pdv",
+      "from": "cliente",
+      "to": "pdv",
+      "label": "Salvar cadastro atualiza fotografia da negociação aberta"
+    },
+    {
+      "id": "pdv-cliente",
+      "from": "pdv",
+      "to": "cliente",
+      "label": "Busca completa e Editar cadastro reutilizam o mesmo contato"
+    },
+    {
+      "id": "cliente-auditoria",
+      "from": "cliente",
+      "to": "auditoria",
+      "label": "POST/PATCH canônicos de contato, com proteção de CPF existente"
+    },
+    {
+      "id": "cliente-leitor",
+      "from": "cliente",
+      "to": "leitor-documento",
+      "label": "Anexar foto/PDF, sem upload ou persistência"
+    },
+    {
+      "id": "leitor-cliente",
+      "from": "leitor-documento",
+      "to": "cliente",
+      "label": "Sugere dados no formulário; erro permite corrigir ou reenviar"
+    },
+    {
+      "id": "cliente-documentos",
+      "from": "cliente",
+      "to": "documentos-cliente",
+      "label": "Salvar originais após cadastro, auditar vínculo"
+    },
+    {
+      "id": "documentos-cliente-volta",
+      "from": "documentos-cliente",
+      "to": "cliente",
+      "label": "Reabrir anexos privados para conferência"
+    }
+  ]
+}

@@ -147,6 +147,12 @@ interface Cenario {
   /** O conjunto EXATO de ações que este cenário oferece. */
   esperadas: string[];
   comBusca?: boolean;
+  /**
+   * Conversa sem cliente cadastrado. Com cliente, Assumir/Liberar/Transferir
+   * deixam a barra: o atendimento passa pelo cartão Atendimento (senha de troca)
+   * e a barra só oferece "Outro número". Sem cliente, valem os botões de sempre.
+   */
+  semContato?: boolean;
 }
 
 /**
@@ -161,6 +167,7 @@ const CENARIO_MAIS_COMPLETO: Cenario = {
     assignee_kind: "user",
     bot_silenced_until: new Date(Date.now() + 10 * 60_000).toISOString(),
   },
+  semContato: true,
   ancora: "Liberar",
   esperadas: [
     "Assumir",
@@ -170,20 +177,30 @@ const CENARIO_MAIS_COMPLETO: Cenario = {
     "Lembrar",
     "Fechar",
     "Arquivar",
-    "Marcar como pessoal",
-    "Ver contato",
   ],
 };
 
 const CENARIOS: Cenario[] = [
   {
-    nome: "aberta e sem dono — a fila",
+    nome: "aberta e sem dono, sem cliente — a fila",
+    semContato: true,
     ancora: "Assumir",
     comBusca: true,
     esperadas: [
       "Buscar nesta conversa",
       "Assumir",
       "Transferir",
+      "Lembrar",
+      "Fechar",
+      "Arquivar",
+    ],
+  },
+  {
+    nome: "aberta e sem dono, com cliente — assumir é do cartão Atendimento",
+    ancora: "Fechar",
+    comBusca: true,
+    esperadas: [
+      "Buscar nesta conversa",
       "Lembrar",
       "Fechar",
       "Arquivar",
@@ -197,9 +214,7 @@ const CENARIOS: Cenario[] = [
     conversa: { assigned_to_user_id: "u2", assignee_kind: "user" },
     ancora: "Pausar o automático",
     esperadas: [
-      "Assumir",
       "Pausar o automático",
-      "Transferir",
       "Lembrar",
       "Fechar",
       "Arquivar",
@@ -211,13 +226,13 @@ const CENARIOS: Cenario[] = [
     nome: "encerrada — o par Fechar/Reabrir vira Reabrir",
     conversa: { status: "closed" },
     ancora: "Reabrir",
-    esperadas: ["Assumir", "Reabrir", "Arquivar", "Marcar como pessoal", "Ver contato"],
+    esperadas: ["Reabrir", "Arquivar", "Marcar como pessoal", "Ver contato"],
   },
   {
     nome: "arquivada — arquivar de novo não é gesto que exista",
     conversa: { status: "archived" },
     ancora: "Reabrir",
-    esperadas: ["Assumir", "Reabrir", "Marcar como pessoal", "Ver contato"],
+    esperadas: ["Reabrir", "Marcar como pessoal", "Ver contato"],
   },
   {
     nome: "contato marcado como pessoal — o par inverte",
@@ -225,8 +240,6 @@ const CENARIOS: Cenario[] = [
     auth: { user: { id: "u1", support: null, is_platform_admin: true } },
     ancora: "Desmarcar pessoal",
     esperadas: [
-      "Assumir",
-      "Transferir",
       "Lembrar",
       "Fechar",
       "Arquivar",
@@ -255,7 +268,7 @@ function montar(cenario: Cenario) {
     service_revision: 3,
     is_group: false,
     tags: [],
-    contacts: { ...CONTATO, ...cenario.contato },
+    contacts: cenario.semContato ? null : { ...CONTATO, ...cenario.contato },
     channel_sessions: null,
     ...cenario.conversa,
   } as unknown as ConversationWithContact;
@@ -387,16 +400,17 @@ describe("#3003 — a guia de Liberar não promete o automático quando ele não
       cenario: { conversa: minha, automaticoDaOrg: false },
       guia: FILA,
     },
-    {
-      nome: "contato travado (force_human) — Liberar não destrava",
-      cenario: { conversa: minha, contato: { force_human: true } },
-      guia: FILA,
-    },
   ];
 
   for (const caso of casos) {
     it(caso.nome, () => {
-      montar({ nome: caso.nome, ancora: "Liberar", esperadas: [], ...caso.cenario });
+      montar({
+        nome: caso.nome,
+        semContato: true,
+        ancora: "Liberar",
+        esperadas: [],
+        ...caso.cenario,
+      });
       expect(screen.getByRole("button", { name: "Liberar" }).getAttribute("title")).toBe(caso.guia);
     });
   }

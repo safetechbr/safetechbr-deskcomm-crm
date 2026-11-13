@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { EditorDoContrato, EditorRegularizacao } from "@/components/pdv/dados-do-contrato";
+import { novoContrato, type DadosDoContrato } from "@/lib/pdv/modelo-contrato";
 import { toast } from "sonner";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -13,7 +15,6 @@ import {
   FORMAS_COM_BANCO,
   FORMAS_PARCELADAS,
   FORMAS_POR_TIPO,
-  formatarDocumento,
   type ClienteDaNegociacao,
   type FormaDePagamento,
   type Negociacao,
@@ -30,8 +31,9 @@ import {
 } from "@/lib/pdv/regras";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 import { formatarKm, formatarPreco, tituloDoVeiculo, type Veiculo } from "@/lib/veiculos/regras";
+import { clienteDoContato, type ContatoDoCadastro } from "@/lib/pdv/cadastro-cliente";
 import { CadastroClienteModal } from "./cadastro-cliente-modal";
-import { nomeDoContato, rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
+import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import {
   CaretLeft,
   CheckCircle,
@@ -78,10 +80,11 @@ const TROCA_VAZIA: TrocaDaNegociacao = {
   entra_no_estoque: true,
 };
 
-function rascunhoNovo(tipo: TipoDeNegociacao): Rascunho {
+function rascunhoNovo(tipo: TipoDeNegociacao, contrato: DadosDoContrato): Rascunho {
   return {
     tipo,
     modalidade: "normal",
+    contrato: structuredClone(contrato),
     contact_id: null,
     cliente: { ...CLIENTE_VAZIO },
     veiculo_id: null,
@@ -96,10 +99,11 @@ function rascunhoNovo(tipo: TipoDeNegociacao): Rascunho {
   };
 }
 
-function rascunhoDe(n: Negociacao): Rascunho {
+function rascunhoDe(n: Negociacao, padrao: DadosDoContrato): Rascunho {
   return {
     tipo: n.tipo,
     modalidade: n.modalidade ?? "normal",
+    contrato: n.contrato ?? (n.status === "rascunho" ? structuredClone(padrao) : null),
     contact_id: n.contact_id,
     cliente: { ...CLIENTE_VAZIO, ...n.cliente },
     veiculo_id: n.veiculo_id,
@@ -328,6 +332,12 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
         valor={v.combustivel}
         onChange={(x) => set("combustivel", x)}
       />
+      <label className="text-xs">Condição
+        <select className={CAMPO} value={v.condicao ?? ""} onChange={(e) => set("condicao", e.target.value || null)}>
+          <option value="">Selecione</option><option value="novo">Novo</option><option value="usado">Usado</option>
+        </select>
+      </label>
+      <div className="col-span-2"><EditorRegularizacao valor={v.regularizacao ?? []} onChange={(valor) => set("regularizacao", valor)} /></div>
       <Campo rotulo={t("Câmbio")} valor={v.cambio} onChange={(x) => set("cambio", x)} />
       <Campo rotulo={t("Placa")} valor={v.placa} onChange={(x) => set("placa", x.toUpperCase())} />
       <Campo rotulo={t("Renavam")} valor={v.renavam} onChange={(x) => set("renavam", x)} />
@@ -357,6 +367,10 @@ function ColunaCliente({
   const [busca, setBusca] = React.useState("");
   const [achados, setAchados] = React.useState<ContatoEncontrado[]>([]);
   const [cadastroAberto, setCadastroAberto] = React.useState(false);
+  const [editandoCadastro, setEditandoCadastro] = React.useState(false);
+  const [carregandoCliente, setCarregandoCliente] = React.useState(false);
+  const escolhaAtual = React.useRef(0);
+  const botaoEditar = React.useRef<HTMLButtonElement>(null);
   const campoDeBusca = React.useRef<HTMLInputElement>(null);
   const botaoMais = React.useRef<HTMLButtonElement>(null);
   const c = r.cliente;
@@ -392,19 +406,19 @@ function ColunaCliente({
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [travado, cadastroAberto]);
 
-  function escolher(ct: ContatoEncontrado) {
-    // Troca por inteiro: dado do cliente anterior não pode vazar para o novo.
-    setR((x) => ({
-      ...x,
-      contact_id: ct.id,
-      cliente: {
-        nome: nomeDoContato(ct) ?? "",
-        telefone: ct.phone_number || undefined,
-        email: ct.email || undefined,
-      },
-    }));
-    setBusca("");
-    setAchados([]);
+  async function escolher(ct: ContatoEncontrado) {
+    const escolha = ++escolhaAtual.current;
+    setCarregandoCliente(true);
+    try {
+      const res = await apiClient.get<{ data: ContatoDoCadastro }>(`/api/v1/contacts/${ct.id}`, {
+        headers: { "X-Decrypt-Purpose": "Preencher o cadastro do cliente na negociação de veículo" },
+      });
+      if (escolha !== escolhaAtual.current) return;
+      setR((x) => ({ ...x, contact_id: ct.id, cliente: clienteDoContato(res.data) }));
+      setBusca("");
+      setAchados([]);
+    } catch (erro) { showApiError(erro); }
+    finally { if (escolha === escolhaAtual.current) setCarregandoCliente(false); }
   }
 
   return (
@@ -414,7 +428,7 @@ function ColunaCliente({
       indice={0}
       titulo={r.tipo === "venda" ? t("Cliente (comprador)") : t("Cliente (vendedor)")}
     >
-      <fieldset disabled={travado} className="space-y-3">
+      <fieldset disabled={travado || carregandoCliente} className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <MagnifyingGlass
@@ -452,7 +466,7 @@ function ColunaCliente({
           <button
             ref={botaoMais}
             type="button"
-            onClick={() => setCadastroAberto(true)}
+            onClick={() => { setEditandoCadastro(false); setCadastroAberto(true); }}
             aria-label={t("Cadastrar cliente")}
             title={t("Cadastrar cliente")}
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xs transition-colors hover:bg-accent/90 focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-hidden disabled:opacity-60"
@@ -485,6 +499,10 @@ function ColunaCliente({
                 </div>
               </div>
               <div className="flex shrink-0 gap-2 text-xs font-medium">
+                <button type="button" ref={botaoEditar} className="text-accent underline-offset-2 hover:underline"
+                  onClick={() => { setEditandoCadastro(true); setCadastroAberto(true); }} data-testid="pdv-editar-cliente">
+                  {t("Editar cadastro")}
+                </button>
                 <button
                   type="button"
                   className="text-accent underline-offset-2 hover:underline"
@@ -504,28 +522,7 @@ function ColunaCliente({
               </div>
             </div>
             {!docPreenchido || !documentoValido(c.documento) ? (
-              <label className="block text-xs">
-                <span className="text-muted-foreground">
-                  {t("CPF ou CNPJ (necessário para concluir a venda)")}
-                </span>
-                <input
-                  value={c.documento ?? ""}
-                  onChange={(e) =>
-                    setR((x) => ({ ...x, cliente: { ...x.cliente, documento: e.target.value } }))
-                  }
-                  onBlur={(e) =>
-                    setR((x) => ({
-                      ...x,
-                      cliente: { ...x.cliente, documento: formatarDocumento(e.target.value) },
-                    }))
-                  }
-                  className={`mt-1 ${CAMPO} ${docPreenchido ? "border-error" : ""}`}
-                  data-testid="pdv-cliente-documento"
-                />
-                {docPreenchido ? (
-                  <span className="mt-1 block text-error-fg">{t("Documento inválido.")}</span>
-                ) : null}
-              </label>
+              <p className="text-xs text-muted-foreground">{t("Complete o CPF ou CNPJ em Editar cadastro para concluir a negociação.")}</p>
             ) : null}
           </div>
         ) : (
@@ -542,7 +539,9 @@ function ColunaCliente({
       <CadastroClienteModal
         open={cadastroAberto}
         onOpenChange={setCadastroAberto}
-        retornoDoFoco={botaoMais}
+        retornoDoFoco={editandoCadastro ? botaoEditar : botaoMais}
+        inicial={editandoCadastro ? c : undefined}
+        contactId={editandoCadastro ? r.contact_id : undefined}
         onSalvo={(cliente, contactId) => setR((x) => ({ ...x, contact_id: contactId, cliente }))}
       />
     </Coluna>
@@ -588,6 +587,8 @@ function ColunaVeiculo({
         placa: v.placa,
         chassi: v.chassi,
         renavam: v.renavam,
+        condicao: v.condicao,
+        regularizacao: v.regularizacao ?? [],
       },
       valor_cents: v.preco_cents,
     }));
@@ -750,6 +751,11 @@ function ColunaVeiculo({
           </>
         )}
 
+        {r.veiculo_id ? <details className="space-y-3 rounded-xl border p-3">
+          <summary className="cursor-pointer text-sm">Revisar veículo no contrato</summary>
+          <p className="text-xs text-muted-foreground">Estas alterações valem para esta negociação.</p>
+          <FichaDoVeiculo v={r.veiculo} onChange={(v) => setR((x) => ({ ...x, veiculo: v }))} prefixo="pdv-venda" />
+        </details> : null}
         <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
           <CampoDinheiro
             rotulo={t("Preço de venda")}
@@ -1346,6 +1352,8 @@ function ColunaPagamento({
           </div>
         </Secao>
 
+        <EditorDoContrato contrato={r.contrato} pagamentos={r.pagamentos}
+          onChange={(contrato, pagamentos) => setR((x) => ({ ...x, contrato, pagamentos }))} />
         <label className="block">
           <span className="text-sm font-normal text-muted-foreground">
             {venda ? t("Observações da Venda") : t("Observações da Compra")}
@@ -1485,6 +1493,7 @@ export function PdvClient({
   podeNegociar,
   titulo,
   usuarioId,
+  contratoPadrao = novoContrato({}),
 }: {
   estoque: VeiculoDoPdv[];
   urlsDasCapas: Record<string, string>;
@@ -1492,10 +1501,11 @@ export function PdvClient({
   podeNegociar: boolean;
   titulo: string;
   usuarioId: string;
+  contratoPadrao?: DadosDoContrato;
 }) {
   const t = useT();
   const [aba, setAba] = React.useState<Aba>("venda");
-  const [r, setRascunho] = React.useState<Rascunho>(() => rascunhoNovo("venda"));
+  const [r, setRascunho] = React.useState<Rascunho>(() => rascunhoNovo("venda", contratoPadrao));
   const [aberta, setAberta] = React.useState<Negociacao | null>(null);
   const [negociacoes, setNegociacoes] = React.useState(negociacoesIniciais);
   const [estoque, setEstoque] = React.useState(estoqueInicial);
@@ -1528,13 +1538,13 @@ export function PdvClient({
   function nova(tipo: TipoDeNegociacao) {
     setAba(tipo);
     setAberta(null);
-    setRascunho(rascunhoNovo(tipo));
+    setRascunho(rascunhoNovo(tipo, { ...contratoPadrao, assinatura_em: new Date().toISOString() }));
   }
 
   function abrir(n: Negociacao) {
     setAba(n.tipo);
     setAberta(n);
-    setRascunho(rascunhoDe(n));
+    setRascunho(rascunhoDe(n, contratoPadrao));
   }
 
   function guardar(n: Negociacao) {

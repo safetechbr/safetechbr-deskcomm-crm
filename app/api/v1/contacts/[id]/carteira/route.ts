@@ -52,6 +52,13 @@ interface Recusa {
 /** Mensagens em pt-BR fixas, traduzidas na resposta — nunca em inglês. */
 function recusaDaFuncao(erro: { code?: string; message?: string } | null): Recusa {
   const bruto = erro?.message ?? "";
+  if (bruto.includes("atendimento_senha_necessaria"))
+    return {
+      status: 403,
+      code: "atendimento_senha_necessaria",
+      mensagem:
+        "O vendedor responsável deve liberar o atendimento, ou o novo vendedor deve assumir com a senha administrativa.",
+    };
   if (bruto.includes("carteira_permissao_negada")) {
     return {
       status: 403,
@@ -67,7 +74,10 @@ function recusaDaFuncao(erro: { code?: string; message?: string } | null): Recus
         "O dono precisa ser membro ativo desta empresa, com papel de atendente, gerente ou administrador. Quem só lê, e quem saiu da equipe, não é dono de carteira.",
     };
   }
-  if (bruto.includes("carteira_contato_nao_encontrado") || bruto.includes("carteira_contato_de_outra")) {
+  if (
+    bruto.includes("carteira_contato_nao_encontrado") ||
+    bruto.includes("carteira_contato_de_outra")
+  ) {
     return {
       status: 404,
       code: "contact_not_found",
@@ -119,7 +129,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx): Promise<Response> {
     .eq("organization_id", orgId)
     .maybeSingle();
   if (erroDeLeitura) {
-    return fail("contact_not_found", t("Contato não encontrado nesta empresa."), 404, { requestId });
+    return fail("contact_not_found", t("Contato não encontrado nesta empresa."), 404, {
+      requestId,
+    });
   }
   const antes = (contato as { carteira_user_id?: string | null } | null)?.carteira_user_id ?? null;
 
@@ -195,7 +207,9 @@ export async function GET(_req: NextRequest, ctx: Ctx): Promise<Response> {
     .eq("organization_id", orgId)
     .maybeSingle();
   if (error || !contato) {
-    return fail("contact_not_found", t("Contato não encontrado nesta empresa."), 404, { requestId });
+    return fail("contact_not_found", t("Contato não encontrado nesta empresa."), 404, {
+      requestId,
+    });
   }
 
   const dono = (contato as { carteira_user_id?: string | null }).carteira_user_id ?? null;

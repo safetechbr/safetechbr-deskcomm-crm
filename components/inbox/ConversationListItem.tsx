@@ -272,7 +272,7 @@ export function ConversationListItem({
   const temSelos =
     visibleTags.length > 0 ||
     exemploMarcado ||
-    (mostrarAtendente && comando.quem === "humano") ||
+    ((mostrarAtendente || !!conversation.assigned_to_user_id) && comando.quem === "humano") ||
     (mostrarCanal && rotuloCanal != null) ||
     Boolean(c?.is_blocked) ||
     Boolean(c?.is_anonymized);
@@ -459,7 +459,7 @@ export function ConversationListItem({
             {overflow > 0 && (
               <span className="text-[10px] text-text-muted">+{overflow}</span>
             )}
-            {mostrarAtendente && comando.quem === "humano" && (
+            {(mostrarAtendente || !!conversation.assigned_to_user_id) && comando.quem === "humano" && (
               <OwnerBadge ownerKind="user" ownerName={comando.nome ?? t("Atendente")} compacto />
             )}
             {/* #2383: `min-w-0` + `max-w` + `truncate` — o mesmo tratamento do

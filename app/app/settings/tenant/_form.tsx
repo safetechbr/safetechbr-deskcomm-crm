@@ -1,4 +1,7 @@
 "use client";
+import { EditorDaEmpresa, EditorDeClausulas } from "@/components/pdv/dados-do-contrato";
+import { configuracaoContratoSchema } from "@/lib/pdv/modelo-contrato";
+import { CLAUSULAS_DO_MODELO } from "@/lib/pdv/clausulas-modelo";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -258,6 +261,14 @@ export function TenantForm({ initial, onSave, onSaved }: Props) {
           </div>
         </div>
 
+        <details className="space-y-4 rounded-xl border p-4">
+          <summary className="cursor-pointer font-medium">Dados da empresa para contratos de veículos</summary>
+          <p className="text-sm text-muted-foreground">Razão social, nome de exibição e CNPJ vêm dos campos acima. Os dados abaixo preenchem os novos contratos e podem ser revisados em cada negociação.</p>
+          <EditorDaEmpresa valor={configuracaoContratoSchema.parse(form.dados_contrato ?? {})}
+            onChange={(v) => set("dados_contrato", { ...configuracaoContratoSchema.parse(form.dados_contrato ?? {}), ...v })} somenteComplemento />
+          <EditorDeClausulas valor={form.dados_contrato?.clausulas ?? CLAUSULAS_DO_MODELO}
+            onChange={(clausulas) => set("dados_contrato", { ...configuracaoContratoSchema.parse(form.dados_contrato ?? {}), clausulas })} />
+        </details>
         <div className="flex sm:justify-end">
           <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
             {isPending ? t("Salvando…") : t("Salvar")}

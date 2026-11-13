@@ -1,3 +1,4 @@
+import type { TenantInput } from "@/lib/schemas/settings";
 import { Buildings as IconeDoTitulo } from "@/lib/ui/icons";
 import { redirect } from "next/navigation";
 
@@ -18,6 +19,7 @@ import { camposDoNegocioDosFunis } from "@/lib/leads/compras-do-contato";
 export const dynamic = "force-dynamic";
 
 interface OrgRow {
+  dados_contrato?: TenantInput["dados_contrato"];
   display_name: string;
   legal_name: string;
   cnpj: string | null;
@@ -47,7 +49,7 @@ export default async function TenantSettingsPage() {
   const { data } = await supabase
     .from("organizations")
     .select(
-      "display_name, legal_name, cnpj, country, timezone, locale, currency, media_retention_days, media_retention_enforced, dpo_email, privacy_policy_url, interface_settings, settings",
+      "dados_contrato, display_name, legal_name, cnpj, country, timezone, locale, currency, media_retention_days, media_retention_enforced, dpo_email, privacy_policy_url, interface_settings, settings",
     )
     .eq("id", activeOrg.orgId)
     .maybeSingle();
@@ -84,6 +86,7 @@ export default async function TenantSettingsPage() {
       {row && (
         <TenantForm
           initial={{
+            dados_contrato: row.dados_contrato ?? undefined,
             display_name: row.display_name,
             legal_name: row.legal_name,
             cnpj: row.cnpj,

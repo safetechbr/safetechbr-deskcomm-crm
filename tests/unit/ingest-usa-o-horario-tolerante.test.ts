@@ -31,12 +31,13 @@ describe("o horário do webhook, nos pontos de chamada", () => {
     expect(sobraram, "ponto do ingest ainda calcula o horário na mão").toEqual([]);
   });
 
-  it("os quatro lugares que gravam o horário usam `dataDoTimestamp`", () => {
-    // Dois `sent_at` (mensagem de entrada e mensagem enviada pelo aparelho), o
-    // `markConversation`, que carimba a conversa, e o `sentAt` da mensagem de
-    // GRUPO (`ingerirMensagemDeGrupo`, que serve os dois sentidos).
+  it("os cinco lugares que gravam o horário usam `dataDoTimestamp`", () => {
+    // Dois `sent_at` (mensagem de entrada e mensagem enviada pelo aparelho), os
+    // dois `markConversation` que carimbam a conversa (entrada e saída — a saída
+    // com `now` empurrava a prévia da lista para uma fala antiga) e o `sentAt` da
+    // mensagem de GRUPO (`ingerirMensagemDeGrupo`, que serve os dois sentidos).
     const chamadas = INGEST.match(/dataDoTimestamp\(p\.timestamp, now\)/g) ?? [];
-    expect(chamadas.length, "faltou um ponto de chamada de dataDoTimestamp").toBe(4);
+    expect(chamadas.length, "faltou um ponto de chamada de dataDoTimestamp").toBe(5);
   });
 
   it("o instrumento enxerga o arquivo que diz enxergar (guarda de vacuidade)", () => {

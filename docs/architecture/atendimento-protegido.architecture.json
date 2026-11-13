@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Atendimento por vendedor",
+    "subtitle": "Assumir, liberar ou substituir com autorização",
+    "output": "atendimento-protegido.html",
+    "quality_profile": "standard"
+  },
+  "lanes": [
+    {
+      "id": "ui",
+      "label": "Interface"
+    },
+    {
+      "id": "db",
+      "label": "Servidor e banco"
+    }
+  ],
+  "mainPath": [
+    "cartao",
+    "servico",
+    "rpc",
+    "etiqueta"
+  ],
+  "nodes": [
+    {
+      "id": "cartao",
+      "lane": "ui",
+      "col": 0,
+      "type": "frontend",
+      "label": "Cartão Atendimento",
+      "sublabel": "Login atual; senha quando há outro dono"
+    },
+    {
+      "id": "seguranca",
+      "lane": "ui",
+      "col": 0,
+      "type": "frontend",
+      "label": "Configurações → Segurança",
+      "sublabel": "Somente admin gera e altera"
+    },
+    {
+      "id": "servico",
+      "lane": "db",
+      "col": 1,
+      "type": "backend",
+      "label": "Serviço de atendimento",
+      "sublabel": "Papel e empresa da sessão"
+    },
+    {
+      "id": "rpc",
+      "lane": "db",
+      "col": 2,
+      "type": "database",
+      "label": "Transação de atribuição",
+      "sublabel": "Carteira + conversas; hash e tentativas"
+    },
+    {
+      "id": "etiqueta",
+      "lane": "ui",
+      "col": 3,
+      "type": "frontend",
+      "label": "Etiqueta do vendedor",
+      "sublabel": "Lista e painel; erros preservam o dono"
+    }
+  ],
+  "edges": [
+    {
+      "from": "cartao",
+      "to": "servico",
+      "label": "assumir / liberar"
+    },
+    {
+      "from": "seguranca",
+      "to": "rpc",
+      "label": "senha com bcrypt"
+    },
+    {
+      "from": "servico",
+      "to": "rpc",
+      "label": "ator confiável; lock e CAS"
+    },
+    {
+      "from": "rpc",
+      "to": "etiqueta",
+      "label": "atribuição e realtime"
+    },
+    {
+      "from": "rpc",
+      "to": "cartao",
+      "label": "recusa e nova tentativa"
+    }
+  ]
+}

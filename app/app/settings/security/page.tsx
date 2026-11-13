@@ -1,3 +1,4 @@
+import { SenhaDeAtendimentoCard } from "@/components/inbox/SenhaDeAtendimentoCard";
 import { Lock as IconeDoTitulo } from "@/lib/ui/icons";
 import {
   requireAuth,
@@ -92,6 +93,7 @@ export default async function SecurityPage() {
       </div>
       </header>
 
+      {org?.role === "admin" && <SenhaDeAtendimentoCard />}
       <SecurityClient
         mfaEnrolled={enrolled}
         obrigatorio={obrigatorio}

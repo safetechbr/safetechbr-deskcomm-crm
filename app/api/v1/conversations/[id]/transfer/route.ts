@@ -90,6 +90,15 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   });
 
   if (error) {
+    if (error.message.includes("atendimento_senha_necessaria"))
+      return fail(
+        "atendimento_senha_necessaria",
+        t(
+          "O vendedor responsável deve liberar o atendimento, ou o novo vendedor deve assumir com a senha administrativa.",
+        ),
+        403,
+        { requestId },
+      );
     return fail("internal_error", error.message, 500, { requestId });
   }
   const row = data?.[0];

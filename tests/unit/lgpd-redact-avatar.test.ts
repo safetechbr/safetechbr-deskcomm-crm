@@ -26,6 +26,7 @@ const updates: { tabela: string; patch: Record<string, unknown> }[] = [];
 const removes: { bucket: string; caminhos: string[] }[] = [];
 
 let contatoRow: { avatar_storage_path: string | null } | null = null;
+let documentosCadastrais: Record<string, unknown>[] = [];
 let filaPendente: Record<string, unknown>[] = [];
 let erroDoRemove: { message: string } | null = null;
 let erroDoInsert: { code?: string; message: string } | null = null;
@@ -57,9 +58,15 @@ vi.mock("@/lib/supabase/admin", () => ({
       select: () =>
         chain(async () => {
           ops.push(`select:${tabela}`);
+          if (tabela === "contact_documents") return { data: documentosCadastrais, error: null };
           return tabela === "contacts"
             ? { data: contatoRow, error: null }
             : { data: filaPendente, error: null };
+        }),
+      delete: () =>
+        chain(async () => {
+          ops.push(`delete:${tabela}`);
+          return { error: null };
         }),
       insert: (payload: Record<string, unknown>) =>
         chain(async () => {
@@ -105,6 +112,7 @@ const PEDIDO = "33333333-3333-4333-8333-333333333333";
 const CAMINHO = `${ORG}/avatars/${CONTATO}.jpg`;
 
 beforeEach(() => {
+  documentosCadastrais = [];
   ops.length = 0;
   inserts.length = 0;
   updates.length = 0;
@@ -199,7 +207,13 @@ describe("drainStorageRedactionQueue — o arquivo sai do bucket", () => {
   it("remove o objeto do bucket e marca a linha como deleted", async () => {
     // "Enfileirou" não é "removeu". Este é o teste que cobra a diferença.
     filaPendente = [
-      { id: "fila-1", organization_id: ORG, bucket: "whatsapp-media", object_path: CAMINHO, attempts: 0 },
+      {
+        id: "fila-1",
+        organization_id: ORG,
+        bucket: "whatsapp-media",
+        object_path: CAMINHO,
+        attempts: 0,
+      },
     ];
 
     const stats = await drainStorageRedactionQueue({ limit: 10 });
@@ -213,7 +227,13 @@ describe("drainStorageRedactionQueue — o arquivo sai do bucket", () => {
 
   it("objeto já ausente vira skipped, não fica em retry eterno", async () => {
     filaPendente = [
-      { id: "fila-2", organization_id: ORG, bucket: "whatsapp-media", object_path: CAMINHO, attempts: 0 },
+      {
+        id: "fila-2",
+        organization_id: ORG,
+        bucket: "whatsapp-media",
+        object_path: CAMINHO,
+        attempts: 0,
+      },
     ];
     erroDoRemove = { message: "Object not found" };
 
@@ -224,4 +244,22 @@ describe("drainStorageRedactionQueue — o arquivo sai do bucket", () => {
       status: "skipped",
     });
   });
+});
+
+it("documentos cadastrais entram na fila antes da remoção dos metadados e da RPC", async () => {
+  contatoRow = { avatar_storage_path: null };
+  documentosCadastrais = [{ id: "doc", storage_path: `${ORG}/contacts/${CONTATO}/doc` }];
+  await cascadeRedactContact({ organizationId: ORG, contactId: CONTATO, requestId: PEDIDO });
+  expect(inserts).toContainEqual(
+    expect.objectContaining({
+      payload: expect.objectContaining({
+        bucket: "client-documents",
+        object_path: `${ORG}/contacts/${CONTATO}/doc`,
+      }),
+    }),
+  );
+  expect(ops.indexOf("insert:storage_redaction_queue")).toBeLessThan(
+    ops.indexOf("delete:contact_documents"),
+  );
+  expect(ops.indexOf("delete:contact_documents")).toBeLessThan(ops.indexOf("rpc"));
 });

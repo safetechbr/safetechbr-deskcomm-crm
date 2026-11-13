@@ -206,3 +206,6 @@ caddy-sites/*
 
 # Curso ilustrado — fotos e site gerados (curso/capturar.ts, curso/montar.ts)
 curso/saida/
+
+# Engines locais de OCR/PDF, preparadas automaticamente pelo Next a partir do lockfile.
+/public/ocr-cliente/

@@ -3,6 +3,8 @@
  * Match precedence: array order. First match wins.
  */
 export const PUBLIC_PATHS: RegExp[] = [
+  // Somente assets públicos do leitor local; não há documentos de clientes nesta pasta.
+  /^\/ocr-cliente\/(?:worker\.min\.js|pdf\.worker\.min\.mjs|por\.traineddata\.gz|tesseract-core[\w.-]*\.(?:js|wasm)|LICENSE-[\w-]+\.txt)$/,
   // Link público persistido: org e destino são resolvidos exclusivamente no servidor.
   /^\/api\/v1\/rastreio\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   /^\/$/,

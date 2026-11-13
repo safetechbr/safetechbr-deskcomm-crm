@@ -58,15 +58,21 @@ export async function POST(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     throw err;
   }
 
-  const { conversation: conv, error } = await assumirConversaComEfeitos(supabase, {
-    organizationId: authz.org.orgId,
-    conversationId: id,
-    actor: { type: "user", id: user.id, role: authz.org.role },
-    requestId,
-    expectedAssignee: input.expected_assignee,
-  });
-  if (error) return fail("internal_error", error.message, 500, { requestId });
-  if (!conv) return fail("state_conflict", t("Outro atendente já assumiu."), 409, { requestId });
+  try {
+    const { conversation: conv, error } = await assumirConversaComEfeitos(supabase, {
+      organizationId: authz.org.orgId,
+      conversationId: id,
+      actor: { type: "user", id: user.id, role: authz.org.role },
+      requestId,
+      expectedAssignee: input.expected_assignee,
+      senha: input.senha,
+    });
+    if (error) return fail("internal_error", error.message, 500, { requestId });
+    if (!conv) return fail("state_conflict", t("Outro atendente já assumiu."), 409, { requestId });
 
-  return ok(conv, { requestId });
+    return ok(conv, { requestId });
+  } catch (e) {
+    if (e instanceof ApiError) return fail(e.code, e.message, e.status, { requestId });
+    throw e;
+  }
 }

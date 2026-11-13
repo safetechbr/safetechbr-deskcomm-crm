@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { EntrarComGoogle } from "@/components/auth/EntrarComGoogle";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { verifyInviteToken } from "@/lib/auth/invite-token";
 import { marcaDaSaida } from "@/lib/branding/saida";
@@ -145,7 +144,6 @@ export default async function LoginPage({
         </div>
       )}
       <LoginForm next={next} email={convite?.email} />
-      <EntrarComGoogle next={next} />
       <div className="space-y-2 text-center text-sm">
         <p>
           <Link

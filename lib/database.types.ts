@@ -3,26 +3,309 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
-      reservas_de_veiculo: {
+      atendimento_senhas: {
+        Row: { organization_id: string; senha_hash: string; updated_by: string | null; updated_at: string };
+        Insert: { organization_id: string; senha_hash: string; updated_by: string | null; updated_at?: string };
+        Update: { senha_hash?: string; updated_by?: string | null; updated_at?: string };
+        Relationships: [];
+      };
+      atendimento_tentativas: {
+        Row: { organization_id: string; user_id: string; falhas: number; janela: string };
+        Insert: { organization_id: string; user_id: string; falhas?: number; janela?: string };
+        Update: { falhas?: number; janela?: string };
+        Relationships: [];
+      };
+
+      veiculos: {
         Row: {
-          id: string; organization_id: string; veiculo_id: string; vendedor_user_id: string;
-          conversation_id: string | null; criada_em: string; expira_em: string;
-          visita_em: string | null; encerrada_em: string | null; motivo_encerramento: string | null;
+          ano_fabricacao: number | null;
+          ano_modelo: number | null;
+          cambio: string | null;
+          categoria: string | null;
+          chassi: string | null;
+          codigo: string;
+          combustivel: string | null;
+          condicao: string | null;
+          cor: string | null;
+          created_at: string;
+          created_by: string | null;
+          custo_cents: number | null;
+          descricao: string | null;
+          entrada_em: string;
+          fotos: string[];
+          id: string;
+          km: number | null;
+          marca: string | null;
+          modelo: string;
+          moeda: string;
+          motor: string | null;
+          opcionais: string | null;
+          organization_id: string;
+          placa: string | null;
+          placa_final: string | null;
+          preco_cents: number;
+          regularizacao: Json;
+          renavam: string | null;
+          status: string;
+          updated_at: string;
+          vendido_em: string | null;
+          versao: string | null;
+          video: string | null;
         };
         Insert: {
-          id?: string; organization_id: string; veiculo_id: string; vendedor_user_id: string;
-          conversation_id?: string | null; criada_em?: string; expira_em?: string;
-          visita_em?: string | null; encerrada_em?: string | null; motivo_encerramento?: string | null;
+          ano_fabricacao?: number | null;
+          ano_modelo?: number | null;
+          cambio?: string | null;
+          categoria?: string | null;
+          chassi?: string | null;
+          codigo: string;
+          combustivel?: string | null;
+          condicao?: string | null;
+          cor?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          custo_cents?: number | null;
+          descricao?: string | null;
+          entrada_em?: string;
+          fotos?: string[];
+          id?: string;
+          km?: number | null;
+          marca?: string | null;
+          modelo: string;
+          moeda?: string;
+          motor?: string | null;
+          opcionais?: string | null;
+          organization_id: string;
+          placa?: string | null;
+          placa_final?: string | null;
+          preco_cents?: number;
+          regularizacao?: Json;
+          renavam?: string | null;
+          status?: string;
+          updated_at?: string;
+          vendido_em?: string | null;
+          versao?: string | null;
+          video?: string | null;
         };
         Update: {
-          id?: string; organization_id?: string; veiculo_id?: string; vendedor_user_id?: string;
-          conversation_id?: string | null; criada_em?: string; expira_em?: string;
-          visita_em?: string | null; encerrada_em?: string | null; motivo_encerramento?: string | null;
+          ano_fabricacao?: number | null;
+          ano_modelo?: number | null;
+          cambio?: string | null;
+          categoria?: string | null;
+          chassi?: string | null;
+          codigo?: string;
+          combustivel?: string | null;
+          condicao?: string | null;
+          cor?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          custo_cents?: number | null;
+          descricao?: string | null;
+          entrada_em?: string;
+          fotos?: string[];
+          id?: string;
+          km?: number | null;
+          marca?: string | null;
+          modelo?: string;
+          moeda?: string;
+          motor?: string | null;
+          opcionais?: string | null;
+          organization_id?: string;
+          placa?: string | null;
+          placa_final?: string | null;
+          preco_cents?: number;
+          regularizacao?: Json;
+          renavam?: string | null;
+          status?: string;
+          updated_at?: string;
+          vendido_em?: string | null;
+          versao?: string | null;
+          video?: string | null;
         };
         Relationships: [
-          { foreignKeyName: "reservas_de_veiculo_organization_id_fkey"; columns: ["organization_id"]; isOneToOne: false; referencedRelation: "organizations"; referencedColumns: ["id"] },
-          { foreignKeyName: "reservas_de_veiculo_veiculo_id_fkey"; columns: ["veiculo_id"]; isOneToOne: false; referencedRelation: "veiculos"; referencedColumns: ["id"] },
-          { foreignKeyName: "reservas_de_veiculo_conversation_id_fkey"; columns: ["conversation_id"]; isOneToOne: false; referencedRelation: "conversations"; referencedColumns: ["id"] },
+          {
+            foreignKeyName: "veiculos_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      negociacoes_de_veiculo: {
+        Row: {
+          modalidade: string;
+          cancelada_em: string | null;
+          cliente: Json;
+          comissao_cents: number | null;
+          concluida_em: string | null;
+          contact_id: string | null;
+          contrato: Json | null;
+          created_at: string;
+          created_by: string | null;
+          desconto_cents: number;
+          id: string;
+          moeda: string;
+          numero: number;
+          observacoes: string | null;
+          organization_id: string;
+          pagamentos: Json;
+          status: string;
+          tipo: string;
+          troca: Json | null;
+          troca_veiculo_id: string | null;
+          updated_at: string;
+          valor_cents: number;
+          veiculo: Json;
+          veiculo_id: string | null;
+          vendedor_user_id: string | null;
+        };
+        Insert: {
+          modalidade?: string;
+          cancelada_em?: string | null;
+          cliente?: Json;
+          comissao_cents?: number | null;
+          concluida_em?: string | null;
+          contact_id?: string | null;
+          contrato?: Json | null;
+          created_at?: string;
+          created_by?: string | null;
+          desconto_cents?: number;
+          id?: string;
+          moeda?: string;
+          numero: number;
+          observacoes?: string | null;
+          organization_id: string;
+          pagamentos?: Json;
+          status?: string;
+          tipo: string;
+          troca?: Json | null;
+          troca_veiculo_id?: string | null;
+          updated_at?: string;
+          valor_cents?: number;
+          veiculo?: Json;
+          veiculo_id?: string | null;
+          vendedor_user_id?: string | null;
+        };
+        Update: {
+          modalidade?: string;
+          cancelada_em?: string | null;
+          cliente?: Json;
+          comissao_cents?: number | null;
+          concluida_em?: string | null;
+          contact_id?: string | null;
+          contrato?: Json | null;
+          created_at?: string;
+          created_by?: string | null;
+          desconto_cents?: number;
+          id?: string;
+          moeda?: string;
+          numero?: number;
+          observacoes?: string | null;
+          organization_id?: string;
+          pagamentos?: Json;
+          status?: string;
+          tipo?: string;
+          troca?: Json | null;
+          troca_veiculo_id?: string | null;
+          updated_at?: string;
+          valor_cents?: number;
+          veiculo?: Json;
+          veiculo_id?: string | null;
+          vendedor_user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "negociacoes_de_veiculo_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "negociacoes_de_veiculo_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "negociacoes_de_veiculo_troca_veiculo_id_fkey";
+            columns: ["troca_veiculo_id"];
+            isOneToOne: false;
+            referencedRelation: "veiculos";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "negociacoes_de_veiculo_veiculo_id_fkey";
+            columns: ["veiculo_id"];
+            isOneToOne: false;
+            referencedRelation: "veiculos";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      reservas_de_veiculo: {
+        Row: {
+          id: string;
+          organization_id: string;
+          veiculo_id: string;
+          vendedor_user_id: string;
+          conversation_id: string | null;
+          criada_em: string;
+          expira_em: string;
+          visita_em: string | null;
+          encerrada_em: string | null;
+          motivo_encerramento: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          veiculo_id: string;
+          vendedor_user_id: string;
+          conversation_id?: string | null;
+          criada_em?: string;
+          expira_em?: string;
+          visita_em?: string | null;
+          encerrada_em?: string | null;
+          motivo_encerramento?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          veiculo_id?: string;
+          vendedor_user_id?: string;
+          conversation_id?: string | null;
+          criada_em?: string;
+          expira_em?: string;
+          visita_em?: string | null;
+          encerrada_em?: string | null;
+          motivo_encerramento?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "reservas_de_veiculo_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reservas_de_veiculo_veiculo_id_fkey";
+            columns: ["veiculo_id"];
+            isOneToOne: false;
+            referencedRelation: "veiculos";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reservas_de_veiculo_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "conversations";
+            referencedColumns: ["id"];
+          },
         ];
       };
 
@@ -6417,6 +6700,64 @@ export type Database = {
           },
         ];
       };
+      contact_documents: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          kind: string;
+          file_name: string;
+          file_size: number;
+          id: string;
+          contact_id: string;
+          mime_type: string;
+          organization_id: string;
+          storage_path: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          kind: string;
+          file_name: string;
+          file_size?: number;
+          id?: string;
+          contact_id: string;
+          mime_type?: string;
+          organization_id: string;
+          storage_path: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          kind?: string;
+          file_name?: string;
+          file_size?: number;
+          id?: string;
+          contact_id?: string;
+          mime_type?: string;
+          organization_id?: string;
+          storage_path?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "contact_documents_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "contact_documents_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       crm_lead_attachments: {
         Row: {
           created_at: string;
@@ -11480,6 +11821,7 @@ export type Database = {
       };
       organizations: {
         Row: {
+          dados_contrato: Json | null;
           cnpj: string | null;
           country: string | null;
           created_at: string;
@@ -11517,6 +11859,7 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          dados_contrato?: Json | null;
           cnpj?: string | null;
           country?: string | null;
           created_at?: string;
@@ -11553,6 +11896,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          dados_contrato?: Json | null;
           cnpj?: string | null;
           country?: string | null;
           created_at?: string;
@@ -14596,11 +14940,29 @@ export type Database = {
       };
     };
     Functions: {
-      fn_reservar_veiculo: {
-        Args: { p_org: string; p_veiculo: string; p_conversa: string; p_horas?: number; p_visita?: string | null };
+      fn_atendimento_alterar: {
+        Args: { p_org: string; p_actor: string; p_contact: string | null; p_conversation: string | null; p_acao: string; p_senha?: string | null; p_expected?: string | null };
         Returns: Json;
       };
-      fn_liberar_reserva_veiculo: { Args: { p_org: string; p_veiculo: string; p_reserva: string }; Returns: boolean };
+      fn_atendimento_definir_senha: {
+        Args: { p_org: string; p_actor: string; p_senha: string };
+        Returns: undefined;
+      };
+
+      fn_reservar_veiculo: {
+        Args: {
+          p_org: string;
+          p_veiculo: string;
+          p_conversa: string;
+          p_horas?: number;
+          p_visita?: string | null;
+        };
+        Returns: Json;
+      };
+      fn_liberar_reserva_veiculo: {
+        Args: { p_org: string; p_veiculo: string; p_reserva: string };
+        Returns: boolean;
+      };
 
       activate_kb_version: {
         Args: { p_agent_id: string; p_version_id: string };

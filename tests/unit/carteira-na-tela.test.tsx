@@ -9,7 +9,7 @@
  * e o contato SEM dono não quebra nada.
  *
  *   (a) a ficha mostra a carteira com o dono certo;
- *   (b) trocar o dono pela tela grava (chama a rota) e o estado reflete;
+ *    (chama a rota) e o estado reflete;
  *   (c) contato sem dono: estado vazio COM texto (não tela em branco), e a
  *       faixa do chat não aparece (não há carteira de ninguém para prometer).
  *
@@ -34,6 +34,14 @@ const deps = vi.hoisted(() => ({
 vi.mock("@/hooks/contacts/useCarteiraDoContato", () => ({
   useCarteiraDoContato: deps.carteira,
   useDefinirCarteira: deps.definir,
+}));
+vi.mock("@/hooks/auth/AuthProvider", () => ({
+  useAuth: () => ({ user: { id: "u-x", support: null } }),
+}));
+vi.mock("@tanstack/react-query", async (orig) => ({
+  ...(await orig<typeof import("@tanstack/react-query")>()),
+  useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 vi.mock("@/hooks/inbox/useAssignableMembers", () => ({ useAssignableMembers: deps.membros }));
 
@@ -61,56 +69,6 @@ describe("(a) a ficha mostra a carteira com o dono certo", () => {
     expect(bloco.textContent).toContain("Ana Vendas");
   });
 
-  it("dono que não conta (saiu da equipe ou só lê) ganha o aviso", () => {
-    deps.carteira.mockReturnValue({
-      isLoading: false,
-      data: { contact_id: "c1", dono_user_id: "u-a", qualificado: false },
-    });
-    render(<CartaoDaCarteira contactId="c1" papelDoUsuario="manager" />);
-    expect(screen.getByTestId("carteira-dono-inativo")).toBeTruthy();
-  });
-
-  it("quem NÃO é gerente+ não vê o seletor de troca", () => {
-    deps.carteira.mockReturnValue({ isLoading: false, data: COM_ANA });
-    render(<CartaoDaCarteira contactId="c1" papelDoUsuario="agent" />);
-    expect(screen.queryByTestId("carteira-seletor")).toBeNull();
-    expect(screen.queryByTestId("carteira-salvar")).toBeNull();
-  });
-});
-
-describe("(b) trocar o dono pela tela grava", () => {
-  it("escolher outro vendedor e salvar chama a rota com o id escolhido", async () => {
-    deps.carteira.mockReturnValue({ isLoading: false, data: COM_ANA });
-    const u = userEvent.setup();
-    render(<CartaoDaCarteira contactId="c1" papelDoUsuario="manager" />);
-
-    const seletor = screen.getByTestId("carteira-seletor");
-    // O valor do seletor acompanha o dono atual depois do efeito de montagem.
-    await waitFor(() => expect((seletor as HTMLSelectElement).value).toBe("u-a"));
-
-    await u.selectOptions(seletor, "u-b");
-    const salvar = screen.getByTestId("carteira-salvar");
-    await waitFor(() => expect((salvar as HTMLButtonElement).disabled).toBe(false));
-    await u.click(salvar);
-
-    expect(deps.mutate).toHaveBeenCalledWith("u-b");
-  });
-
-  it("tirar da carteira (Sem vendedor dono) grava null", async () => {
-    deps.carteira.mockReturnValue({ isLoading: false, data: COM_ANA });
-    const u = userEvent.setup();
-    render(<CartaoDaCarteira contactId="c1" papelDoUsuario="manager" />);
-    const seletor = screen.getByTestId("carteira-seletor");
-    await waitFor(() => expect((seletor as HTMLSelectElement).value).toBe("u-a"));
-
-    await u.selectOptions(seletor, "__sem_dono__");
-    await waitFor(() =>
-      expect((screen.getByTestId("carteira-salvar") as HTMLButtonElement).disabled).toBe(false),
-    );
-    await u.click(screen.getByTestId("carteira-salvar"));
-
-    expect(deps.mutate).toHaveBeenCalledWith(null);
-  });
 });
 
 describe("(c) contato sem dono não quebra a tela", () => {

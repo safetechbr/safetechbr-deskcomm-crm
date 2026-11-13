@@ -282,3 +282,17 @@ describe("AcoesDaConversa — bloco recolhível", () => {
     );
   });
 });
+
+it("conversa com cliente mantém Fechar; assumir e trocar vivem no cartão de atendimento", () => {
+  const atual = conversa("open");
+  atual.contacts = {
+    id: "contato-1",
+    display_name: "Cliente",
+    phone_number: null,
+    tags: [],
+  } as never;
+  render(<AcoesDaConversa conversation={atual} />);
+  expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Assumir" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Transferir" })).toBeNull();
+});

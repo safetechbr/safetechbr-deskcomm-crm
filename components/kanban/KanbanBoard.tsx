@@ -346,37 +346,14 @@ export function KanbanBoard({
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
-      {/* UM contêiner de rolagem só, nos dois eixos. Rolar cada coluna por
-          conta própria seria o desenho "Trello", mas o @hello-pangea/dnd não
-          suporta Droppable rolável dentro de outro contêiner rolável ("nested
-          scroll containers are currently not supported") — o arraste perderia
-          a rolagem automática. Com o quadro como único pai rolável, o arraste
-          continua inteiro, e o cabeçalho de cada etapa fica preso em cima
-          (`sticky` em StageColumn). `items-start` no quadro + a faixa de dentro
-          com `min-h-full`/`items-stretch`: a coluna curta ocupa a altura toda
-          — inclusive depois de rolar além da tela (#3030) — e a comprida
-          cresce com os cards, com o fundo acompanhando.
-          Sem padding no ALTO, e é de propósito: o `sticky` prende o cabeçalho
-          na borda do conteúdo do contêiner, então um `pt-4` deixava uma faixa
-          de 16px acima dele por onde os cards apareciam rolando (medido no e2e
-          "o quadro cabe na tela"). O respiro até os filtros vem do `gap-4` da
-          página. */}
+      {/* O quadro desloca as etapas na horizontal; cada lista de cards cuida
+          da própria rolagem vertical, dentro da altura disponível. */}
       <div
-        className="flex min-h-0 flex-1 items-start gap-3 overflow-auto px-4 pb-4"
+        className="flex min-h-0 flex-1 items-stretch gap-3 overflow-x-auto overflow-y-hidden px-4 pb-4"
         data-quadro-do-funil
       >
-        {/* A FAIXA entre o rolo e as colunas (#3030). O contêiner de fora é o
-            único que rola; esta faixa é quem dá altura às colunas. Com o
-            `min-h-full` da coluna medido contra a ALTURA VISÍVEL do quadro, a
-            coluna vazia parava onde a tela terminava — e a área de soltar card
-            com ela. Aqui a faixa tem `min-h-full` (nunca menos que a tela) e
-            `items-stretch` (a mais comprida manda): todas as colunas ficam com
-            a altura da mais comprida, e `w-max` mantém a largura do quadro.
-            Não é um contêiner rolável novo — o de fora continua sendo o único —
-            então o `@hello-pangea/dnd` segue com a rolagem automática do
-            arraste (Droppable dentro de outro rolável ele não suporta). */}
         <div
-          className="flex min-h-full w-max items-stretch gap-3"
+          className="flex h-full min-h-0 w-max items-stretch gap-3"
           data-faixa-das-etapas
         >
           {data.stages.map((stage) => (

@@ -137,6 +137,14 @@ function clienteFalso(estado: Estado) {
   };
 }
 
+// O portão transacional tem prova de integração própria; aqui medimos os efeitos do claim.
+vi.mock("@/lib/atendimento/servidor", () => ({
+  alterarAtendimento: vi.fn(async () => ({
+    conversation: { id: CONV_A, organization_id: ORG_A, contact_id: CONTATO_A, assigned_to_user_id: USER },
+    dono_user_id: USER, antes: null, autorizado_por_senha: false,
+  })),
+}));
+
 vi.mock("@/lib/auth/require-role", () => ({
   requireRole: vi.fn(() => ({
     ok: true,

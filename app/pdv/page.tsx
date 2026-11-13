@@ -1,3 +1,4 @@
+import { novoContrato } from "@/lib/pdv/modelo-contrato";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -33,10 +34,15 @@ export default async function PdvPage() {
     (user.is_platform_admin && !user.support) || ROLE_RANK[activeOrg.role] >= ROLE_RANK.agent;
 
   const supabase = await createClient();
-  const [estoque, negociacoes] = await Promise.all([
+  const [empresa, estoque, negociacoes] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("legal_name, display_name, cnpj, dados_contrato")
+      .eq("id", activeOrg.orgId)
+      .single(),
     supabase
       .from("veiculos")
-      .select(`${COLUNAS_DO_VEICULO}, placa, chassi, renavam`)
+      .select(COLUNAS_DO_VEICULO)
       .eq("organization_id", activeOrg.orgId)
       .neq("status", "vendido")
       .order("modelo")
@@ -48,6 +54,7 @@ export default async function PdvPage() {
       .order("created_at", { ascending: false })
       .limit(100),
   ]);
+  if (empresa.error) throw new Error("Não consegui ler os dados da empresa para o contrato.");
   if (estoque.error) throw new Error(`Não consegui ler o estoque: ${estoque.error.message}`);
   const veiculos = (estoque.data ?? []) as unknown as VeiculoDoPdv[];
 
@@ -75,6 +82,7 @@ export default async function PdvPage() {
       podeNegociar={podeNegociar}
       titulo={t("PDV")}
       usuarioId={user.id}
+      contratoPadrao={{ ...novoContrato(empresa.data ?? {}), atendido_por: user.full_name ?? "" }}
     />
   );
 }

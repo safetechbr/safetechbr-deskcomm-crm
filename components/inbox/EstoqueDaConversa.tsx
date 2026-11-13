@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useBlocoRecolhivel } from "@/hooks/inbox/useBlocoRecolhivel";
 import { CaretDown, CaretRight } from "@/lib/ui/icons";
-import { useSendMessage } from "@/hooks/inbox/useSendMessage";
+import { useEnvioDeVeiculo } from "@/hooks/inbox/useEnvioDeVeiculo";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
 import {
@@ -42,9 +42,6 @@ const MODOS: Array<{ id: ModoDeEnvio; rotulo: string }> = [
   { id: "ficha", rotulo: "Só ficha" },
   { id: "preco", rotulo: "Só preço" },
 ];
-
-const PAUSA_ENTRE_ITENS_MS = 1500;
-const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const CHAVE_RECOLHIDO = "deskcomm:inbox:estoque-da-conversa:recolhido";
 
@@ -85,7 +82,7 @@ export function EstoqueDaConversa({ conversationId }: { conversationId: string }
         hidden={recolhido}
         className="border-t border-border/60 p-3"
       >
-        {recolhido ? null : <CorpoDoEstoque conversationId={conversationId} />}
+        {recolhido ? null : <CorpoDoEstoque key={conversationId} conversationId={conversationId} />}
       </div>
     </section>
   );
@@ -93,9 +90,9 @@ export function EstoqueDaConversa({ conversationId }: { conversationId: string }
 
 function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
   const t = useT();
-  const send = useSendMessage();
   const usuario = useUser();
   const org = useActiveOrg();
+  const envio = useEnvioDeVeiculo(org?.orgId, conversationId);
   const qc = useQueryClient();
   const [reservando, setReservando] = useState<VeiculoComCapa | null>(null);
   const [horas, setHoras] = useState(24);
@@ -174,34 +171,10 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
     }
   }
 
-  async function enviar(v: Veiculo, texto?: string) {
-    setEnviando(v.id);
-    try {
-      const r = await apiClient.post<{ data: Preparado }>(
-        `/api/v1/veiculos/${v.id}/preparar-envio`,
-        { conversation_id: conversationId, modo, com_video: comVideo, ...(texto ? { texto } : {}) },
-      );
-      const { itens, fotos_faltando } = r.data;
-      for (let i = 0; i < itens.length; i++) {
-        const it = itens[i]!;
-        await send.mutateAsync({
-          conversation_id: conversationId,
-          type: it.type,
-          body: it.body ?? undefined,
-          media_storage_path: it.media_storage_path,
-          media_mime: it.media_mime,
-          metadata: { veiculo_id: v.id },
-        });
-        if (i < itens.length - 1) await dormir(PAUSA_ENTRE_ITENS_MS);
-      }
-      toast.success(`${t("Enviado")}: ${tituloDoVeiculo(v)}`);
-      if (fotos_faltando) toast.warning(t("Algumas fotos não puderam ser enviadas."));
-      setRevisao(null);
-    } catch (e) {
-      showApiError(e);
-    } finally {
-      setEnviando(null);
-    }
+  function enviar(v: Veiculo, texto?: string) {
+    // Captura o destino e as opções antes de liberar a janela para o próximo uso.
+    envio.iniciar({ veiculo: v, modo, comVideo, texto });
+    setRevisao(null);
   }
 
   return (
@@ -282,10 +255,10 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
                 variant="outline"
                 className="w-full"
                 title={bloqueioDoVeiculo(v.status, v.reserva, usuario.id) ?? undefined}
-                disabled={enviando !== null || !!bloqueioDoVeiculo(v.status, v.reserva, usuario.id)}
+                disabled={enviando !== null || envio.pendentes.some(p => p.veiculoId === v.id) || !!bloqueioDoVeiculo(v.status, v.reserva, usuario.id)}
                 onClick={() => void aoClicarEnviar(v)}
               >
-                {enviando === v.id ? t("Enviando…") : t("Enviar")}
+                {enviando === v.id ? t("Preparando…") : envio.pendentes.some(p => p.veiculoId === v.id) ? t("Enviando…") : t("Enviar")}
               </Button>
             </li>
           ))}

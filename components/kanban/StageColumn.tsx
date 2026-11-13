@@ -155,22 +155,12 @@ export function StageColumn({
         coluna de etapa não vira painel. De `md` para cima volta o `w-80` de
         sempre, onde a graça é justamente ver várias etapas ao mesmo tempo.
       */
-      className="flex min-h-full w-[85vw] max-w-80 shrink-0 snap-center flex-col rounded-xl border border-border/60 bg-muted md:w-80"
+      className="flex h-full min-h-0 w-[85vw] max-w-80 shrink-0 snap-center flex-col rounded-xl border border-border/60 bg-muted md:w-80"
       data-etapa-do-quadro={stage.id}
     >
-      {/* Cabeçalho e total PRESOS no alto do quadro enquanto os cards rolam: com
-          uma etapa comprida, é o que diz em que etapa se está olhando. O fundo
-          opaco (`bg-background`) é o que impede os cards de aparecerem por baixo;
-          por dentro, a mesma camada translúcida da coluna, para o tom não mudar.
-
-          A BORDA DE CIMA É DO CABEÇALHO, não da coluna (#3030): a coluna tem
-          `border` e o cabeçalho `sticky top-0`, então ao rolar a borda da coluna
-          saía da tela e o cabeçalho ficava solto, sem contorno em cima. Com
-          `border-x border-t` aqui e `-mx-px -mt-px` (1px para cima e para os
-          lados), o contorno de cima cobre exatamente a borda da coluna e viaja
-          junto com o cabeçalho preso. */}
+      {/* Fora da área rolável: nome, seleção e total ficam sempre visíveis. */}
       <div
-        className="sticky top-0 z-10 -mx-px -mt-px rounded-t-xl border-x border-t border-border/60 bg-muted"
+        className="z-10 -mx-px -mt-px shrink-0 rounded-t-xl border-x border-t border-border/60 bg-muted"
         data-cabecalho-da-etapa
       >
         <div className="rounded-t-xl">
@@ -250,8 +240,12 @@ export function StageColumn({
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
+            data-rolagem-da-etapa={stage.id}
+            role="region"
+            aria-label={`${t("Cards da etapa")} ${stage.name}`}
+            tabIndex={0}
             className={cn(
-              "flex flex-1 flex-col gap-2 rounded-b-xl p-2 pt-1 transition-colors duration-base",
+              "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-y-contain [&>[data-rfd-draggable-id]]:shrink-0 rounded-b-xl p-2 pt-1 transition-colors duration-base",
               snapshot.isDraggingOver && "bg-accent/[0.06]",
             )}
           >

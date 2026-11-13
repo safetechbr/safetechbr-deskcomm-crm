@@ -1,15 +1,16 @@
 /**
- * GET /api/v1/pdv/negociacoes/:id/contrato — o contrato genérico em PDF
+ * GET /api/v1/pdv/negociacoes/:id/contrato — o contrato da negociação em PDF
  * (inline, para abrir numa aba e imprimir). Sai das FOTOGRAFIAS gravadas na
  * negociação, então reimprimir depois dá o mesmo documento.
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
+import { z } from "zod";
 
 import { fail } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
-import { renderContratoPdf } from "@/lib/pdv/contrato";
+import { renderContratoPdf, type LojaDoContrato } from "@/lib/pdv/contrato";
 import { COLUNAS_DA_NEGOCIACAO, type Negociacao } from "@/lib/pdv/regras";
 import { marcaDaOrganizacaoParaPdf } from "@/lib/propostas/marca-da-organizacao-para-pdf";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +26,8 @@ export async function GET(
   if (!authz.ok) return authz.response;
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
   const { id } = await params;
+  if (!z.string().uuid().safeParse(id).success)
+    return fail("validation_failed", "Negociação inválida.", 422, { requestId });
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -36,23 +39,41 @@ export async function GET(
   if (!data) return fail("not_found", t("Negociação não encontrada."), 404, { requestId });
   const negociacao = data as unknown as Negociacao;
 
-  const [{ data: org }, marca] = await Promise.all([
-    supabase.from("organizations").select("legal_name, display_name, cnpj").eq("id", authz.org.orgId).maybeSingle(),
-    marcaDaOrganizacaoParaPdf(supabase, authz.org.orgId),
-  ]);
-  const o = (org ?? {}) as { legal_name?: string; display_name?: string; cnpj?: string | null };
+  let loja: LojaDoContrato;
+  if (negociacao.contrato?.empresa) {
+    const e = negociacao.contrato.empresa;
+    loja = {
+      razaoSocial: e.razao_social,
+      nomeFantasia: e.nome_fantasia,
+      cnpj: e.cnpj,
+      cidade: e.cidade,
+      logoUrl: null,
+    };
+  } else {
+    // Histórico sem fotografia contratual: preservar o gerador anterior.
+    const [{ data: org }, marca] = await Promise.all([
+      supabase
+        .from("organizations")
+        .select("legal_name, display_name, cnpj")
+        .eq("id", authz.org.orgId)
+        .maybeSingle(),
+      marcaDaOrganizacaoParaPdf(supabase, authz.org.orgId),
+    ]);
+    const o = (org ?? {}) as { legal_name?: string; display_name?: string; cnpj?: string | null };
+    loja = {
+      razaoSocial: [o.legal_name, o.display_name].find(Boolean) ?? "Loja",
+      nomeFantasia: [marca.appName, o.display_name, o.legal_name].find(Boolean) ?? "Loja",
+      cnpj: o.cnpj ?? null,
+      logoUrl: marca.logoUrl,
+      cidade: null,
+    };
+  }
 
   let buffer: Buffer;
   try {
     buffer = await renderContratoPdf({
       negociacao,
-      loja: {
-        razaoSocial: [o.legal_name, o.display_name].find(Boolean) ?? "Loja",
-        nomeFantasia: [marca.appName, o.display_name, o.legal_name].find(Boolean) ?? "Loja",
-        cnpj: o.cnpj ?? null,
-        logoUrl: marca.logoUrl,
-        cidade: null,
-      },
+      loja,
       vendedorNome: negociacao.vendedor_user_id === authz.user.id ? authz.user.full_name : null,
     });
   } catch {

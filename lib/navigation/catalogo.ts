@@ -322,7 +322,7 @@ export const NAV_CATALOG = [
   },
   {
     href: "/app/contacts",
-    label: "Contatos",
+    label: "Leads",
     description: "As pessoas do outro lado da conversa e seu histórico.",
     icon: "Users",
     group: "crm",

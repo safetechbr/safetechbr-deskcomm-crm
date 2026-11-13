@@ -1,5 +1,8 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
+import { prepararOcrDoCliente } from "./lib/pdv/preparar-ocr";
+
+prepararOcrDoCliente();
 
 /** Performance budget (EPIC-12 §S-12.05):
  *  - LCP < 2.5s p75

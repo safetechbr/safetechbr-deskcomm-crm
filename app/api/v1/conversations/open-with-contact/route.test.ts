@@ -41,6 +41,22 @@ const CONV = "aaaaaaaa-1111-4000-8000-000000000001";
 const CONTATO = "aaaaaaaa-5555-4000-8000-000000000009";
 const CONVERSA_DA_ORG = { id: CONV, organization_id: ORG_A, contact_id: CONTATO };
 
+// O claim passa pelo portão transacional do atendimento protegido
+// (`alterarAtendimento`, com prova de integração própria): aqui o dublê só
+// responde o que o banco responderia e registra o que a rota pediu.
+const portao = vi.hoisted(() => ({
+  chamadas: [] as Array<Record<string, unknown>>,
+  linha: null as Record<string, unknown> | null,
+  falha: null as string | null,
+}));
+vi.mock("@/lib/atendimento/servidor", () => ({
+  alterarAtendimento: vi.fn(async (p: Record<string, unknown>) => {
+    portao.chamadas.push(p);
+    if (portao.falha) throw new Error(portao.falha);
+    return { conversation: portao.linha, dono_user_id: null, antes: null, autorizado_por_senha: false };
+  }),
+}));
+
 type Rpc = { nome: string; params: Record<string, unknown> };
 
 /** O dublê do cliente: registra os RPC e responde o que o caso pedir. */
@@ -49,6 +65,9 @@ function clienteFake(resposta: { data: unknown; error: { message: string } | nul
   rpcs: Rpc[];
 } {
   const rpcs: Rpc[] = [];
+  portao.chamadas.length = 0;
+  portao.falha = resposta.error?.message ?? null;
+  portao.linha = Array.isArray(resposta.data) ? ((resposta.data[0] as Record<string, unknown>) ?? null) : null;
   const cliente = {
     rpc: async (nome: string, params: Record<string, unknown>) => {
       rpcs.push({ nome, params });
@@ -122,19 +141,19 @@ describe("#3479 — abrir a conversa assume a conversa SEM dono", () => {
     const res = await POST(requisicao());
     expect(res.status).toBe(200);
 
-    expect(rpcs).toHaveLength(2);
-    expect(rpcs[0]?.nome).toBe("fn_conversation_assign");
-    expect(rpcs[0]?.params).toMatchObject({
-      p_organization_id: ORG_A,
-      p_conversation_id: CONV,
-      p_to_user_id: USER,
-      p_reason: "claim",
-      p_enforce_expected: true,
+    expect(portao.chamadas).toHaveLength(1);
+    expect(portao.chamadas[0]).toMatchObject({
+      orgId: ORG_A,
+      conversationId: CONV,
+      actorId: USER,
+      acao: "assumir",
     });
-    // `expected_assignee` NÃO vai: é o contrato de "assuma se estiver livre".
-    // Mandá-lo (mesmo nulo) mudaria o significado do pedido para quem lê o RPC.
-    expect(rpcs[0]?.params).not.toHaveProperty("p_expected_assignee");
-    expect(rpcs[1]?.nome).toBe("emit_event");
+    // `expected` NÃO vai: é o contrato de "assuma se estiver livre", e a senha
+    // administrativa também não — abrir uma conversa nunca toma a de outro.
+    expect(portao.chamadas[0]?.expected).toBeUndefined();
+    expect(portao.chamadas[0]?.senha).toBeUndefined();
+    expect(rpcs).toHaveLength(1);
+    expect(rpcs[0]?.nome).toBe("emit_event");
     expect(audit).toHaveBeenCalledOnce();
     expect(registrarTrocaDeComando).toHaveBeenCalledOnce();
     expect(sincronizarNegocioAbertoDoContato).toHaveBeenCalledOnce();
@@ -148,7 +167,8 @@ describe("#3479 — abrir a conversa assume a conversa SEM dono", () => {
     mResolve.mockResolvedValue(authzDeSessao(cliente));
 
     await POST(requisicao());
-    expect(rpcs).toHaveLength(2);
+    expect(portao.chamadas[0]?.actorId).toBe(USER);
+    expect(rpcs).toHaveLength(1);
     expect(mAbrir).toHaveBeenCalledOnce();
   });
 
@@ -158,6 +178,7 @@ describe("#3479 — abrir a conversa assume a conversa SEM dono", () => {
 
     const res = await POST(requisicao());
     expect(res.status).toBe(200);
+    expect(portao.chamadas).toHaveLength(0);
     expect(rpcs).toHaveLength(0);
   });
 
@@ -167,7 +188,8 @@ describe("#3479 — abrir a conversa assume a conversa SEM dono", () => {
 
     const res = await POST(requisicao());
     expect(res.status).toBe(200);
-    expect(rpcs).toHaveLength(1);
+    expect(portao.chamadas).toHaveLength(1);
+    expect(rpcs).toHaveLength(0);
     await expect(res.json()).resolves.toMatchObject({
       data: { conversation_id: CONV, contact_id: CONTATO },
     });

@@ -500,7 +500,7 @@ test.describe("Quadro do funil — agir em vários cards de uma vez", () => {
         pe: el.getBoundingClientRect().bottom,
         janela: window.innerHeight,
         rolaDeLado: el.scrollWidth > el.clientWidth,
-        rolaParaBaixo: el.scrollHeight > el.clientHeight,
+        rolaParaBaixo: [...el.querySelectorAll("[data-rolagem-da-etapa]")].some(lista => lista.scrollHeight > lista.clientHeight),
         paginaRola: document.documentElement.scrollHeight - document.documentElement.clientHeight,
       }));
       expect(medida.rolaDeLado, "fixture: em 820px as duas etapas não cabem lado a lado").toBe(true);
@@ -510,7 +510,7 @@ test.describe("Quadro do funil — agir em vários cards de uma vez", () => {
       );
       expect(medida.paginaRola, "quem rola é o quadro, não a página").toBeLessThanOrEqual(2);
 
-      await quadro.evaluate((el) => {
+      await coluna(page, etapaOrigemId).locator("[data-rolagem-da-etapa]").evaluate((el) => {
         el.scrollTop = el.scrollHeight;
       });
       const cabecalho = coluna(page, etapaOrigemId).locator("[data-cabecalho-da-etapa]");

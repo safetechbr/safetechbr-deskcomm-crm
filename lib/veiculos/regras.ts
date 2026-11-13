@@ -1,3 +1,4 @@
+import { regularizacaoSchema } from "@/lib/pdv/modelo-contrato";
 import { z } from "zod";
 
 /**
@@ -36,7 +37,10 @@ export function arquivoPertenceAoVeiculo(
   tipo: "foto" | "video" = "foto",
 ): boolean {
   const prefixo = `${orgId}/${veiculoId}/`;
-  return caminho.startsWith(prefixo) && (tipo === "foto" ? FOTO : VIDEO).test(caminho.slice(prefixo.length));
+  return (
+    caminho.startsWith(prefixo) &&
+    (tipo === "foto" ? FOTO : VIDEO).test(caminho.slice(prefixo.length))
+  );
 }
 
 export function mimeDoArquivoDeVeiculo(caminho: string): "image/png" | "image/jpeg" | "video/mp4" {
@@ -54,6 +58,11 @@ const textoOpcional = (max: number) =>
 const anoOpcional = z.number().int().min(1950).max(2100).nullish();
 
 export const veiculoCreateSchema = z.object({
+  placa: textoOpcional(10),
+  chassi: textoOpcional(30),
+  renavam: textoOpcional(20),
+  condicao: z.enum(["novo", "usado"]).optional().nullable(),
+  regularizacao: regularizacaoSchema.optional(),
   /** Opcional na criação: sem ele, o servidor gera (ver `proximoCodigoDeVeiculo`). */
   codigo: z.string().trim().min(1).max(40).optional(),
   marca: textoOpcional(60),
@@ -77,9 +86,14 @@ export const veiculoCreateSchema = z.object({
 export const veiculoPatchSchema = veiculoCreateSchema.partial();
 
 export const COLUNAS_DO_VEICULO =
-  "id, codigo, marca, modelo, categoria, versao, ano_fabricacao, ano_modelo, km, motor, cambio, combustivel, cor, placa_final, preco_cents, moeda, opcionais, descricao, status, fotos, video, entrada_em, vendido_em, created_at";
+  "id, placa, chassi, renavam, condicao, regularizacao, codigo, marca, modelo, categoria, versao, ano_fabricacao, ano_modelo, km, motor, cambio, combustivel, cor, placa_final, preco_cents, moeda, opcionais, descricao, status, fotos, video, entrada_em, vendido_em, created_at";
 
 export interface Veiculo {
+  placa?: string | null;
+  chassi?: string | null;
+  renavam?: string | null;
+  condicao?: "novo" | "usado" | null;
+  regularizacao?: z.infer<typeof regularizacaoSchema>;
   reserva?: import("./reservas").ReservaDeVeiculo | null;
   id: string;
   codigo: string;
@@ -109,7 +123,9 @@ export interface Veiculo {
 }
 
 /** Marca? Modelo Versão Ano — o nome que identifica o carro exatamente. */
-export function tituloDoVeiculo(v: Pick<Veiculo, "marca" | "modelo" | "versao" | "ano_fabricacao" | "ano_modelo">): string {
+export function tituloDoVeiculo(
+  v: Pick<Veiculo, "marca" | "modelo" | "versao" | "ano_fabricacao" | "ano_modelo">,
+): string {
   const ano =
     v.ano_fabricacao && v.ano_modelo && v.ano_fabricacao !== v.ano_modelo
       ? `${v.ano_fabricacao}/${v.ano_modelo}`

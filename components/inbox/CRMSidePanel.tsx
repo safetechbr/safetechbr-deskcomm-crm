@@ -1186,7 +1186,7 @@ export function CRMSidePanel({
           no lugar certo (logo abaixo do contato), e a ordem fica com ele. */}
       {contactId && podeVerCarteira && (
         <section data-testid="inbox-bloco-carteira">
-          <CartaoDaCarteira contactId={contactId} papelDoUsuario={activeOrg?.role ?? null} />
+          <CartaoDaCarteira contactId={contactId} papelDoUsuario={activeOrg?.role ?? null} conversationId={conversation.id} assignedTo={conversation.assigned_to_user_id} assignedName={conversation.assigned_to_user_name} />
         </section>
       )}
 

@@ -48,6 +48,12 @@
  * `lead_notes` (#1957, Art. 18 II): o que a cascata apaga a pedido dele é o que
  * se entrega a pedido dele. A diferença nos dois arquivos é só a linha
  * `"lead_attachments": []`; o resto segue byte a byte.
+ *
+ * Sétima exceção, regravando `data-*.json`: a seção `contact_documents`, os
+ * documentos cadastrais do titular (CNH, RG, comprovantes). Mesma regra de
+ * `lead_attachments`: o que a cascata apaga a pedido dele se entrega a pedido
+ * dele. A diferença é só a linha `"contact_documents": []`, no arquivo cheio (o vazio
+ * não a tem: a seção só entra quando há consulta feita).
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

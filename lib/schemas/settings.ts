@@ -1,3 +1,4 @@
+import { configuracaoContratoSchema } from "@/lib/pdv/modelo-contrato";
 /**
  * Zod schemas for /app/settings/* server actions and routes (EPIC-10).
  *
@@ -85,6 +86,7 @@ export type ProfileInput = z.infer<typeof profileSchema>;
 const MOEDAS = MOEDAS_SERVIDAS;
 
 export const tenantSchema = z.object({
+  dados_contrato: configuracaoContratoSchema.optional(),
   display_name: z.string().min(1).max(120),
   legal_name: z.string().min(1).max(200),
   cnpj: z
@@ -325,17 +327,15 @@ export const MENSAGEM_DO_TETO_DE_CAMPOS_DO_NEGOCIO = `O funil aceita no máximo 
  * o que mudou é O QUE a cota conta. Quem escreve a mensagem é esta régua, para
  * a tela do funil e a captação dizerem a mesma frase.
  */
-export const camposDoFunilPatchSchema = z
-  .array(customFieldSchema)
-  .superRefine((campos, ctx) => {
-    const doNegocio = campos.filter((campo) => campo.escopo !== "contato").length;
-    if (doNegocio > MAX_CAMPOS_DO_NEGOCIO) {
-      ctx.addIssue({
-        code: "custom",
-        message: `${MENSAGEM_DO_TETO_DE_CAMPOS_DO_NEGOCIO} Recebidos ${doNegocio}.`,
-      });
-    }
-  });
+export const camposDoFunilPatchSchema = z.array(customFieldSchema).superRefine((campos, ctx) => {
+  const doNegocio = campos.filter((campo) => campo.escopo !== "contato").length;
+  if (doNegocio > MAX_CAMPOS_DO_NEGOCIO) {
+    ctx.addIssue({
+      code: "custom",
+      message: `${MENSAGEM_DO_TETO_DE_CAMPOS_DO_NEGOCIO} Recebidos ${doNegocio}.`,
+    });
+  }
+});
 
 /** Os campos que a retomada de negócio encerrado pode copiar (issue #1538). */
 export const CAMPOS_COPIAVEIS_NA_RETOMADA = [
@@ -558,24 +558,32 @@ export const marcaDaOrganizacaoSchema = z.object({
 export type MarcaDaOrganizacaoInput = z.infer<typeof marcaDaOrganizacaoSchema>;
 
 /** Prazos por organização. Leitura legada degrada; escrita usa schema estrito. */
-export const agendaSettingsWriteSchema = z.strictObject({
-  confirmation_delay_minutes: z.number().int().min(1).max(10080),
-  unknown_protection_minutes: z.number().int().min(1).max(10080),
-  /**
-   * Quanto tempo um pedido não confirmado segura o horário.
-   *
-   * ⚠️ `.default()` e não obrigatório: este schema é `strictObject`, e torná-lo
-   * exigido faria TODO PATCH já escrito (que manda só os dois campos de cima)
-   * passar a falhar — o tipo de mudança que a doutrina de packaging proíbe,
-   * porque quebra quem já instalou sem nenhum aviso.
-   *
-   * 24h é o default porque quem confere a fila uma vez por dia não pode perder
-   * pedido. O mínimo é 15 minutos: abaixo disso a expiração corre com quem está
-   * decidindo naquele instante.
-   */
-  pending_expires_after_minutes: z.number().int().min(15).max(10080).default(1440),
-}).refine(v => v.unknown_protection_minutes >= v.confirmation_delay_minutes, {message:"O prazo de proteção deve ser maior que o prazo de confirmação."});
-export const agendaSettingsSchema = agendaSettingsWriteSchema.catch({confirmation_delay_minutes:10,unknown_protection_minutes:1440,pending_expires_after_minutes:1440});
+export const agendaSettingsWriteSchema = z
+  .strictObject({
+    confirmation_delay_minutes: z.number().int().min(1).max(10080),
+    unknown_protection_minutes: z.number().int().min(1).max(10080),
+    /**
+     * Quanto tempo um pedido não confirmado segura o horário.
+     *
+     * ⚠️ `.default()` e não obrigatório: este schema é `strictObject`, e torná-lo
+     * exigido faria TODO PATCH já escrito (que manda só os dois campos de cima)
+     * passar a falhar — o tipo de mudança que a doutrina de packaging proíbe,
+     * porque quebra quem já instalou sem nenhum aviso.
+     *
+     * 24h é o default porque quem confere a fila uma vez por dia não pode perder
+     * pedido. O mínimo é 15 minutos: abaixo disso a expiração corre com quem está
+     * decidindo naquele instante.
+     */
+    pending_expires_after_minutes: z.number().int().min(15).max(10080).default(1440),
+  })
+  .refine((v) => v.unknown_protection_minutes >= v.confirmation_delay_minutes, {
+    message: "O prazo de proteção deve ser maior que o prazo de confirmação.",
+  });
+export const agendaSettingsSchema = agendaSettingsWriteSchema.catch({
+  confirmation_delay_minutes: 10,
+  unknown_protection_minutes: 1440,
+  pending_expires_after_minutes: 1440,
+});
 
 /**
  * `organizations.settings.crm` — regras de CRM que cada organização liga para si.
@@ -642,7 +650,9 @@ export const conteudoNaTelaBloqueadaWriteSchema = z.enum(CONTEUDOS_NA_TELA_BLOQU
 
 export const notificacoesSettingsSchema = z
   .object({
-    conteudo_na_tela_bloqueada: conteudoNaTelaBloqueadaWriteSchema.catch(CONTEUDO_NA_TELA_BLOQUEADA_PADRAO),
+    conteudo_na_tela_bloqueada: conteudoNaTelaBloqueadaWriteSchema.catch(
+      CONTEUDO_NA_TELA_BLOQUEADA_PADRAO,
+    ),
   })
   .catch({ conteudo_na_tela_bloqueada: CONTEUDO_NA_TELA_BLOQUEADA_PADRAO });
 

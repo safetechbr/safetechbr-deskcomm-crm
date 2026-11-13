@@ -42,6 +42,7 @@ const cenario = vi.hoisted(() => ({
   papel: "manager" as string,
   get: vi.fn(),
   patch: vi.fn(),
+  post: vi.fn(),
 }));
 
 vi.mock("@/hooks/auth/AuthProvider", () => ({
@@ -55,7 +56,7 @@ vi.mock("@/lib/api/client", () => ({
   apiClient: {
     get: (...args: unknown[]) => cenario.get(...args),
     patch: (...args: unknown[]) => cenario.patch(...args),
-    post: vi.fn(),
+    post: (...args: unknown[]) => cenario.post(...args),
   },
 }));
 vi.mock("@/components/feedback/ApiErrorToast", () => ({ showApiError: vi.fn() }));
@@ -133,12 +134,15 @@ cenario.get.mockImplementation(async (url?: string) => {
   if (bruto.includes("crm-summary")) return resumo;
   return { data: [] };
 });
-cenario.patch.mockImplementation(async () => ({ data: { contact_id: CONTATO, carteira_user_id: MARIA } }));
+cenario.patch.mockImplementation(async () => ({
+  data: { contact_id: CONTATO, carteira_user_id: MARIA },
+}));
 
 beforeEach(() => {
   cenario.papel = "manager";
   cenario.get.mockClear();
   cenario.patch.mockClear();
+  cenario.post.mockReset().mockResolvedValue({ data: {} });
   donoNaCarteira = MARIA;
   falhaDeLeitura = false;
 });
@@ -151,9 +155,6 @@ function montar() {
     </QueryClientProvider>,
   );
 }
-
-/** O bloco no painel — o `<section>` que o #3026 entrega. */
-const bloco = () => screen.getByTestId("inbox-bloco-carteira");
 
 const urlsPedidas = () => cenario.get.mock.calls.map((c) => String(c[0]));
 
@@ -187,41 +188,41 @@ describe("#3026 — o bloco Carteira no painel do contato do Inbox", () => {
 
     // A seção pode existir vazia — o que não pode existir é a AFIRMAÇÃO de
     // ausência de dono em cima de um erro de leitura (defeito do #2591).
-    await waitFor(() => expect(screen.queryByTestId("carteira-do-contato")).toBeNull());
+    await screen.findByRole("alert");
     expect(screen.queryByTestId("carteira-vazio")).toBeNull();
     expect(screen.queryByTestId("carteira-dono")).toBeNull();
   });
 });
 
 describe("#3026 — definir a carteira pela MESMA porta da ficha", () => {
-  it("com permissão, o botão grava na rota da carteira (mesma porta, nada de rota nova)", async () => {
+  it("outro vendedor precisa informar a senha para assumir", async () => {
     const u = userEvent.setup();
     montar();
-
     const secao = await screen.findByTestId("inbox-bloco-carteira");
-    const seletor = (await within(secao).findByTestId("carteira-seletor")) as HTMLSelectElement;
-    // O seletor acompanha o dono atual depois do efeito de montagem.
-    await waitFor(() => expect(seletor.value).toBe(MARIA));
-
-    await u.selectOptions(seletor, "__sem_dono__");
-    const salvar = within(secao).getByTestId("carteira-salvar") as HTMLButtonElement;
-    await waitFor(() => expect(salvar.disabled).toBe(false));
-    await u.click(salvar);
-
-    await waitFor(() => expect(cenario.patch).toHaveBeenCalledTimes(1));
-    // A PORTA: exatamente a mesma URL que `useDefinirCarteira` usa na ficha.
-    expect(cenario.patch.mock.calls[0]![0]).toBe(`/api/v1/contacts/${CONTATO}/carteira`);
-    expect(cenario.patch.mock.calls[0]![1]).toEqual({ dono_user_id: null, origem: "manual" });
+    await within(secao).findByTestId("carteira-dono");
+    await u.click(within(secao).getByRole("button", { name: "Assumir atendimento" }));
+    expect(cenario.post).not.toHaveBeenCalled();
+    const dialogo = screen.getByRole("dialog");
+    await u.type(within(dialogo).getByLabelText("Senha administrativa"), "SenhaTeste123");
+    await u.click(within(dialogo).getByRole("button", { name: "Assumir" }));
+    await waitFor(() =>
+      expect(cenario.post).toHaveBeenCalledWith(`/api/v1/contacts/${CONTATO}/atendimento`, {
+        acao: "assumir",
+        senha: "SenhaTeste123",
+        conversation_id: CONVERSA,
+        expected_assignee: null,
+      }),
+    );
   });
 
-  it("CONTROLE: 'agent' vê o bloco (a carteira é informação de quem atende), sem o botão", async () => {
+  it("CONTROLE: 'agent' vê o responsável e o botão para assumir", async () => {
     cenario.papel = "agent";
     montar();
 
     const secao = await screen.findByTestId("inbox-bloco-carteira");
     await waitFor(() => expect(within(secao).getByTestId("carteira-dono")).toBeInTheDocument());
     expect(within(secao).queryByTestId("carteira-seletor")).toBeNull();
-    expect(within(secao).queryByTestId("carteira-salvar")).toBeNull();
+    expect(within(secao).getByRole("button", { name: "Assumir atendimento" })).toBeInTheDocument();
   });
 
   it("CONTROLE: 'viewer' não vê o bloco — o GET da carteira cobra agent+", async () => {

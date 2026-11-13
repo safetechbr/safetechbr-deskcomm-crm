@@ -136,6 +136,7 @@ export const sendMessageSchema = z
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
 export const claimConversationSchema = z.object({
+  senha: z.string().max(72).optional(),
   expected_assignee: z.string().uuid().nullable().optional(),
 });
 

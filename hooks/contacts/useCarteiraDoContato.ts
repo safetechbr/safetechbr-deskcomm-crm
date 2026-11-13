@@ -25,7 +25,8 @@ export function useCarteiraDoContato(contactId: string, enabled = true) {
   return useQuery({
     queryKey: ["carteira-do-contato", contactId],
     enabled: enabled && !!contactId,
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 5_000,
     queryFn: async () =>
       (await apiClient.get<{ data: CarteiraDoContatoNaTela }>(
         `/api/v1/contacts/${contactId}/carteira`,

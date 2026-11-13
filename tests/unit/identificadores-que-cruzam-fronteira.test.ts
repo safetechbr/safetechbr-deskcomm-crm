@@ -193,6 +193,9 @@ const SITES: { arquivo: string; fronteira: string; papel?: "gerador" | "validado
   { arquivo: "app/api/v1/conversations/[id]/notes/media/route.ts", fronteira: "storage.chave-de-objeto" },
   // O anexo de lead (#2829): anexo em campo customizado do lead, bucket `internal-media`.
   { arquivo: "app/api/v1/leads/[id]/attachments/route.ts", fronteira: "storage.chave-de-objeto" },
+  // O documento do cliente (OCR do cadastro): `<org>/contacts/<contato>/<uuid>`, sem
+  // nome de arquivo do usuário na chave — três uuids gerados/lidos do banco.
+  { arquivo: "app/api/v1/contacts/[id]/documents/route.ts", fronteira: "storage.chave-de-objeto" },
   { arquivo: "app/api/v1/ai/knowledge/sources/upload/route.ts", fronteira: "storage.chave-de-objeto" },
   { arquivo: "app/api/v1/ai/knowledge/sources/route.ts", fronteira: "storage.chave-de-objeto" },
   // O PDF da proposta comercial (#1832): `<org>/<proposta>.pdf`, dois uuids.

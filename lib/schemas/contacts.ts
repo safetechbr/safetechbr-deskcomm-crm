@@ -8,6 +8,7 @@
  *  - lgpdAnonymizeSchema    → POST /api/v1/lgpd/anonymize (irreversible)
  */
 import { z } from "zod";
+import { dadosCadastraisDoClienteSchema } from "@/lib/contacts/dados-cadastrais-do-cliente";
 
 import { normalizarTag, normalizarTags } from "@/lib/contacts/tag-normalizada";
 import {
@@ -45,6 +46,11 @@ const CUSTOM_FIELDS_MAX_BYTES = 32_768;
 
 const customFieldsSchema = z
   .record(z.string().min(1).max(80), z.unknown())
+  .superRefine((valor, ctx) => {
+    if (valor.cadastro_cliente === undefined) return;
+    const r = dadosCadastraisDoClienteSchema.safeParse(valor.cadastro_cliente);
+    if (!r.success) for (const erro of r.error.issues) ctx.addIssue({ code: "custom", path: ["cadastro_cliente", ...erro.path], message: erro.message });
+  })
   .refine((value) => JSON.stringify(value).length <= CUSTOM_FIELDS_MAX_BYTES, {
     message: "Campos personalizados excedem o limite de 32 KB",
   });

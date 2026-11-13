@@ -8,6 +8,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { alterarAtendimento } from "@/lib/atendimento/servidor";
 import { audit } from "@/lib/audit";
 import type { Actor } from "@/lib/api/handlers/types";
 import { registrarTrocaDeComando } from "@/lib/inbox/atividade-de-comando";
@@ -22,28 +23,19 @@ export async function assumirConversaComEfeitos(
     actor: Extract<Actor, { type: "user" }>;
     requestId: string;
     expectedAssignee?: string | null;
+    senha?: string;
   },
 ): Promise<{ conversation: Conversation | null; error: { message: string } | null }> {
-  // Optimistic lock (spec 04 §9.2): expected null/omitido = só assume se livre;
-  // expected uuid = takeover consciente. UPDATE + evento na mesma transação.
-  const { data, error } = await supabase.rpc("fn_conversation_assign", {
-    p_organization_id: p.organizationId,
-    p_conversation_id: p.conversationId,
-    p_to_user_id: p.actor.id,
-    p_reason: "claim",
-    ...(p.expectedAssignee ? { p_expected_assignee: p.expectedAssignee } : {}),
-    p_enforce_expected: true,
+  const resultado = await alterarAtendimento({
+    orgId: p.organizationId,
+    actorId: p.actor.id,
+    conversationId: p.conversationId,
+    acao: "assumir",
+    expected: p.expectedAssignee,
+    senha: p.senha,
   });
-
-  if (error) {
-    return { conversation: null, error };
-  }
-  const row = data?.[0];
-  if (!row) {
-    return { conversation: null, error: null };
-  }
-
-  const conv = row as unknown as Conversation;
+  const conv = resultado.conversation;
+  if (!conv) return { conversation: null, error: null };
 
   // #3177: assumir a conversa dá dono ao negócio ABERTO do contato só quando
   // ele NÃO tem responsável (decisão do mantenedor no #3216): esta regra também
@@ -69,6 +61,7 @@ export async function assumirConversaComEfeitos(
     requestId: p.requestId,
     metadata: {
       negocio_aberto: sincronia.motivo,
+      autorizado_por_senha: resultado.autorizado_por_senha,
       ...(sincronia.leadId ? { negocio_id: sincronia.leadId } : {}),
     },
   });

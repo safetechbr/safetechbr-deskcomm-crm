@@ -99,6 +99,8 @@ describe("caminho Postgres", () => {
 
 /** Supabase de mentira para o caminho HTTP: registra filtros e o que foi inserido. */
 function http(roteiroValido: boolean) {
+  // Sem isto, um SUPABASE_DB_URL do ambiente de quem roda desvia a rota para o caminho Postgres.
+  vi.stubEnv("SUPABASE_DB_URL", "");
   const inseridos: unknown[] = [];
   const filtrosDoRoteiro: Array<[string, unknown]> = [];
   const from = vi.fn((tabela: string) => {

@@ -7,6 +7,7 @@ import type { Conversation } from "@/lib/types/messaging";
 interface ClaimArgs {
   conversation_id: string;
   expected_assignee?: string | null;
+  senha?: string;
 }
 
 export function useClaimConversation() {
@@ -16,14 +17,19 @@ export function useClaimConversation() {
     mutationFn: async (args: ClaimArgs) =>
       apiClient.post<{ data: Conversation }>(
         `/api/v1/conversations/${args.conversation_id}/claim`,
-        { expected_assignee: args.expected_assignee ?? null },
+        {
+          expected_assignee: args.expected_assignee ?? null,
+          ...(args.senha ? { senha: args.senha } : {}),
+        },
       ),
     onError: (err, args) => {
+      qc.invalidateQueries({ queryKey: ["carteira-do-contato"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["conversation", args.conversation_id] });
       showApiError(err);
     },
     onSuccess: (_data, args) => {
+      qc.invalidateQueries({ queryKey: ["carteira-do-contato"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["conversation", args.conversation_id] });
     },

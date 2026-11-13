@@ -30,6 +30,7 @@ export async function gravarDadosCadastrais(
   const { error } = await admin
     .from("organizations")
     .update({
+      ...(dados.dados_contrato ? { dados_contrato: dados.dados_contrato } : {}),
       display_name: dados.display_name,
       legal_name: dados.legal_name,
       cnpj: dados.cnpj ?? null,

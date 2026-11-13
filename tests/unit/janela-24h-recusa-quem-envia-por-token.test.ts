@@ -178,6 +178,9 @@ describe("envio por token respeita a janela de 24h", () => {
   });
 
   it("canal por QR, sem janela: nada muda (o texto segue sendo aceito)", async () => {
+    // "Sem WAHA configurado": o .env de quem roda não pode apontar para um WAHA real.
+    vi.stubEnv("WAHA_API_BASE_URL", "");
+    vi.stubEnv("WAHA_API_KEY", "");
     const { supabase, capturas } = criarDubleDoHandler({
       conversation: conversa({ provider: "waha", lastInboundAt: null }),
     });

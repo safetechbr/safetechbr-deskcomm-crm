@@ -77,7 +77,6 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
           <p className="text-xs text-destructive">{t(errors.email.message ?? "")}</p>
         )}
       </div>
-      <p className="text-xs text-muted-foreground">{t("Se você recebeu um login da empresa, use esse nome e a senha fornecida. Para recuperar a senha desse acesso, fale com o administrador.")}</p>
       <div className="space-y-1.5">
         <Label htmlFor="password">{t("Senha")}</Label>
         <div className="relative">

@@ -36,6 +36,7 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   /** Aba em que o diálogo abre. A faixa de número fora do ar abre em "numero". */
   abaInicial?: AbaDeTransferencia;
+  somenteNumero?: boolean;
   /**
    * O que a aba Número precisa. Sem `numero`, a aba não aparece — é o caso de
    * quem chama o diálogo fora do Inbox. Com `numero`, ela aparece sempre que há
@@ -71,6 +72,7 @@ export function ReassignDialog({
   open,
   onOpenChange,
   abaInicial = "atendente",
+  somenteNumero = false,
   numero,
 }: Props) {
   const t = useT();
@@ -87,7 +89,7 @@ export function ReassignDialog({
   const options = (members.data ?? []).filter((m) => m.user_id !== user.id);
   const numeros = numero ? outrosNumerosDoContato(sessoes, numero.channelSessionId) : [];
   const temAbaNumero = numero != null && numeros.length > 0;
-  const abaAtual = temAbaNumero ? aba : "atendente";
+  const abaAtual = somenteNumero ? "numero" : temAbaNumero ? aba : "atendente";
 
   function close(v: boolean) {
     if (!v) {
@@ -116,15 +118,15 @@ export function ReassignDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t("Transferir conversa")}</DialogTitle>
+          <DialogTitle>{somenteNumero ? t("Continuar por outro número") : t("Transferir conversa")}</DialogTitle>
           <DialogDescription>
-            {t(
+            {somenteNumero ? t("Continue o atendimento por outro número da empresa.") : t(
               "A transferência é imediata: o atendente escolhido vira o responsável agora e a mudança fica registrada no histórico.",
             )}
           </DialogDescription>
         </DialogHeader>
 
-        {temAbaNumero && (
+        {temAbaNumero && !somenteNumero && (
           <Tabs value={abaAtual} onValueChange={(v) => setAba(v as AbaDeTransferencia)}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="atendente">{t("Atendente")}</TabsTrigger>

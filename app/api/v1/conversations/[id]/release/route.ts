@@ -13,6 +13,8 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
+import { alterarAtendimento } from "@/lib/atendimento/servidor";
+import { ApiError } from "@/lib/api/types";
 import { audit } from "@/lib/audit";
 import { registrarTrocaDeComando } from "@/lib/inbox/atividade-de-comando";
 import { ok, fail } from "@/lib/api/wrappers";
@@ -41,25 +43,23 @@ export async function POST(_req: NextRequest, ctx: RouteCtx): Promise<Response> 
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
   const user = authz.user;
 
-  const { data, error } = await supabase.rpc("fn_conversation_assign", {
-    p_organization_id: authz.org.orgId,
-    p_conversation_id: id,
-    // Release: volta à fila. A função aceita null (types gerados não expõem a nulabilidade do arg).
-    p_to_user_id: null as unknown as string,
-    p_reason: "release",
-    p_expected_assignee: user.id,
-    p_enforce_expected: true,
-  });
-
-  if (error) {
-    return fail("internal_error", error.message, 500, { requestId });
+  let conv: Conversation;
+  try {
+    const result = await alterarAtendimento({
+      orgId: authz.org.orgId,
+      actorId: user.id,
+      conversationId: id,
+      acao: "liberar",
+    });
+    if (!result.conversation)
+      return fail("state_conflict", t("Você não está atribuído a essa conversa."), 409, {
+        requestId,
+      });
+    conv = result.conversation;
+  } catch (e) {
+    if (e instanceof ApiError) return fail(e.code, e.message, e.status, { requestId });
+    throw e;
   }
-  const row = data?.[0];
-  if (!row) {
-    return fail("state_conflict", t("Você não está atribuído a essa conversa."), 409, { requestId });
-  }
-
-  const conv = row as unknown as Conversation;
 
   await audit({
     action: "conversation.released",

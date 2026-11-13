@@ -1295,6 +1295,9 @@ export const AUDIT_ACTIONS = [
   // dedicada `PATCH /contacts/[id]/carteira` (#2591) — a escrita é do servidor,
   // então o audit é a única trilha de quem mudou o dono.
   "contact.carteira_changed",
+  "contact.atendimento_assumir",
+  "contact.atendimento_liberar",
+  "settings.atendimento_senha_changed",
   // A chave POR GRUPO "Permitir que a IA responda neste grupo" (#2729,
   // migration 0653). Duas ações, e não `channel.group_enabled` com um campo no
   // metadata: ligar o grupo (entrar na inbox, mexer no filtro do WhatsApp) e

@@ -1,11 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { alterarAtendimento } from "@/lib/atendimento/servidor";
+import { ApiError } from "@/lib/api/types";
 import { audit } from "@/lib/audit";
 import { registrarTrocaDeComando } from "@/lib/inbox/atividade-de-comando";
 import { sincronizarNegocioAbertoDoContato } from "@/lib/inbox/negocio-aberto-do-contato";
 import { assumirConversaComEfeitos } from "./assumir-conversa";
 
+vi.mock("@/lib/atendimento/servidor", () => ({ alterarAtendimento: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ audit: vi.fn(async () => undefined) }));
 vi.mock("@/lib/inbox/atividade-de-comando", () => ({
   registrarTrocaDeComando: vi.fn(async () => undefined),
@@ -39,7 +42,10 @@ function banco(resultados: Array<{ data: unknown; error: { message: string } | n
   return { cliente: { rpc } as unknown as SupabaseClient, rpc };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(alterarAtendimento).mockReset();
+});
 
 describe("assumir compartilha os efeitos canônicos", () => {
   it("abertura vencedora e claim posterior sem linhas deixam os efeitos uma única vez", async () => {
@@ -47,6 +53,19 @@ describe("assumir compartilha os efeitos canônicos", () => {
       { data: [conversa], error: null },
       { data: [], error: null },
     ]);
+    vi.mocked(alterarAtendimento)
+      .mockResolvedValueOnce({
+        conversation: conversa as never,
+        dono_user_id: entrada.actor.id,
+        antes: null,
+        autorizado_por_senha: false,
+      })
+      .mockResolvedValueOnce({
+        conversation: null,
+        dono_user_id: entrada.actor.id,
+        antes: null,
+        autorizado_por_senha: false,
+      });
     expect((await assumirConversaComEfeitos(cliente, entrada)).conversation).toEqual(conversa);
     expect((await assumirConversaComEfeitos(cliente, entrada)).conversation).toBeNull();
     expect(sincronizarNegocioAbertoDoContato).toHaveBeenCalledExactlyOnceWith(cliente, {
@@ -61,7 +80,11 @@ describe("assumir compartilha os efeitos canônicos", () => {
         actorUserId: "atendente-a",
         organizationId: "org-a",
         resourceId: "conversa-a",
-        metadata: { negocio_aberto: "sincronizado", negocio_id: "negocio" },
+        metadata: {
+          negocio_aberto: "sincronizado",
+          negocio_id: "negocio",
+          autorizado_por_senha: false,
+        },
       }),
     );
     expect(registrarTrocaDeComando).toHaveBeenCalledExactlyOnceWith(
@@ -80,33 +103,37 @@ describe("assumir compartilha os efeitos canônicos", () => {
     );
   });
 
-  it.each([
-    { data: [], error: null },
-    { data: null, error: { message: "recusado" } },
-  ])("recusa/zero linhas não emite efeitos ($error)", async (resultado) => {
-    const { cliente, rpc } = banco([resultado]);
-    expect(await assumirConversaComEfeitos(cliente, entrada)).toEqual({
-      conversation: null,
-      error: resultado.error,
-    });
+  it("recusa de senha não emite efeitos", async () => {
+    const { cliente, rpc } = banco([]);
+    vi.mocked(alterarAtendimento).mockRejectedValue(
+      new ApiError(403, "atendimento_senha_incorreta", undefined, "", "Senha incorreta"),
+    );
+    await expect(assumirConversaComEfeitos(cliente, entrada)).rejects.toThrow("Senha incorreta");
     expect(audit).not.toHaveBeenCalled();
     expect(registrarTrocaDeComando).not.toHaveBeenCalled();
     expect(sincronizarNegocioAbertoDoContato).not.toHaveBeenCalled();
-    expect(rpc).toHaveBeenCalledOnce();
+    expect(rpc).not.toHaveBeenCalled();
   });
-
-  it("takeover consciente conserva expected e CAS da rota canônica", async () => {
-    const { cliente, rpc } = banco([{ data: [conversa], error: null }]);
-    await assumirConversaComEfeitos(cliente, { ...entrada, expectedAssignee: "dono-anterior" });
-    expect(rpc).toHaveBeenCalledWith(
-      "fn_conversation_assign",
-      expect.objectContaining({
-        p_organization_id: "org-a",
-        p_to_user_id: "atendente-a",
-        p_expected_assignee: "dono-anterior",
-        p_reason: "claim",
-        p_enforce_expected: true,
-      }),
-    );
+  it("encaminha senha e responsável esperado ao portão transacional", async () => {
+    const { cliente } = banco([]);
+    vi.mocked(alterarAtendimento).mockResolvedValue({
+      conversation: conversa as never,
+      dono_user_id: entrada.actor.id,
+      antes: "dono-anterior",
+      autorizado_por_senha: true,
+    });
+    await assumirConversaComEfeitos(cliente, {
+      ...entrada,
+      expectedAssignee: "dono-anterior",
+      senha: "SenhaTeste123",
+    });
+    expect(alterarAtendimento).toHaveBeenCalledWith({
+      orgId: entrada.organizationId,
+      actorId: entrada.actor.id,
+      conversationId: entrada.conversationId,
+      acao: "assumir",
+      expected: "dono-anterior",
+      senha: "SenhaTeste123",
+    });
   });
 });

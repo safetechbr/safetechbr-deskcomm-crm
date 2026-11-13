@@ -14,6 +14,7 @@
  * que sair igual ao de hoje, mesmo que o cadastro mude. O banco guarda os jsonb
  * (migration 9031); este arquivo é a única definição do formato deles.
  */
+import { contratoSchema, regularizacaoSchema, type DadosDoContrato } from "./modelo-contrato";
 import { z } from "zod";
 
 export const TIPOS_DE_NEGOCIACAO = ["venda", "compra"] as const;
@@ -135,6 +136,8 @@ export function formatarDocumento(valor: string | null | undefined): string {
 }
 
 export const clienteSchema = z.object({
+  documentos: z.array(z.string().uuid()).max(100).optional(),
+  nacionalidade: textoOpcional(80),
   nome: texto(200).default(""),
   documento: textoOpcional(20),
   rg: textoOpcional(30),
@@ -153,6 +156,8 @@ export const clienteSchema = z.object({
 export type ClienteDaNegociacao = z.infer<typeof clienteSchema>;
 
 const camposDoVeiculo = {
+  condicao: z.enum(["novo", "usado"]).optional().nullable(),
+  regularizacao: regularizacaoSchema.optional(),
   codigo: textoOpcional(40),
   marca: textoOpcional(80),
   modelo: texto(120).default(""),
@@ -197,10 +202,16 @@ export const pagamentoSchema = z.object({
   banco: textoOpcional(80),
   primeiro_vencimento: data,
   observacao: textoOpcional(200),
+  situacao: textoOpcional(80),
+  data_emissao: data,
+  data_pagamento: data,
+  intervalo_dias: z.number().int().min(1).max(365).optional(),
+  chave_pix: textoOpcional(200),
 });
 export type PagamentoDaNegociacao = z.infer<typeof pagamentoSchema>;
 
 export const negociacaoSchema = z.object({
+  contrato: contratoSchema.optional().nullable(),
   tipo: z.enum(TIPOS_DE_NEGOCIACAO),
   modalidade: z.enum(["normal", "crediario", "reserva"]).optional(),
   contact_id: z.string().uuid().optional().nullable(),
@@ -227,6 +238,7 @@ export const negociacaoPatchSchema = negociacaoSchema.omit({ tipo: true }).parti
 export const COLUNAS_DA_NEGOCIACAO = "*";
 
 export interface Negociacao {
+  contrato?: DadosDoContrato | null;
   id: string;
   numero: number;
   modalidade?: "normal" | "crediario" | "reserva";

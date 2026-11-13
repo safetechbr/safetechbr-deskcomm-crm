@@ -23,6 +23,24 @@ import type { AuthUser } from "@/lib/auth/types";
 vi.mock("@/lib/auth/require-role", () => ({ requireRole: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
+// Claim e release passam pelo portão transacional do atendimento protegido
+// (`alterarAtendimento`, que tem prova de integração própria): aqui medimos o
+// que a rota pede ao portão e como traduz a resposta.
+const portao = vi.hoisted(() => ({
+  chamadas: [] as Array<Record<string, unknown>>,
+  linhas: [] as Array<Record<string, unknown>>,
+}));
+vi.mock("@/lib/atendimento/servidor", () => ({
+  alterarAtendimento: vi.fn(async (p: Record<string, unknown>) => {
+    portao.chamadas.push(p);
+    return {
+      conversation: portao.linhas[0] ?? null,
+      dono_user_id: null,
+      antes: null,
+      autorizado_por_senha: false,
+    };
+  }),
+}));
 vi.mock("@/lib/audit", () => ({
   audit: vi.fn(async () => undefined),
   isServiceRoleConfigured: vi.fn(() => false),
@@ -115,6 +133,8 @@ function assignCall(state: StubState): RpcCall | undefined {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  portao.chamadas.length = 0;
+  portao.linhas = [];
   vi.mocked(isServiceRoleConfigured).mockReturnValue(false);
 });
 
@@ -122,6 +142,7 @@ describe("POST /claim — idempotência do claim atômico", () => {
   it("claim duplicado (0 rows do rpc) → 409 state_conflict, sem audit de claim", async () => {
     const state = stubState({ assignRows: [] });
     agentSession(state);
+    portao.linhas = [];
     const { POST } = await import("@/app/api/v1/conversations/[id]/claim/route");
     const res = await POST(postReq("claim", {}), params);
     expect(res.status).toBe(409);
@@ -132,36 +153,38 @@ describe("POST /claim — idempotência do claim atômico", () => {
     );
   });
 
-  it("claim livre → 200, rpc com reason='claim' e optimistic lock ligado", async () => {
+  it("claim livre → 200, portão com acao='assumir' e o ator da sessão", async () => {
     const state = stubState();
     agentSession(state);
+    portao.linhas = [CONV_ROW];
     const { POST } = await import("@/app/api/v1/conversations/[id]/claim/route");
     const res = await POST(postReq("claim", { expected_assignee: null }), params);
     expect(res.status).toBe(200);
-    expect(assignCall(state)?.args).toMatchObject({
-      p_organization_id: ORG_ID,
-      p_conversation_id: CONV_ID,
-      p_to_user_id: AGENT_ID,
-      p_reason: "claim",
-      p_enforce_expected: true,
+    expect(portao.chamadas[0]).toMatchObject({
+      orgId: ORG_ID,
+      conversationId: CONV_ID,
+      actorId: AGENT_ID,
+      acao: "assumir",
+      expected: null,
     });
   });
 });
 
 describe("POST /release — solta com evento na mesma transação", () => {
-  it("release → rpc com reason='release' e expected = caller", async () => {
+  it("release → portão com acao='liberar' e o ator da sessão", async () => {
     const state = stubState({
       assignRows: [{ ...CONV_ROW, status: "open", assigned_to_user_id: null }],
     });
     agentSession(state);
+    portao.linhas = [{ ...CONV_ROW, status: "open", assigned_to_user_id: null }];
     const { POST } = await import("@/app/api/v1/conversations/[id]/release/route");
     const res = await POST(postReq("release", {}), params);
     expect(res.status).toBe(200);
-    expect(assignCall(state)?.args).toMatchObject({
-      p_to_user_id: null,
-      p_reason: "release",
-      p_expected_assignee: AGENT_ID,
-      p_enforce_expected: true,
+    expect(portao.chamadas[0]).toMatchObject({
+      orgId: ORG_ID,
+      conversationId: CONV_ID,
+      actorId: AGENT_ID,
+      acao: "liberar",
     });
   });
 });

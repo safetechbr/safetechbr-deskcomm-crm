@@ -159,7 +159,7 @@ export function AcoesDaConversa({
         hidden={recolhido}
         className="flex flex-col gap-2 border-t border-border/60 p-3"
       >
-        {isOpen && (
+        {isOpen && !c?.id && (
           <Button
             size="sm"
             variant="default"
@@ -176,7 +176,7 @@ export function AcoesDaConversa({
             {t("Assumir")}
           </Button>
         )}
-        {isMineAssigned && (
+        {isMineAssigned && !c?.id && (
           <Button
             size="sm"
             variant="outline"
@@ -272,7 +272,7 @@ export function AcoesDaConversa({
             podeConvidar={podeConvidar}
             atendenteId={user.id}
           />
-          {!encerrada && (
+          {!encerrada && (!c?.id || onAbrirConversa) && (
             <Button
               size="sm"
               variant="outline"
@@ -281,7 +281,7 @@ export function AcoesDaConversa({
               )}
               onClick={() => setReassignOpen(true)}
             >
-              {t("Transferir")}
+              {c?.id ? t("Outro número") : t("Transferir")}
             </Button>
           )}
           {!encerrada && (
@@ -371,6 +371,7 @@ export function AcoesDaConversa({
 
       <ReassignDialog
         conversationId={conversation.id}
+        somenteNumero={!!c?.id}
         open={reassignOpen}
         onOpenChange={setReassignOpen}
         numero={

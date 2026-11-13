@@ -1,6 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { CartaoDocumentoCliente } from "@/components/pdv/cartao-documento-cliente";
+import { AnexarDocumentoCliente } from "@/components/pdv/anexar-documento-cliente";
+import { preencherComDocumento } from "@/lib/pdv/dados-do-documento";
+import {
+  DocumentosDoCliente,
+  salvarArquivoDoCliente,
+  type DocumentoSalvo,
+} from "@/components/pdv/documentos-do-cliente";
+import { CampoNacionalidade } from "@/components/pdv/campo-nacionalidade";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -17,7 +26,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
-import { corpoDoContato, validarCadastroDeCliente } from "@/lib/pdv/cadastro-cliente";
+import {
+  corpoDoContato,
+  validarCadastroDeCliente,
+  clienteDoContato,
+  type ContatoDoCadastro,
+} from "@/lib/pdv/cadastro-cliente";
+import { mesclarCadastroDoCliente } from "@/lib/contacts/dados-cadastrais-do-cliente";
 import { formatarDocumento, type ClienteDaNegociacao } from "@/lib/pdv/regras";
 
 const CAMPO =
@@ -36,6 +51,8 @@ function Rotulo({ texto, obrigatorio }: { texto: string; obrigatorio?: boolean }
 
 interface Props {
   open: boolean;
+  inicial?: ClienteDaNegociacao;
+  contactId?: string | null;
   onOpenChange: (aberto: boolean) => void;
   /** Elemento que abriu o modal ("+"): recebe o foco de volta ao fechar. */
   retornoDoFoco: React.RefObject<HTMLElement | null>;
@@ -47,15 +64,25 @@ function Formulario({
   onOpenChange,
   onSalvo,
   onSalvando,
-}: Pick<Props, "onOpenChange" | "onSalvo"> & { onSalvando: (v: boolean) => void }) {
+  inicial,
+  contactId,
+}: Pick<Props, "onOpenChange" | "onSalvo" | "inicial" | "contactId"> & {
+  onSalvando: (v: boolean) => void;
+}) {
   const t = useT();
   const qc = useQueryClient();
-  const [c, setC] = React.useState<ClienteDaNegociacao>(VAZIO);
+  const [c, setC] = React.useState<ClienteDaNegociacao>(() => ({ ...VAZIO, ...inicial }));
   const [aba, setAba] = React.useState("pessoais");
   const [tentou, setTentou] = React.useState(false);
   const [salvando, setSalvando] = React.useState(false);
+  const [lendoDocumento, setLendoDocumento] = React.useState(false);
   const [erro, setErro] = React.useState<string | null>(null);
   const emVoo = React.useRef(false);
+  const [contatoGravado, setContatoGravado] = React.useState(contactId);
+  const [arquivos, setArquivos] = React.useState<
+    { file: File; kind: "identidade" | "residencia" }[]
+  >([]);
+  const [documentos, setDocumentos] = React.useState<DocumentoSalvo[]>([]);
 
   const set = (campo: keyof ClienteDaNegociacao, valor: string) =>
     setC((x) => ({ ...x, [campo]: valor }));
@@ -63,7 +90,7 @@ function Formulario({
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
-    if (emVoo.current) return;
+    if (emVoo.current || lendoDocumento) return;
     setTentou(true);
     setErro(null);
     if (erros.nome || erros.documento) {
@@ -74,18 +101,59 @@ function Formulario({
     setSalvando(true);
     onSalvando(true);
     try {
-      const res = await apiClient.post<{ data: { contact: { id: string } } }>(
-        "/api/v1/contacts",
-        corpoDoContato(c),
-      );
-      const id = res?.data?.contact?.id;
+      let contato: ContatoDoCadastro;
+      const corpo = corpoDoContato(c, Boolean(contatoGravado));
+      const idExistente = contatoGravado;
+      if (idExistente) {
+        // Preserva os demais campos personalizados e complementos salvos por outras telas.
+        const atual = await apiClient.get<{ data: ContatoDoCadastro }>(
+          `/api/v1/contacts/${idExistente}`,
+        );
+        const { reuse_existing_phone: _reutilizar, ...patch } = corpo;
+        const res = await apiClient.patch<{ data: ContatoDoCadastro }>(
+          `/api/v1/contacts/${idExistente}`,
+          {
+            ...patch,
+            ...(corpo.custom_fields
+              ? {
+                  custom_fields: mesclarCadastroDoCliente(
+                    atual.data.custom_fields ?? {},
+                    corpo.custom_fields,
+                  ),
+                }
+              : {}),
+          },
+        );
+        contato = res.data;
+      } else {
+        const res = await apiClient.post<{ data: { contact: ContatoDoCadastro } }>(
+          "/api/v1/contacts",
+          corpo,
+        );
+        contato = res.data.contact;
+      }
+      const id = contato?.id;
       if (!id) throw new Error(t("Não foi possível cadastrar o cliente."));
+      setContatoGravado(id);
+      const anexos = [...documentos];
+      for (const arquivo of arquivos) {
+        const doc = await salvarArquivoDoCliente(id, arquivo.file, arquivo.kind);
+        anexos.push(doc);
+        setDocumentos([...anexos]);
+        setArquivos((atual) => atual.filter((a) => a !== arquivo));
+      }
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["conversation"] });
       qc.invalidateQueries({ queryKey: ["contact", id] });
       toast.success(t("Cadastro do cliente salvo."));
-      onSalvo({ ...c, nome: c.nome.trim() }, id);
+      onSalvo(
+        {
+          ...clienteDoContato(contato, c.documento),
+          ...(anexos.length ? { documentos: anexos.map((d) => d.id) } : {}),
+        },
+        id,
+      );
       // O wrapper guarda o "salvando" que bloqueia o fechar: sem soltar aqui, a
       // próxima abertura nasceria presa (Escape e clique fora ignorados).
       onSalvando(false);
@@ -106,12 +174,52 @@ function Formulario({
   return (
     <form onSubmit={salvar} noValidate className="grid gap-4">
       <DialogHeader>
-        <DialogTitle>{t("Cadastrar cliente")}</DialogTitle>
+        <DialogTitle>
+          {contactId || inicial ? t("Editar cadastro do cliente") : t("Cadastrar cliente")}
+        </DialogTitle>
         <DialogDescription>
           {t("O cliente é vinculado à venda atual assim que for salvo.")}
         </DialogDescription>
       </DialogHeader>
 
+      <AnexarDocumentoCliente
+        disabled={salvando || lendoDocumento}
+        onArquivo={(file) => setArquivos((a) => [...a, { file, kind: "identidade" }])}
+        onLido={(dados) => {
+          setC((atual) => preencherComDocumento(atual, dados));
+          setAba("pessoais");
+        }}
+        onOcupado={setLendoDocumento}
+      />
+      <AnexarDocumentoCliente
+        tipo="residencia"
+        disabled={salvando || lendoDocumento}
+        onArquivo={(file) => setArquivos((a) => [...a, { file, kind: "residencia" }])}
+        onLido={(dados) => {
+          setC((atual) => preencherComDocumento(atual, dados));
+          setAba("endereco");
+        }}
+        onOcupado={setLendoDocumento}
+      />
+      <DocumentosDoCliente
+        contactId={contatoGravado}
+        arquivos={documentos}
+        onCarregados={setDocumentos}
+      />
+      {arquivos.length > 0 && (
+        <ul className="grid min-w-0 gap-2" aria-label="Arquivos para salvar com o cliente">
+          {arquivos.map((arquivo, i) => (
+            <CartaoDocumentoCliente
+              key={i}
+              nome={arquivo.file.name}
+              tipo={arquivo.kind}
+              tamanho={arquivo.file.size}
+              disabled={salvando || lendoDocumento}
+              onRemover={() => setArquivos((a) => a.filter((v) => v !== arquivo))}
+            />
+          ))}
+        </ul>
+      )}
       <Tabs value={aba} onValueChange={setAba}>
         <TabsList className="w-full">
           <TabsTrigger value="pessoais" className="flex-1">
@@ -182,6 +290,11 @@ function Formulario({
                 className={CAMPO}
               />
             </label>
+            <CampoNacionalidade
+              valor={c.nacionalidade ?? ""}
+              onChange={(v) => set("nacionalidade", v)}
+              className={CAMPO}
+            />
             <label className="block">
               <Rotulo texto={t("RG")} />
               <input
@@ -285,7 +398,7 @@ function Formulario({
         <Button
           type="submit"
           variant="primary"
-          disabled={salvando}
+          disabled={salvando || lendoDocumento}
           data-testid="pdv-novo-cliente-salvar"
         >
           {salvando ? t("Salvando…") : t("Salvar cliente")}
@@ -295,13 +408,20 @@ function Formulario({
   );
 }
 
-export function CadastroClienteModal({ open, onOpenChange, retornoDoFoco, onSalvo }: Props) {
+export function CadastroClienteModal({
+  open,
+  onOpenChange,
+  retornoDoFoco,
+  onSalvo,
+  inicial,
+  contactId,
+}: Props) {
   const [salvando, setSalvando] = React.useState(false);
   // O conteúdo só existe com o modal aberto: cada abertura começa com o formulário limpo.
   return (
     <Dialog open={open} onOpenChange={(v) => (salvando ? undefined : onOpenChange(v))}>
       <DialogContent
-        className="max-w-xl backdrop-blur-sm"
+        className="max-h-[90dvh] max-w-xl overflow-y-auto backdrop-blur-sm"
         data-testid="pdv-cadastro-cliente"
         onCloseAutoFocus={(e) => {
           if (retornoDoFoco.current) {
@@ -310,7 +430,13 @@ export function CadastroClienteModal({ open, onOpenChange, retornoDoFoco, onSalv
           }
         }}
       >
-        <Formulario onOpenChange={onOpenChange} onSalvo={onSalvo} onSalvando={setSalvando} />
+        <Formulario
+          inicial={inicial}
+          contactId={contactId}
+          onOpenChange={onOpenChange}
+          onSalvo={onSalvo}
+          onSalvando={setSalvando}
+        />
       </DialogContent>
     </Dialog>
   );

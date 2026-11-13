@@ -90,6 +90,38 @@
       "type": "database",
       "label": "api_audit_log",
       "sublabel": "Invocação e motivo do vazio no painel de capacidades"
+    },
+    {
+      "id": "estoque-manual",
+      "lane": "tela",
+      "col": 0,
+      "type": "frontend",
+      "label": "Estoque da conversa",
+      "sublabel": "Revisar e confirmar ficha; janela fecha ao confirmar"
+    },
+    {
+      "id": "fila-manual",
+      "lane": "tela",
+      "col": 1,
+      "type": "frontend",
+      "label": "useEnvioDeVeiculo / MutationCache",
+      "sublabel": "Fila por conversa; mantém destino e segue após desmontar"
+    },
+    {
+      "id": "envio-manual",
+      "lane": "consulta",
+      "col": 2,
+      "type": "api",
+      "label": "Preparar envio → /messages",
+      "sublabel": "Portas existentes; mídias em ordem e ficha ao final"
+    },
+    {
+      "id": "resultado-manual",
+      "lane": "tela",
+      "col": 4,
+      "type": "frontend",
+      "label": "Progresso e histórico",
+      "sublabel": "Conclusão após lote; erro interrompe sem repetir"
     }
   ],
   "edges": [
@@ -164,6 +196,30 @@
       "from": "auditoria",
       "to": "configuracao",
       "label": "Uso e falhas no painel do agente"
+    },
+    {
+      "id": "confirmar-manual",
+      "from": "estoque-manual",
+      "to": "fila-manual",
+      "label": "Texto e destino capturados"
+    },
+    {
+      "id": "executar-manual",
+      "from": "fila-manual",
+      "to": "envio-manual",
+      "label": "Sequencial; reserva conferida na preparação"
+    },
+    {
+      "id": "resultado-envio-manual",
+      "from": "envio-manual",
+      "to": "resultado-manual",
+      "label": "Histórico e notificações"
+    },
+    {
+      "id": "retorno-envio-manual",
+      "from": "resultado-manual",
+      "to": "estoque-manual",
+      "label": "Conferir histórico antes de reenviar"
     }
   ]
 }

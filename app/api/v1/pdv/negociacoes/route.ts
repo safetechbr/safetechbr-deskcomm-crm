@@ -4,6 +4,7 @@
  * POST /api/v1/pdv/negociacoes — abre uma negociação em rascunho (agent+).
  *      Fechar é outra rota (`/[id]/concluir`), porque mexe no estoque.
  */
+import { novoContrato } from "@/lib/pdv/modelo-contrato";
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 
@@ -73,6 +74,21 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const supabase = await createClient();
+  const empresa = await supabase
+    .from("organizations")
+    .select("legal_name, display_name, cnpj, dados_contrato")
+    .eq("id", authz.org.orgId)
+    .single();
+  if (empresa.error)
+    return fail("internal_error", "Não consegui carregar os dados contratuais da empresa.", 500, {
+      requestId,
+    });
+  const padrao = { ...novoContrato(empresa.data), atendido_por: authz.user.full_name ?? "" };
+  entrada.contrato = {
+    ...padrao,
+    ...entrada.contrato,
+    empresa: entrada.contrato?.empresa ?? padrao.empresa,
+  };
   if (entrada.tipo === "venda" && entrada.veiculo_id) {
     const { data: carro } = await supabase
       .from("veiculos")

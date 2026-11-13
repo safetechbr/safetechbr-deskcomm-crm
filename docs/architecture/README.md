@@ -14,6 +14,8 @@ ser fonte sem ninguém decidir isso.
 
 ## Mapas
 
+- `atendimento-protegido.architecture.json`: assumir/liberar por vendedor, senha administrativa e identificação nas conversas.
+
 - `central-visoes-e-funis.architecture.json`: A fazer, histórico autorizado e acesso aos quadros pela central.
 
 | arquivo | escopo |
@@ -112,3 +114,5 @@ implementação, com a peça já meio pronta.
 
 - `carteiras-transferencia.architecture.json`: atribuição respeita o escopo da carteira sob lock.
 - `atendimento-comercial.architecture.json`: entrada, veto, briefing e configuração de atendimento comercial exclusivamente humano.
+
+- `contrato-de-veiculos.architecture.json`: padrões da empresa, estoque e leitura local de documentos do cliente → revisão no PDV → fotografia, PDF e veículo recebido.
