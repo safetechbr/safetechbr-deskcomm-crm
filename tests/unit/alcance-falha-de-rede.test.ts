@@ -104,6 +104,13 @@ describe("explicarFalhaDeAlcance", () => {
     expect(frase).not.toMatch(/container/i);
     expect(frase).not.toMatch(/no ar/i);
   });
+
+  it("contrai \"de\" com o artigo do serviço — nunca \"de o WhatsApp\"", () => {
+    const frase = explicarFalhaDeAlcance("conexao_recusada", "o WhatsApp (WAHA)");
+    expect(frase).toContain("O servidor do WhatsApp (WAHA)");
+    expect(frase).not.toMatch(/\bde o\b/);
+    expect(explicarFalhaDeAlcance("tempo_esgotado", "a fila")).toContain("servidor da fila");
+  });
 });
 
 describe("wahaFriendlyError", () => {

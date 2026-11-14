@@ -121,18 +121,26 @@ export function classificarFalhaDeAlcance(erro: unknown): FalhaDeAlcance {
  * para a frase servir a qualquer dependência sem virar template de placeholder —
  * e para este módulo, que é de rede, não precisar conhecer nenhuma delas.
  */
+/** "de" + artigo vira contração: "de o WhatsApp" → "do WhatsApp". */
+function deServico(servico: string): string {
+  const m = /^(o|a|os|as) /i.exec(servico);
+  if (!m) return `de ${servico}`;
+  return `d${m[1]!.toLowerCase()} ${servico.slice(m[0].length)}`;
+}
+
 export function explicarFalhaDeAlcance(falha: FalhaDeAlcance, servico: string): string {
+  const deS = deServico(servico);
   switch (falha) {
     case "endereco_nao_resolve":
       return `O endereço configurado para ${servico} não existe — nem chegamos a tentar conectar. Isso é configuração, não o serviço: reveja o endereço nas variáveis de ambiente.`;
     case "conexao_recusada":
-      return `O servidor de ${servico} foi encontrado, mas recusou a conexão: nada está atendendo naquela porta. Confirme que o serviço está no ar e que a porta configurada é a dele.`;
+      return `O servidor ${deS} foi encontrado, mas recusou a conexão: nada está atendendo naquela porta. Confirme que o serviço está no ar e que a porta configurada é a dele.`;
     case "host_inalcancavel":
-      return `Não há caminho de rede até o servidor de ${servico}. Ele pode estar desligado ou bloqueado por firewall.`;
+      return `Não há caminho de rede até o servidor ${deS}. Ele pode estar desligado ou bloqueado por firewall.`;
     case "tempo_esgotado":
-      return `O servidor de ${servico} não respondeu a tempo. Pode estar sobrecarregado, ou o tráfego está sendo bloqueado no meio do caminho.`;
+      return `O servidor ${deS} não respondeu a tempo. Pode estar sobrecarregado, ou o tráfego está sendo bloqueado no meio do caminho.`;
     case "tls_recusado":
-      return `O certificado de segurança do endereço de ${servico} foi recusado. Confirme o certificado do domínio configurado.`;
+      return `O certificado de segurança do endereço ${deS} foi recusado. Confirme o certificado do domínio configurado.`;
     case "indeterminada":
       return `Não foi possível falar com ${servico}, e a causa não foi identificada.`;
   }
