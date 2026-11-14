@@ -13,7 +13,8 @@ export type AcaoEmLote =
   | "mark-read"
   | "pause-ai"
   | "reactivate-bot"
-  | "transfer";
+  | "transfer"
+  | "delete";
 
 /** Uma linha do relatório por item, como a rota devolve. */
 export interface ResultadoDoItem {
@@ -81,20 +82,27 @@ export function useBulkConversations() {
       // Número 1 leva o singular dos dois lados — a mesma régua do lote de contatos
       // (#2913), e as chaves singulares seguem o gênero de "conversa".
       const fechamento = args.action === "close";
+      const exclusao = args.action === "delete";
       const participio = (n: number): string =>
-        fechamento
+        exclusao
           ? n === 1
-            ? t("fechada")
-            : t("fechadas")
-          : n === 1
-            ? t("atualizada")
-            : t("atualizadas");
+            ? t("excluída")
+            : t("excluídas")
+          : fechamento
+            ? n === 1
+              ? t("fechada")
+              : t("fechadas")
+            : n === 1
+              ? t("atualizada")
+              : t("atualizadas");
       if (recusados.length === 0) {
         toast.success(
           r.feitos === 1
-            ? fechamento
-              ? t("1 conversa fechada.")
-              : t("1 conversa atualizada.")
+            ? exclusao
+              ? t("1 conversa excluída.")
+              : fechamento
+                ? t("1 conversa fechada.")
+                : t("1 conversa atualizada.")
             : `${r.feitos} ${t("conversas")} ${participio(r.feitos)}.`,
         );
         return;

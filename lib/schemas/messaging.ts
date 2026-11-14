@@ -220,6 +220,11 @@ export const bulkConversationActionSchema = z.discriminatedUnion("action", [
     ids: z.array(z.string().uuid()).min(1),
   }),
   z.object({
+    // Exclusão DEFINITIVA — manager+, validado pela rota DELETE da conversa.
+    action: z.literal("delete"),
+    ids: z.array(z.string().uuid()).min(1),
+  }),
+  z.object({
     action: z.literal("transfer"),
     ids: z.array(z.string().uuid()).min(1),
     // Mesmo contrato do `transferConversationSchema` — o destino é membro

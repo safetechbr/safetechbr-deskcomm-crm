@@ -135,4 +135,26 @@ describe("BarraDeAcoesEmLote", () => {
 
     expect(h.onTransferir).toHaveBeenCalledWith(DESTINO, "plantão");
   });
+
+  it("excluir em lote só aparece com onExcluir e só delega depois de confirmar", async () => {
+    const user = userEvent.setup();
+    const h = mao();
+    const { rerender } = render(<BarraDeAcoesEmLote quantidade={5} pendente={false} {...h} />);
+
+    await user.click(screen.getByRole("button", { name: "Mais ações" }));
+    expect(screen.queryByTestId("lote-excluir")).toBeNull();
+    await user.keyboard("{Escape}");
+
+    const onExcluir = vi.fn();
+    rerender(<BarraDeAcoesEmLote quantidade={5} pendente={false} {...h} onExcluir={onExcluir} />);
+    await user.click(screen.getByRole("button", { name: "Mais ações" }));
+    await user.click(screen.getByTestId("lote-excluir"));
+
+    // Abrir o diálogo não apaga nada: a exclusão é definitiva.
+    expect(onExcluir).not.toHaveBeenCalled();
+    expect(screen.getByText("Excluir 5 conversas selecionadas?")).toBeTruthy();
+
+    await user.click(screen.getByTestId("lote-excluir-confirmar"));
+    expect(onExcluir).toHaveBeenCalledTimes(1);
+  });
 });

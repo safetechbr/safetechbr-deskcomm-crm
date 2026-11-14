@@ -3,7 +3,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
  * POST /api/v1/conversations/bulk — a camada de lote da Inbox (#2484, fatia F1).
  *
  * UMA rota para todas as ações em lote (`close`, `archive`, `mark-read`,
- * `pause-ai`, `reactivate-bot`, `transfer`), discriminada por `action`.
+ * `pause-ai`, `reactivate-bot`, `transfer`, `delete`), discriminada por `action`.
  *
  * ── O desenho, e por que ele NÃO é o do `leads/bulk` ─────────────────────
  *
@@ -68,7 +68,7 @@ import { POST as marcarComoLida } from "../[id]/mark-read/route";
 import { POST as pausarAutomatico } from "../[id]/pause-ai/route";
 import { POST as devolverAoAutomatico } from "../[id]/reactivate-bot/route";
 import { POST as transferirUmaConversa } from "../[id]/transfer/route";
-import { PATCH as atualizarUmaConversa } from "../[id]/route";
+import { DELETE as excluirUmaConversa, PATCH as atualizarUmaConversa } from "../[id]/route";
 
 export const dynamic = "force-dynamic";
 
@@ -124,13 +124,13 @@ async function classificar(res: Response, id: string): Promise<ResultadoDoItem> 
 function requestDoItem(
   id: string,
   caminho: string,
-  metodo: "POST" | "PATCH",
+  metodo: "POST" | "PATCH" | "DELETE",
   corpo: Record<string, unknown>,
 ): NextRequest {
   return new NextRequest(`http://localhost/api/v1/conversations/${id}${caminho}`, {
     method: metodo,
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(corpo),
+    ...(metodo === "DELETE" ? {} : { body: JSON.stringify(corpo) }),
   });
 }
 
@@ -170,6 +170,8 @@ async function executarNoItem(
         requestDoItem(id, "/reactivate-bot", "POST", {}),
         ctxDoItem(id),
       );
+    case "delete":
+      return excluirUmaConversa(requestDoItem(id, "", "DELETE", {}), ctxDoItem(id));
     case "transfer":
       return transferirUmaConversa(
         requestDoItem(id, "/transfer", "POST", {
@@ -205,6 +207,13 @@ export async function POST(req: NextRequest): Promise<Response> {
       });
     }
     throw err;
+  }
+
+  // Excluir é manager+ na rota da conversa. O portão da chamada sobe junto para
+  // um `agent` receber UM 403, não N itens recusados por permissão.
+  if (input.action === "delete") {
+    const gerente = await requireRole("manager", { requestId, resource: "conversations" });
+    if (!gerente.ok) return gerente.response;
   }
 
   if (input.ids.length > TETO_DO_LOTE) {

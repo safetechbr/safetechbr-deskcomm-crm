@@ -609,9 +609,12 @@ export function InboxLayout({
     (user.is_platform_admin && !user.support) || roleAtLeast(activeOrg?.role, "agent");
   const selecao = useSelecaoEmLote();
   const lote = useBulkConversations();
+  // Excluir é manager+ — o mesmo piso da rota DELETE da conversa.
+  const podeExcluirEmLote =
+    (user.is_platform_admin && !user.support) || roleAtLeast(activeOrg?.role, "manager");
 
   const rodarLote = useCallback(
-    (action: AcaoEmLote, toUserId?: string, reason?: string) => {
+    (action: AcaoEmLote, toUserId?: string, reason?: string, depois?: () => void) => {
       const ids = Array.from(selecao.selecionados);
       if (ids.length === 0) return;
       lote.mutate(
@@ -621,7 +624,10 @@ export function InboxLayout({
           // manter marcadas as conversas recusadas (de outra organização,
           // inexistentes) deixaria a barra no lugar mensageando um lote que
           // não existe mais.
-          onSuccess: () => selecao.limpar(),
+          onSuccess: () => {
+            selecao.limpar();
+            depois?.();
+          },
         },
       );
     },
@@ -1002,6 +1008,20 @@ export function InboxLayout({
                 onPausarIa={() => rodarLote("pause-ai")}
                 onDevolverAoAutomatico={() => rodarLote("reactivate-bot")}
                 onTransferir={(toUserId, reason) => rodarLote("transfer", toUserId, reason)}
+                onExcluir={
+                  podeExcluirEmLote
+                    ? () => {
+                        // A conversa aberta pode estar no lote: sem soltar a
+                        // seleção, o painel ficaria apontando para uma linha
+                        // que não existe mais.
+                        const abertaNoLote =
+                          selectedId !== null && selecao.selecionados.has(selectedId);
+                        rodarLote("delete", undefined, undefined, () => {
+                          if (abertaNoLote) handleSelect(null);
+                        });
+                      }
+                    : undefined
+                }
                 onLimpar={selecao.limpar}
               />
             )}

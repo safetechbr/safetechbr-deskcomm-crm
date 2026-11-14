@@ -30,7 +30,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAssignableMembers } from "@/hooks/inbox/useAssignableMembers";
 import { useT } from "@/hooks/i18n/useT";
-import { ArrowRight, Archive, Check, Pause, Robot, X } from "@/lib/ui/icons";
+import { ArrowRight, Archive, Check, Pause, Robot, Trash, X } from "@/lib/ui/icons";
 
 interface Props {
   /** Quantas conversas estão marcadas. Zero = a barra não existe. */
@@ -43,6 +43,11 @@ interface Props {
   onDevolverAoAutomatico: () => void;
   /** Abre o diálogo de destino e devolve `(to_user_id, reason)`. */
   onTransferir: (toUserId: string, reason?: string) => void;
+  /**
+   * Exclusão DEFINITIVA das marcadas. Ausente = quem está logado não pode
+   * excluir (abaixo de manager) e o item nem aparece no menu.
+   */
+  onExcluir?: () => void;
   onLimpar: () => void;
 }
 
@@ -71,10 +76,12 @@ export function BarraDeAcoesEmLote({
   onPausarIa,
   onDevolverAoAutomatico,
   onTransferir,
+  onExcluir,
   onLimpar,
 }: Props) {
   const t = useT();
   const [transferirAberto, setTransferirAberto] = useState(false);
+  const [excluirAberto, setExcluirAberto] = useState(false);
   const [destino, setDestino] = useState("");
   const [motivo, setMotivo] = useState("");
   const membros = useAssignableMembers(transferirAberto);
@@ -157,6 +164,19 @@ export function BarraDeAcoesEmLote({
             <ArrowRight size={14} className="mr-2" aria-hidden />
             {t("Transferir para…")}
           </DropdownMenuItem>
+          {onExcluir && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => setExcluirAberto(true)}
+                className="text-destructive focus:text-destructive"
+                data-testid="lote-excluir"
+              >
+                <Trash size={14} className="mr-2" aria-hidden />
+                {t("Excluir")}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <Button
@@ -169,6 +189,38 @@ export function BarraDeAcoesEmLote({
       >
         <X size={14} aria-hidden />
       </Button>
+
+      <Dialog open={excluirAberto} onOpenChange={setExcluirAberto}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {quantidade === 1
+                ? t("Excluir a conversa selecionada?")
+                : `${t("Excluir")} ${quantidade} ${t("conversas selecionadas?")}`}
+            </DialogTitle>
+            <DialogDescription>
+              {t("As mensagens, notas e rascunhos dessas conversas serão apagados para sempre. Esta ação não pode ser desfeita.")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExcluirAberto(false)}>
+              {t("Cancelar")}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={pendente}
+              onClick={() => {
+                onExcluir?.();
+                setExcluirAberto(false);
+              }}
+              data-testid="lote-excluir-confirmar"
+            >
+              <Trash size={14} className="mr-1.5" aria-hidden />
+              {t("Excluir definitivamente")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={transferirAberto}

@@ -114,6 +114,7 @@ function clienteFalso(estado: Estado) {
   function builder(tabela: string) {
     const filtros: Array<[string, unknown]> = [];
     let patch: Linha | null = null;
+    let apagar = false;
     const linhas = () =>
       tabela === "conversations"
         ? estado.conversas
@@ -133,6 +134,10 @@ function clienteFalso(estado: Estado) {
         linhas().push(v);
         return q;
       },
+      delete: () => {
+        apagar = true;
+        return q;
+      },
       eq: (c: string, v: unknown) => {
         filtros.push([c, v]);
         return q;
@@ -150,8 +155,14 @@ function clienteFalso(estado: Estado) {
         }
         return { data: linhas().find(casa) ?? null, error: null };
       },
-      then: (comOk: (v: unknown) => unknown, comErro: (e: unknown) => unknown) =>
-        Promise.resolve({ data: linhas().filter(casa), error: null }).then(comOk, comErro),
+      then: (comOk: (v: unknown) => unknown, comErro: (e: unknown) => unknown) => {
+        const achadas = linhas().filter(casa);
+        if (apagar) {
+          const tabelaViva = linhas();
+          for (const l of achadas) tabelaViva.splice(tabelaViva.indexOf(l), 1);
+        }
+        return Promise.resolve({ data: achadas, error: null }).then(comOk, comErro);
+      },
     };
     return q;
   }
@@ -188,11 +199,11 @@ function clienteFalso(estado: Estado) {
 }
 
 /** Mutável por teste, lido de dentro do mock (hoisted: nasce antes dos imports). */
-const auth = vi.hoisted(() => ({ negar: false }));
+const auth = vi.hoisted(() => ({ negar: false, negarGerente: false }));
 
 vi.mock("@/lib/auth/require-role", () => ({
-  requireRole: vi.fn(() =>
-    auth.negar
+  requireRole: vi.fn((min: string) =>
+    auth.negar || (auth.negarGerente && min === "manager")
       ? {
           ok: false,
           response: NextResponse.json(
@@ -224,6 +235,7 @@ let estado: Estado;
 beforeEach(() => {
   vi.clearAllMocks();
   auth.negar = false;
+  auth.negarGerente = false;
   estado = {
     conversas: [
       conversa(CONV_A, ORG_A),
@@ -606,5 +618,31 @@ describe("POST /api/v1/conversations/bulk", () => {
       "agent",
       expect.objectContaining({ resource: "conversations" }),
     );
+  });
+
+  it("delete apaga só as da org da sessão e audita conversation.deleted por item", async () => {
+    const res = await POST(req({ action: "delete", ids: [CONV_A, CONV_B, CONV_FANTASMA] }));
+
+    const corpo = await corpoDe(res);
+    expect(res.status).toBe(200);
+    expect(corpo.data.feitos).toBe(1);
+    expect(corpo.data.resultados?.[1]).toMatchObject({ feito: false, codigo: "not_found" });
+    expect(corpo.data.resultados?.[2]).toMatchObject({ feito: false, codigo: "not_found" });
+    expect(estado.conversas.map((c) => c.id)).toEqual([CONV_A2, CONV_B]);
+    expect(audit).toHaveBeenCalledTimes(1);
+    expect(audit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "conversation.deleted", resourceId: CONV_A }),
+    );
+  });
+
+  it("delete exige manager: agent recebe 403 na CHAMADA e nada é apagado", async () => {
+    auth.negarGerente = true;
+
+    const res = await POST(req({ action: "delete", ids: [CONV_A, CONV_A2] }));
+
+    expect(res.status).toBe(403);
+    expect(estado.conversas).toHaveLength(3);
+    expect(createClient).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
   });
 });

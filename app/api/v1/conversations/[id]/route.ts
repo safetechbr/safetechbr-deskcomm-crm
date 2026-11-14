@@ -2,6 +2,7 @@ import { requireSupportWrite } from "@/lib/impersonate/support";
 /**
  * GET   /api/v1/conversations/[id] — single conversation (handler em ../_handler.ts)
  * PATCH /api/v1/conversations/[id] — update status e/ou tags (handler em ../_handler.ts)
+ * DELETE /api/v1/conversations/[id] — exclusão DEFINITIVA (manager+)
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
@@ -9,6 +10,7 @@ import { z } from "zod";
 
 import { ApiError } from "@/lib/api/types";
 import { ok, fail } from "@/lib/api/wrappers";
+import { audit } from "@/lib/audit";
 import { orgAtivaDaApi, requireRole } from "@/lib/auth/require-role";
 import { loadAuthUser } from "@/lib/auth/server";
 import { traduzir } from "@/lib/i18n/dicionario";
@@ -150,4 +152,65 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx): Promise<Response> 
     }
     throw err;
   }
+}
+
+/**
+ * Exclusão DEFINITIVA de uma conversa.
+ *
+ * Apaga a linha de `conversations`; as FKs levam junto, por cascata, mensagens,
+ * notas, rascunhos, participantes e passagens — e soltam (SET NULL) o que é de
+ * outro domínio (agendamentos, propostas, execuções de IA). Não há lixeira: o
+ * arquivamento continua sendo o caminho reversível.
+ *
+ * PERMISSÃO: manager+. Fechar e arquivar são gesto de atendente; apagar o
+ * histórico de um cliente não é. O DELETE vai pelo client da SESSÃO, então as
+ * policies de RLS (org do usuário, `fn_can_view_conversation`, suporte só
+ * leitura) também decidem — a rota não usa service role.
+ *
+ * Uma nova mensagem do mesmo contato depois daqui abre uma conversa nova.
+ */
+export async function DELETE(_req: NextRequest, ctx: RouteCtx): Promise<Response> {
+  const supportDenied = await requireSupportWrite();
+  if (supportDenied) return supportDenied;
+
+  const requestId = randomUUID();
+  const { id } = await ctx.params;
+
+  const authz = await requireRole("manager", { requestId, resource: "conversations" });
+  if (!authz.ok) return authz.response;
+  const t = (texto: string) => traduzir(texto, authz.user.idioma);
+  if (idInvalido(id)) {
+    return fail("not_found", t("Conversa não encontrada."), 404, { requestId });
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", authz.org.orgId)
+    .select("id, contact_id, channel_session_id");
+
+  if (error) {
+    return fail("internal_error", t("Não foi possível excluir a conversa."), 500, { requestId });
+  }
+  const apagada = data?.[0];
+  if (!apagada) {
+    return fail("not_found", t("Conversa não encontrada."), 404, { requestId });
+  }
+
+  await audit({
+    action: "conversation.deleted",
+    actorUserId: authz.user.id,
+    organizationId: authz.org.orgId,
+    resourceType: "conversation",
+    resourceId: apagada.id,
+    requestId,
+    metadata: {
+      contact_id: apagada.contact_id,
+      channel_session_id: apagada.channel_session_id,
+    },
+  });
+
+  return ok({ id: apagada.id, excluida: true }, { requestId });
 }
