@@ -53,11 +53,11 @@ export function TenantsFilters({ filters, onChange }: TenantsFiltersProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <Input
-        placeholder={t("Buscar por nome, slug ou CNPJ...")}
+        placeholder={t("Buscar por nome, identificador ou CNPJ...")}
         value={inputValue}
         onChange={(e) => handleSearch(e.target.value)}
         className="sm:w-80"
-        aria-label={t("Buscar tenants")}
+        aria-label={t("Buscar empresas")}
       />
       <Select
         value={filters.status ?? "all"}
@@ -68,10 +68,10 @@ export function TenantsFilters({ filters, onChange }: TenantsFiltersProps) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">{t("Todos os status")}</SelectItem>
-          <SelectItem value="active">{t("Ativo")}</SelectItem>
-          <SelectItem value="onboarding">{t("Onboarding")}</SelectItem>
-          <SelectItem value="suspended">{t("Suspenso")}</SelectItem>
-          <SelectItem value="redacted">{t("Redigido")}</SelectItem>
+          <SelectItem value="active">{t("Ativa")}</SelectItem>
+          <SelectItem value="onboarding">{t("Em implantação")}</SelectItem>
+          <SelectItem value="suspended">{t("Suspensa")}</SelectItem>
+          <SelectItem value="redacted">{t("Anonimizada")}</SelectItem>
         </SelectContent>
       </Select>
     </div>

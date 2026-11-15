@@ -81,7 +81,7 @@ export function UsersClient() {
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
         <Input
-          placeholder={t("Buscar por email ou nome...")}
+          placeholder={t("Buscar por e-mail ou nome...")}
           value={inputValue}
           onChange={(e) => handleSearch(e.target.value)}
           className="sm:w-72"
@@ -92,11 +92,11 @@ export function UsersClient() {
           value={filters.tenant_id ?? "all"}
           onValueChange={handleTenant}
         >
-          <SelectTrigger className="sm:w-52" aria-label={t("Filtrar por tenant")}>
-            <SelectValue placeholder="Tenant" />
+          <SelectTrigger className="sm:w-52" aria-label={t("Filtrar por empresa")}>
+            <SelectValue placeholder={t("Empresa")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t("Todos os tenants")}</SelectItem>
+            <SelectItem value="all">{t("Todas as empresas")}</SelectItem>
             {tenants.map((tenant) => (
               <SelectItem key={tenant.id} value={tenant.id}>
                 {tenant.display_name}
@@ -106,15 +106,15 @@ export function UsersClient() {
         </Select>
 
         <Select value={filters.role ?? "all"} onValueChange={handleRole}>
-          <SelectTrigger className="sm:w-40" aria-label={t("Filtrar por role")}>
-            <SelectValue placeholder="Role" />
+          <SelectTrigger className="sm:w-40" aria-label={t("Filtrar por função")}>
+            <SelectValue placeholder={t("Função")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t("Todos os roles")}</SelectItem>
-            <SelectItem value="admin">{t("Admin")}</SelectItem>
-            <SelectItem value="manager">{t("Manager")}</SelectItem>
-            <SelectItem value="agent">{t("Agente")}</SelectItem>
-            <SelectItem value="viewer">{t("Viewer")}</SelectItem>
+            <SelectItem value="all">{t("Todas as funções")}</SelectItem>
+            <SelectItem value="admin">{t("Administrador")}</SelectItem>
+            <SelectItem value="manager">{t("Gerente")}</SelectItem>
+            <SelectItem value="agent">{t("Atendente")}</SelectItem>
+            <SelectItem value="viewer">{t("Somente leitura")}</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -181,7 +181,7 @@ function AuditTrailInline({ entries }: { entries: AuditEntry[] }) {
 const TYPE_LABELS: Record<AdminLgpdRequestType, string> = {
   redact: "Anonimização cliente",
   data_request: "Solicitação de dados",
-  store_redact: "Anonimização tenant",
+  store_redact: "Anonimização da empresa",
 };
 
 const STATUS_LABELS: Record<AdminLgpdStatus, string> = {
@@ -267,7 +267,7 @@ export function LgpdRequestAdminDetail({ id }: Props) {
         >
           <Link href="/admin/lgpd">
             <CaretLeft size={14} aria-hidden />
-            {t("LGPD Cross-tenant")}
+            {t("LGPD — Todas as empresas")}
           </Link>
         </Button>
       </div>
@@ -294,7 +294,7 @@ export function LgpdRequestAdminDetail({ id }: Props) {
         </p>
 
         <p className="text-xs text-muted-foreground italic">
-          {t("Somente leitura — aprovação é feita pelo operador no contexto do tenant.")}
+          {t("Somente leitura — aprovação é feita pelo operador no contexto da empresa.")}
         </p>
       </div>
 
@@ -332,15 +332,15 @@ export function LgpdRequestAdminDetail({ id }: Props) {
             <Row label={t("Tentativas")} value={String(request.attempts)} />
             {tenant && (
               <>
-                <Row label="Tenant" value={tenant.display_name} />
-                <Row label="Slug" value={tenant.slug} />
+                <Row label={t("Empresa")} value={tenant.display_name} />
+                <Row label={t("Identificador")} value={tenant.slug} />
               </>
             )}
             {request.contact_id && (
-              <Row label="Contact ID" value={request.contact_id} mono />
+              <Row label={t("ID do contato")} value={request.contact_id} mono />
             )}
             {request.external_customer_id && (
-              <Row label="External customer ID" value={request.external_customer_id} />
+              <Row label={t("ID do cliente externo")} value={request.external_customer_id} />
             )}
             {request.completed_at && (
               <Row

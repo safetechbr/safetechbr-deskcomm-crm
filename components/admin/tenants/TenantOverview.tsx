@@ -123,7 +123,7 @@ export function TenantOverview({ organization, counts, integrations, cobrancaLig
           )}
           <InfoRow label={t("Razão social")} value={organization.legal_name} />
           <InfoRow label="CNPJ" value={organization.cnpj} />
-          <InfoRow label={t("Onboarding concluído")} value={formatDate(organization.onboarded_at, tagDoIdioma)} />
+          <InfoRow label={t("Implantação concluída")} value={formatDate(organization.onboarded_at, tagDoIdioma)} />
           <InfoRow label={t("Criado em")} value={formatDate(organization.created_at, tagDoIdioma)} />
           {organization.suspended_at && (
             <InfoRow label={t("Suspenso em")} value={formatDate(organization.suspended_at, tagDoIdioma)} />
@@ -164,7 +164,7 @@ export function TenantOverview({ organization, counts, integrations, cobrancaLig
                 value={formatDate(integrations.nuvemshop_connected_at, tagDoIdioma)}
               />
             )}
-            <InfoRow label="WAHA sessions" value={counts.waha_sessions_count} />
+            <InfoRow label="Sessões do WAHA" value={counts.waha_sessions_count} />
           </div>
         </div>
 

@@ -35,10 +35,10 @@ const ROLE_VARIANTS: Record<
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  manager: "Manager",
-  agent: "Agente",
-  viewer: "Viewer",
+  admin: "Administrador",
+  manager: "Gerente",
+  agent: "Atendente",
+  viewer: "Somente leitura",
 };
 
 function RoleBadge({ role }: { role: string }) {
@@ -77,7 +77,7 @@ export function UsersTableAdminSkeleton() {
       <Table>
         <TableHeader>
           <TableRow>
-            {["Email", t("Nome"), "Tenant", "Role", t("Último acesso"), t("Status"), ""].map(
+            {[t("E-mail"), t("Nome"), t("Empresa"), t("Função"), t("Último acesso"), t("Status"), ""].map(
               (h) => (
                 <TableHead key={h}>{h}</TableHead>
               ),
@@ -137,10 +137,10 @@ export function UsersTableAdmin({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Email</TableHead>
+              <TableHead>{t("E-mail")}</TableHead>
               <TableHead className="w-[160px]">{t("Nome")}</TableHead>
-              <TableHead className="w-[160px]">Tenant</TableHead>
-              <TableHead className="w-[100px]">Role</TableHead>
+              <TableHead className="w-[160px]">{t("Empresa")}</TableHead>
+              <TableHead className="w-[100px]">{t("Função")}</TableHead>
               <TableHead className="w-[160px]">{t("Último acesso")}</TableHead>
               <TableHead className="w-[100px]">{t("Status")}</TableHead>
               <TableHead className="w-[60px]" />

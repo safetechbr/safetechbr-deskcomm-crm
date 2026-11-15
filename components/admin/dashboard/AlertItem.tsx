@@ -16,8 +16,8 @@ const KIND_ICONS: Record<AlertKind, ElementType> = {
 const KIND_LABELS: Record<AlertKind, string> = {
   waha_ban: "WAHA",
   lgpd_at_risk: "LGPD",
-  ai_budget: "IA Budget",
-  tenant_pending_overflow: "Overflow",
+  ai_budget: "Orçamento de IA",
+  tenant_pending_overflow: "Fila acumulada",
 };
 
 interface AlertItemProps {

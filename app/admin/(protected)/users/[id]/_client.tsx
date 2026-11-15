@@ -37,10 +37,10 @@ const ROLE_VARIANTS: Record<
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  manager: "Manager",
-  agent: "Agente",
-  viewer: "Viewer",
+  admin: "Administrador",
+  manager: "Gerente",
+  agent: "Atendente",
+  viewer: "Somente leitura",
 };
 
 function RoleBadge({ role }: { role: string }) {
@@ -145,7 +145,7 @@ export function UserDetailClient({ id }: UserDetailClientProps) {
         <CardContent>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
             <div>
-              <dt className="text-xs text-muted-foreground mb-0.5">{t("Email confirmado")}</dt>
+              <dt className="text-xs text-muted-foreground mb-0.5">{t("E-mail confirmado")}</dt>
               <dd>{user.email_confirmed_at ? absoluteDate(user.email_confirmed_at, localeDaData) : <Badge variant="warning">{t("Pendente")}</Badge>}</dd>
             </div>
             <div>
@@ -192,8 +192,8 @@ export function UserDetailClient({ id }: UserDetailClientProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead className="w-[100px]">Role</TableHead>
+                  <TableHead>{t("Empresa")}</TableHead>
+                  <TableHead className="w-[100px]">{t("Função")}</TableHead>
                   <TableHead className="w-[140px]">{t("Aceito em")}</TableHead>
                   <TableHead className="w-[100px]">{t("Status")}</TableHead>
                 </TableRow>
@@ -241,7 +241,7 @@ export function UserDetailClient({ id }: UserDetailClientProps) {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium">
-            {t("Audit recente")} ({recent_audit.length}{recent_audit.length === 50 ? "+" : ""})
+            {t("Auditoria recente")} ({recent_audit.length}{recent_audit.length === 50 ? "+" : ""})
           </CardTitle>
         </CardHeader>
         <CardContent>

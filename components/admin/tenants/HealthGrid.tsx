@@ -83,7 +83,7 @@ export function HealthGrid({ health }: HealthGridProps) {
       ? [{ label: t("Expira em"), value: `${nuvemshop.days_until_expiry}d` }]
       : []),
     ...(nuvemshop.expires_at
-      ? [{ label: t("Token expira"), value: formatDate(nuvemshop.expires_at, tagDoIdioma) }]
+      ? [{ label: t("Token vence"), value: formatDate(nuvemshop.expires_at, tagDoIdioma) }]
       : []),
   ];
 
@@ -104,7 +104,7 @@ export function HealthGrid({ health }: HealthGridProps) {
   const auditDetails = [
     { label: t("Último evento"), value: formatDate(audit.last_at, tagDoIdioma) },
     {
-      label: "Lag",
+      label: "Atraso",
       value: audit.lag_seconds !== null ? formatLag(audit.lag_seconds) : "—",
     },
   ];
@@ -136,7 +136,7 @@ export function HealthGrid({ health }: HealthGridProps) {
       />
 
       <HealthCard
-        title="Audit Lag"
+        title="Atraso da auditoria"
         status={audit.status}
         icon={<ClipboardText size={18} aria-hidden />}
         primaryValue={auditPrimary}

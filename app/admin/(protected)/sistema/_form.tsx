@@ -308,7 +308,7 @@ export const MODULOS_NA_TELA: ReadonlyArray<{
     rotulo: "Cobrança dos seus clientes",
     descricao:
       "Ligado, você cria planos e cobra as empresas hospedadas aqui, com teste grátis e suspensão automática de quem não paga. Empresas que já existem ficam isentas; você escolhe quem passa a pagar. Desligado, os limites dos planos deixam de valer e as empresas suspensas por falta de pagamento são liberadas; nada é cancelado no provedor de pagamento.",
-    foraDoMenu: "Não cria porta no menu do CRM: a tela é Cobrança, aqui no Admin.",
+    foraDoMenu: "Não cria porta no menu do CRM: a tela é Cobrança, aqui na Administração.",
   },
   {
     modulo: "login_codex",

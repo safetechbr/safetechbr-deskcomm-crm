@@ -13,7 +13,7 @@ export default async function AdminInboxIndexPage() {
       <p className="text-sm font-medium">{traduzir("Selecione uma conversa para visualizar", idioma)}</p>
       <p className="max-w-xs text-xs opacity-70">
         {traduzir(
-          "Modo somente-leitura. Use “Impersonate” para responder como atendente do tenant.",
+          "Modo somente leitura. Use “Acompanhar organização” para responder como atendente da empresa.",
           idioma,
         )}
       </p>
