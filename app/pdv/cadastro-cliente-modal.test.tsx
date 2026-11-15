@@ -50,9 +50,9 @@ describe("um cadastro de cliente no PDV", () => {
     fireEvent.change(screen.getByTestId("pdv-novo-cliente-nome"), {
       target: { value: "Cliente Exemplo" },
     });
-    fireEvent.change(screen.getByLabelText("Nacionalidade"), { target: { value: "Brasileira" } });
+    fireEvent.change(screen.getByLabelText(/^Nacionalidade( \*)?$/), { target: { value: "Brasileira" } });
     fireEvent.click(screen.getByRole("tab", { name: "Endereço" }));
-    fireEvent.change(screen.getByLabelText("Rua"), { target: { value: "Rua Exemplo" } });
+    fireEvent.change(screen.getByLabelText(/^Rua( \*)?$/), { target: { value: "Rua Exemplo" } });
     fireEvent.click(screen.getByTestId("pdv-novo-cliente-salvar"));
     await waitFor(() =>
       expect(salvo).toHaveBeenCalledWith(
@@ -94,7 +94,7 @@ describe("um cadastro de cliente no PDV", () => {
       },
     });
     expect(screen.getByText("Editar cadastro do cliente")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("RG"), { target: { value: "RG informado" } });
+    fireEvent.change(screen.getByLabelText(/^RG( \*)?$/), { target: { value: "RG informado" } });
     fireEvent.click(screen.getByTestId("pdv-novo-cliente-salvar"));
     await waitFor(() =>
       expect(salvo).toHaveBeenCalledWith(
@@ -157,9 +157,9 @@ describe("um cadastro de cliente no PDV", () => {
       },
       avisos: [],
     });
-    await waitFor(() => expect(screen.getByLabelText("CNH")).toHaveValue("12345678901"));
+    await waitFor(() => expect(screen.getByLabelText(/^CNH( \*)?$/)).toHaveValue("12345678901"));
     expect(screen.getByTestId("pdv-novo-cliente-nome")).toHaveValue("Nome conferido");
-    expect(screen.getByLabelText("Nascimento")).toHaveValue("1990-05-01");
+    expect(screen.getByLabelText(/^Nascimento( \*)?$/)).toHaveValue("1990-05-01");
     fireEvent.click(screen.getByTestId("pdv-novo-cliente-salvar"));
     await waitFor(() =>
       expect(salvo).toHaveBeenCalledWith(

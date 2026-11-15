@@ -138,9 +138,14 @@ export function formatarDocumento(valor: string | null | undefined): string {
 export const clienteSchema = z.object({
   documentos: z.array(z.string().uuid()).max(100).optional(),
   nacionalidade: textoOpcional(80),
+  estado_civil: textoOpcional(40),
+  profissao: textoOpcional(80),
   nome: texto(200).default(""),
   documento: textoOpcional(20),
   rg: textoOpcional(30),
+  /** Órgão expedidor do RG (ex.: SSP). */
+  rg_orgao_expedidor: textoOpcional(20),
+  rg_uf: textoOpcional(2),
   cnh: textoOpcional(30),
   telefone: textoOpcional(30),
   email: textoOpcional(200),
@@ -189,6 +194,8 @@ export const trocaSchema = z.object({
   quitacao_cents: centavos.default(0),
   /** Se a troca entra no estoque ao concluir (padrão: sim, como "reservado" até ter preço). */
   entra_no_estoque: z.boolean().default(true),
+  /** Credor do financiamento que grava a troca, quando há quitação. */
+  gravame_credor: textoOpcional(120),
 });
 export type TrocaDaNegociacao = z.infer<typeof trocaSchema>;
 
@@ -207,6 +214,8 @@ export const pagamentoSchema = z.object({
   data_pagamento: data,
   intervalo_dias: z.number().int().min(1).max(365).optional(),
   chave_pix: textoOpcional(200),
+  /** Bandeira do cartão, quando a forma é cartão. */
+  bandeira: textoOpcional(40),
 });
 export type PagamentoDaNegociacao = z.infer<typeof pagamentoSchema>;
 

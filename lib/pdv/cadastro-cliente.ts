@@ -48,7 +48,11 @@ export function corpoDoContato(c: ClienteDaNegociacao, editar = false): CorpoDoC
   const extras: Record<string, string | null> = {};
   for (const k of [
     "nacionalidade",
+    "estado_civil",
+    "profissao",
     "rg",
+    "rg_orgao_expedidor",
+    "rg_uf",
     "cnh",
     "endereco",
     "numero",

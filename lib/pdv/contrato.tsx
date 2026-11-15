@@ -9,6 +9,7 @@
 import { Document, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
 import { ContratoModelo } from "./contrato-modelo";
+import type { DecisaoDoContrato } from "./versao-do-contrato";
 
 import { formatarKm, formatarPreco } from "@/lib/veiculos/regras";
 
@@ -24,7 +25,12 @@ import {
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 9.5, lineHeight: 1.45, fontFamily: "Helvetica" },
-  topo: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  topo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
   logo: { width: 96, height: 40, objectFit: "contain" },
   titulo: { fontSize: 13, fontFamily: "Helvetica-Bold", textAlign: "center", marginBottom: 4 },
   subtitulo: { fontSize: 9, textAlign: "center", color: "#555", marginBottom: 14 },
@@ -35,15 +41,33 @@ const styles = StyleSheet.create({
   campoInteiro: { width: "100%", marginBottom: 2 },
   rotulo: { fontFamily: "Helvetica-Bold" },
   paragrafo: { marginBottom: 5, textAlign: "justify" },
-  tabelaLinha: { flexDirection: "row", borderBottomWidth: 0.5, borderColor: "#ccc", paddingVertical: 3 },
+  tabelaLinha: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderColor: "#ccc",
+    paddingVertical: 3,
+  },
   colForma: { width: "40%" },
   colDetalhe: { width: "40%" },
   colValor: { width: "20%", textAlign: "right" },
-  total: { flexDirection: "row", justifyContent: "space-between", marginTop: 4, fontFamily: "Helvetica-Bold" },
+  total: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+    fontFamily: "Helvetica-Bold",
+  },
   assinaturas: { flexDirection: "row", justifyContent: "space-between", marginTop: 40 },
   assinatura: { width: "45%", borderTopWidth: 0.5, paddingTop: 4, textAlign: "center" },
   testemunhas: { flexDirection: "row", justifyContent: "space-between", marginTop: 34 },
-  rodape: { position: "absolute", bottom: 20, left: 40, right: 40, fontSize: 7.5, color: "#777", textAlign: "center" },
+  rodape: {
+    position: "absolute",
+    bottom: 20,
+    left: 40,
+    right: 40,
+    fontSize: 7.5,
+    color: "#777",
+    textAlign: "center",
+  },
 });
 
 export interface LojaDoContrato {
@@ -58,9 +82,19 @@ export interface ContratoInput {
   negociacao: Negociacao;
   loja: LojaDoContrato;
   vendedorNome: string | null;
+  /** Já calculada pela rota; senão o modelo calcula. */
+  decisao?: DecisaoDoContrato;
 }
 
-function Campo({ rotulo, valor, inteiro }: { rotulo: string; valor: string | null | undefined; inteiro?: boolean }) {
+function Campo({
+  rotulo,
+  valor,
+  inteiro,
+}: {
+  rotulo: string;
+  valor: string | null | undefined;
+  inteiro?: boolean;
+}) {
   return (
     <Text style={inteiro ? styles.campoInteiro : styles.campo}>
       <Text style={styles.rotulo}>{rotulo}: </Text>
@@ -76,7 +110,11 @@ function BlocoDoVeiculo({ v }: { v: Partial<VeiculoDaNegociacao | TrocaDaNegocia
       <Campo rotulo="Versão" valor={v.versao} />
       <Campo
         rotulo="Ano fab./modelo"
-        valor={v.ano_fabricacao || v.ano_modelo ? `${v.ano_fabricacao ?? "-"}/${v.ano_modelo ?? "-"}` : null}
+        valor={
+          v.ano_fabricacao || v.ano_modelo
+            ? `${v.ano_fabricacao ?? "-"}/${v.ano_modelo ?? "-"}`
+            : null
+        }
       />
       <Campo rotulo="Cor" valor={v.cor} />
       <Campo rotulo="Placa" valor={v.placa?.toUpperCase()} />
@@ -91,16 +129,24 @@ function BlocoDoVeiculo({ v }: { v: Partial<VeiculoDaNegociacao | TrocaDaNegocia
 
 function enderecoDoCliente(c: Negociacao["cliente"]): string {
   const rua = [c.endereco, c.numero].filter(Boolean).join(", ");
-  const resto = [c.complemento, c.bairro, [c.cidade, c.uf].filter(Boolean).join("/"), c.cep ? `CEP ${c.cep}` : null]
+  const resto = [
+    c.complemento,
+    c.bairro,
+    [c.cidade, c.uf].filter(Boolean).join("/"),
+    c.cep ? `CEP ${c.cep}` : null,
+  ]
     .filter(Boolean)
     .join(" — ");
   return [rua, resto].filter(Boolean).join(" — ");
 }
 
 function dataPorExtenso(iso: string): string {
-  return new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Sao_Paulo" }).format(
-    new Date(iso),
-  );
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(iso));
 }
 
 function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
@@ -121,11 +167,19 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
     <Document title={`Contrato ${n.tipo} #${n.numero}`}>
       <Page size="A4" style={styles.page}>
         <View style={styles.topo}>
-          {d.loja.logoUrl ? <Image src={d.loja.logoUrl} style={styles.logo} /> : <Text>{d.loja.nomeFantasia}</Text>}
+          {d.loja.logoUrl ? (
+            <Image src={d.loja.logoUrl} style={styles.logo} />
+          ) : (
+            <Text>{d.loja.nomeFantasia}</Text>
+          )}
           <Text>Negociação nº {n.numero}</Text>
         </View>
-        <Text style={styles.titulo}>CONTRATO PARTICULAR DE COMPRA E VENDA DE VEÍCULO AUTOMOTOR</Text>
-        <Text style={styles.subtitulo}>{venda ? "Venda da loja ao cliente" : "Compra pela loja de veículo do cliente"}</Text>
+        <Text style={styles.titulo}>
+          CONTRATO PARTICULAR DE COMPRA E VENDA DE VEÍCULO AUTOMOTOR
+        </Text>
+        <Text style={styles.subtitulo}>
+          {venda ? "Venda da loja ao cliente" : "Compra pela loja de veículo do cliente"}
+        </Text>
 
         <Text style={styles.secao}>1. DAS PARTES</Text>
         <Text style={styles.paragrafo}>
@@ -148,17 +202,20 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
 
         <Text style={styles.secao}>2. DO OBJETO</Text>
         <Text style={styles.paragrafo}>
-          O(A) VENDEDOR(A) vende ao(à) COMPRADOR(A) o veículo abaixo descrito, livre e desembaraçado de quaisquer
-          ônus, multas, débitos de IPVA, licenciamento e seguro obrigatório até a data da entrega, salvo o que estiver
-          expressamente declarado neste contrato:
+          O(A) VENDEDOR(A) vende ao(à) COMPRADOR(A) o veículo abaixo descrito, livre e desembaraçado
+          de quaisquer ônus, multas, débitos de IPVA, licenciamento e seguro obrigatório até a data
+          da entrega, salvo o que estiver expressamente declarado neste contrato:
         </Text>
         <BlocoDoVeiculo v={n.veiculo} />
 
         <Text style={styles.secao}>3. DO PREÇO E DA FORMA DE PAGAMENTO</Text>
         <Text style={styles.paragrafo}>
-          O preço certo e ajustado é de <Text style={styles.rotulo}>{preco(resumo.total_cents)}</Text>
-          {venda && n.desconto_cents > 0 ? ` (preço de ${preco(n.valor_cents)} com desconto de ${preco(n.desconto_cents)})` : ""}, pago
-          da seguinte forma:
+          O preço certo e ajustado é de{" "}
+          <Text style={styles.rotulo}>{preco(resumo.total_cents)}</Text>
+          {venda && n.desconto_cents > 0
+            ? ` (preço de ${preco(n.valor_cents)} com desconto de ${preco(n.desconto_cents)})`
+            : ""}
+          , pago da seguinte forma:
         </Text>
         <View style={styles.caixa}>
           {troca ? (
@@ -166,7 +223,9 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
               <Text style={styles.colForma}>Veículo na troca</Text>
               <Text style={styles.colDetalhe}>
                 {tituloDoVeiculoDaNegociacao(troca)}
-                {troca.quitacao_cents > 0 ? ` (avaliado em ${preco(troca.valor_cents)}, quitação de ${preco(troca.quitacao_cents)})` : ""}
+                {troca.quitacao_cents > 0
+                  ? ` (avaliado em ${preco(troca.valor_cents)}, quitação de ${preco(troca.quitacao_cents)})`
+                  : ""}
               </Text>
               <Text style={styles.colValor}>{preco(resumo.troca_liquida_cents)}</Text>
             </View>
@@ -180,7 +239,9 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
                   p.parcelas > 1
                     ? `${p.parcelas}x${p.valor_parcela_cents ? ` de ${preco(p.valor_parcela_cents)}` : ""}`
                     : null,
-                  p.primeiro_vencimento ? `1º venc. ${p.primeiro_vencimento.split("-").reverse().join("/")}` : null,
+                  p.primeiro_vencimento
+                    ? `1º venc. ${p.primeiro_vencimento.split("-").reverse().join("/")}`
+                    : null,
                   p.observacao,
                 ]
                   .filter(Boolean)
@@ -195,16 +256,17 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
           </View>
         </View>
         <Text style={styles.paragrafo}>
-          Pagamentos por financiamento, consórcio, cheque ou boleto só se consideram quitados após a efetiva
-          compensação ou liberação do crédito pela instituição.
+          Pagamentos por financiamento, consórcio, cheque ou boleto só se consideram quitados após a
+          efetiva compensação ou liberação do crédito pela instituição.
         </Text>
 
         {troca ? (
           <>
             <Text style={styles.secao}>4. DO VEÍCULO DADO NA TROCA</Text>
             <Text style={styles.paragrafo}>
-              O(A) COMPRADOR(A) entrega como parte do pagamento o veículo abaixo, declarando ser seu legítimo
-              proprietário e responsabilizando-se por débitos, multas e ônus anteriores à entrega
+              O(A) COMPRADOR(A) entrega como parte do pagamento o veículo abaixo, declarando ser seu
+              legítimo proprietário e responsabilizando-se por débitos, multas e ônus anteriores à
+              entrega
               {troca.quitacao_cents > 0
                 ? `. O saldo devedor de financiamento de ${preco(troca.quitacao_cents)} será quitado pela loja e já está descontado da avaliação`
                 : ""}
@@ -214,12 +276,15 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
           </>
         ) : null}
 
-        <Text style={styles.secao}>{troca ? "5" : "4"}. DA ENTREGA, TRANSFERÊNCIA E RESPONSABILIDADES</Text>
+        <Text style={styles.secao}>
+          {troca ? "5" : "4"}. DA ENTREGA, TRANSFERÊNCIA E RESPONSABILIDADES
+        </Text>
         <Text style={styles.paragrafo}>
-          A posse do veículo é transmitida na data deste contrato. A partir dela, o(a) COMPRADOR(A) responde civil e
-          criminalmente pelo veículo, inclusive por multas e infrações. As partes se obrigam a assinar o documento de
-          transferência (ATPV-e/CRV) e o(a) COMPRADOR(A) a transferir o veículo para o seu nome no prazo legal de 30
-          (trinta) dias, conforme o art. 123 do Código de Trânsito Brasileiro.
+          A posse do veículo é transmitida na data deste contrato. A partir dela, o(a) COMPRADOR(A)
+          responde civil e criminalmente pelo veículo, inclusive por multas e infrações. As partes
+          se obrigam a assinar o documento de transferência (ATPV-e/CRV) e o(a) COMPRADOR(A) a
+          transferir o veículo para o seu nome no prazo legal de 30 (trinta) dias, conforme o art.
+          123 do Código de Trânsito Brasileiro.
         </Text>
         <Text style={styles.paragrafo}>
           {venda
@@ -233,8 +298,10 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
           </>
         ) : null}
         <Text style={styles.paragrafo}>
-          Fica eleito o foro da comarca {d.loja.cidade ? `de ${d.loja.cidade}` : "do domicílio do(a) COMPRADOR(A)"} para dirimir
-          dúvidas deste contrato. E, por estarem justas e contratadas, as partes assinam em 2 (duas) vias de igual teor.
+          Fica eleito o foro da comarca{" "}
+          {d.loja.cidade ? `de ${d.loja.cidade}` : "do domicílio do(a) COMPRADOR(A)"} para dirimir
+          dúvidas deste contrato. E, por estarem justas e contratadas, as partes assinam em 2 (duas)
+          vias de igual teor.
         </Text>
         <Text style={[styles.paragrafo, { textAlign: "right" }]}>
           {d.loja.cidade ? `${d.loja.cidade}, ` : ""}
@@ -263,6 +330,12 @@ function ContratoDoc({ d }: { d: ContratoInput }): React.ReactElement {
 }
 
 export async function renderContratoPdf(input: ContratoInput): Promise<Buffer> {
-  const buf = await renderToBuffer(input.negociacao.contrato?.empresa ? <ContratoModelo n={input.negociacao} /> : <ContratoDoc d={input} />);
+  const buf = await renderToBuffer(
+    input.negociacao.contrato?.empresa ? (
+      <ContratoModelo n={input.negociacao} decisao={input.decisao} />
+    ) : (
+      <ContratoDoc d={input} />
+    ),
+  );
   return buf as Buffer;
 }

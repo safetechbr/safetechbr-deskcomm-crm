@@ -10,6 +10,10 @@ import {
   type VeiculoDaNegociacao,
 } from "./regras";
 import type { EmpresaContrato } from "./modelo-contrato";
+import { TITULO_DO_DOCUMENTO } from "./manifesto-da-pasta";
+import { reaisPorExtenso } from "./valor-por-extenso";
+import { assinanteDaLoja, clausulasFixas, type SecaoDoContrato } from "./clausulas-fixas";
+import { decidirVersaoDoContrato, type DecisaoDoContrato } from "./versao-do-contrato";
 
 const s = StyleSheet.create({
   pagina: {
@@ -37,6 +41,15 @@ const s = StyleSheet.create({
     fontSize: 8,
   },
   assinatura: { width: "44%", borderTopWidth: 0.5, paddingTop: 10, textAlign: "center" },
+  minuta: {
+    textAlign: "center",
+    fontFamily: "Helvetica-Bold",
+    borderWidth: 0.5,
+    borderColor: "#aaa",
+    padding: 4,
+    marginBottom: 10,
+  },
+  pendencia: { marginBottom: 3, paddingLeft: 8 },
 });
 const vazio = "________________";
 const txt = (v?: string | number | null) =>
@@ -102,16 +115,79 @@ function Veiculo({ v, titulo, valor }: { v: VeiculoDaNegociacao; titulo: string;
   );
 }
 
-/** Modelo recebido da loja; dados variáveis e texto contratual saem somente da fotografia. */
-export function ContratoModelo({ n }: { n: Negociacao }) {
+const ONDE: Record<string, string> = {
+  empresa: "Empresa",
+  cliente: "Cliente",
+  veiculo: "Veículo vendido",
+  troca: "Veículo da troca",
+  pagamentos: "Pagamentos",
+  contrato: "Dados do contrato",
+};
+
+/** Só na minuta: o que falta para a versão de assinatura. Não integra o contrato. */
+function PendenciasDaMinuta({ decisao }: { decisao: DecisaoDoContrato }) {
+  const anexos = decisao.manifesto.itens.filter((i) =>
+    decisao.anexos_pendentes.includes(i.documento),
+  );
+  return (
+    <View>
+      <Text style={s.secao}>Pendências desta minuta (não integram o contrato)</Text>
+      {decisao.motivos.map((m, i) => (
+        <Text key={`m${i}`} style={s.pendencia}>
+          • {m}
+        </Text>
+      ))}
+      {[...decisao.bloqueios, ...decisao.avisos].map((p, i) => (
+        <Text key={`p${i}`} style={s.pendencia}>
+          • {ONDE[p.onde]}: {p.mensagem}
+          {p.gravidade === "aviso" ? " (aviso)" : ""}
+        </Text>
+      ))}
+      {anexos.length ? (
+        <>
+          <Text style={s.secao}>Documentos da pasta ainda sem emissão pelo sistema</Text>
+          {anexos.map((a) => (
+            <Text key={a.documento} style={s.pendencia}>
+              • {TITULO_DO_DOCUMENTO[a.documento]}: {a.motivo}
+            </Text>
+          ))}
+        </>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Modelo recebido da loja; dados variáveis e texto contratual saem somente da
+ * fotografia. Blocos e versão (minuta ou assinatura) vêm do retrato da operação.
+ */
+export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: DecisaoDoContrato }) {
+  const dec = decisao ?? decidirVersaoDoContrato(n);
+  const { blocos, comprador } = dec.retrato;
+  const minuta = dec.versao === "minuta";
   const d = n.contrato!;
   const e = d.empresa!;
   const c = n.cliente;
   const preco = (v: number) => formatarPreco(v, n.moeda || "BRL");
+  const extenso = (v: number) =>
+    (n.moeda || "BRL") === "BRL" ? `${preco(v)} (${reaisPorExtenso(v)})` : preco(v);
   const resumo = resumoDaNegociacao(n);
   const loja = `${txt(e.razao_social)}${e.nome_fantasia && e.nome_fantasia !== e.razao_social ? ` (${e.nome_fantasia})` : ""}, com sede em ${endereco(e)}, CNPJ ${txt(formatarDocumento(e.cnpj))}, telefone ${txt(e.telefone)}, e-mail ${txt(e.email)}`;
-  const cliente = `${txt(c.nome)}, nacionalidade ${txt(c.nacionalidade)}, nascimento ${data(c.nascimento)}, residente em ${endereco(c)}, CPF/CNPJ ${txt(formatarDocumento(c.documento))}, RG ${txt(c.rg)}, telefone ${txt(c.telefone)}, e-mail ${txt(c.email)}`;
+  const contato = `telefone ${txt(c.telefone)}, e-mail ${txt(c.email)}`;
+  const cliente =
+    comprador === "pessoa_juridica"
+      ? `${txt(c.nome)}, com sede em ${endereco(c)}, CNPJ ${txt(formatarDocumento(c.documento))}, ${contato}`
+      : `${txt(c.nome)}, nacionalidade ${txt(c.nacionalidade)}, nascimento ${data(c.nascimento)}, estado civil ${txt(c.estado_civil)}, profissão ${txt(c.profissao)}, residente em ${endereco(c)}, ${comprador === "pessoa_fisica" ? "CPF" : "CPF/CNPJ"} ${txt(formatarDocumento(c.documento))}, RG ${txt(c.rg)} ${txt(c.rg_orgao_expedidor)}/${txt(c.rg_uf)}, ${contato}`;
   const venda = n.tipo === "venda";
+  const fixas = clausulasFixas(n, blocos);
+  // A compra pela loja não tem cláusula de entrega no modelo: as datas ganham
+  // uma cláusula própria antes das disposições gerais.
+  const secoes: SecaoDoContrato[] = venda
+    ? fixas.secoes
+    : [{ titulo: "Da entrega e recebimento", itens: [] }, ...fixas.secoes];
+  const indiceDaEntrega = secoes.findIndex((x) => x.titulo.startsWith("Da entrega"));
+  const representante = assinanteDaLoja(n);
+  const testemunhas = [0, 1].map((i) => d.testemunhas?.[i]);
   const debitos = [
     { v: n.veiculo, nome: tituloDoVeiculoDaNegociacao(n.veiculo) },
     ...(n.troca ? [{ v: n.troca, nome: tituloDoVeiculoDaNegociacao(n.troca) }] : []),
@@ -128,8 +204,11 @@ export function ContratoModelo({ n }: { n: Negociacao }) {
         <Text style={s.titulo}>Contrato de Compra e Venda</Text>
         <Text style={s.codigo}>
           Código: {n.numero}
-          {n.status === "rascunho" ? " · RASCUNHO" : ""}
+          {minuta ? " · MINUTA" : ""}
         </Text>
+        {minuta ? (
+          <Text style={s.minuta}>Minuta para conferência. Não é a versão para assinatura.</Text>
+        ) : null}
         <Text style={s.paragrafo}>De um lado, como COMPRADOR: {venda ? cliente : loja}.</Text>
         <Text style={s.paragrafo}>De outro lado, como VENDEDOR: {venda ? loja : cliente}.</Text>
         <Text style={s.paragrafo}>
@@ -139,16 +218,16 @@ export function ContratoModelo({ n }: { n: Negociacao }) {
         <Veiculo
           v={n.veiculo}
           titulo={venda ? "Veículo vendido" : "Veículo comprado pela loja"}
-          valor={preco(resumo.total_cents)}
+          valor={extenso(resumo.total_cents)}
         />
         {n.troca ? (
           <Veiculo
             v={n.troca}
             titulo="Veículo recebido na troca"
-            valor={preco(n.troca.valor_cents)}
+            valor={extenso(n.troca.valor_cents)}
           />
         ) : null}
-        {n.troca ? (
+        {n.troca && blocos.quitacao_da_troca ? (
           <Text style={s.paragrafo}>
             Quitação da troca: {preco(n.troca.quitacao_cents)} · Valor líquido da troca:{" "}
             {preco(resumo.troca_liquida_cents)}
@@ -197,8 +276,10 @@ export function ContratoModelo({ n }: { n: Negociacao }) {
         </View>
         <Text style={s.secao}>Cláusula 2ª: Do pagamento</Text>
         <Text style={s.paragrafo}>
-          Valor negociado: {preco(n.valor_cents)} · Desconto: {preco(n.desconto_cents)} · Total:{" "}
-          {preco(resumo.total_cents)}
+          {blocos.desconto
+            ? `Valor negociado: ${preco(n.valor_cents)} · Desconto: ${preco(n.desconto_cents)} · `
+            : ""}
+          Total: {extenso(resumo.total_cents)}
         </Text>
         <View style={s.tabela}>
           <View style={s.linha}>
@@ -210,7 +291,7 @@ export function ContratoModelo({ n }: { n: Negociacao }) {
               ),
             )}
           </View>
-          {n.troca ? (
+          {blocos.troca ? (
             <View style={s.linha}>
               <Text style={{ width: "75%" }}>Veículo na troca (valor líquido)</Text>
               <Text style={s.celula}>{preco(resumo.troca_liquida_cents)}</Text>
@@ -238,30 +319,51 @@ export function ContratoModelo({ n }: { n: Negociacao }) {
             </View>
           ))}
           <Text style={s.total}>
-            Valor total: {preco(resumo.pagamentos_cents + resumo.troca_liquida_cents)}
+            Valor total: {extenso(resumo.pagamentos_cents + resumo.troca_liquida_cents)}
           </Text>
         </View>
+        {fixas.pagamento.map((v, i) => (
+          <Text key={i} style={s.paragrafo}>
+            2.{i + 1}. {v}
+          </Text>
+        ))}
         <Rodape />
       </Page>
       <Page size="A4" style={s.pagina}>
-        <Text style={s.secao}>Cláusula 3ª: Da entrega e recebimento</Text>
-        <Text style={s.paragrafo}>
-          {tituloDoVeiculoDaNegociacao(n.veiculo)} — Data de {venda ? "entrega" : "recebimento"}:{" "}
-          {data(d.entrega_em)}
-        </Text>
-        {n.troca ? (
-          <Text style={s.paragrafo}>
-            {tituloDoVeiculoDaNegociacao(n.troca)} — Recebimento da troca:{" "}
-            {data(d.recebimento_troca_em)}
-          </Text>
-        ) : null}
-        {(d.clausulas ?? []).map((v, i) => (
-          <Text key={i} style={s.paragrafo}>
-            {v}
-          </Text>
+        {secoes.map((secao, i) => (
+          <React.Fragment key={secao.titulo}>
+            <Text style={s.secao}>
+              Cláusula {i + 3}ª: {secao.titulo}
+            </Text>
+            {i === indiceDaEntrega ? (
+              <>
+                <Text style={s.paragrafo}>
+                  {tituloDoVeiculoDaNegociacao(n.veiculo)} — Data prevista de{" "}
+                  {venda ? "entrega" : "recebimento"}: {data(d.entrega_em)}
+                  {d.entrega_hora ? `, às ${d.entrega_hora}` : ""}
+                </Text>
+                {blocos.troca && n.troca ? (
+                  <Text style={s.paragrafo}>
+                    {tituloDoVeiculoDaNegociacao(n.troca)} — Data prevista de recebimento da
+                    troca: {data(d.recebimento_troca_em)}
+                    {d.recebimento_troca_hora ? `, às ${d.recebimento_troca_hora}` : ""}
+                  </Text>
+                ) : null}
+              </>
+            ) : null}
+            {secao.itens.map((v, k) => (
+              <Text key={k} style={s.paragrafo}>
+                {i + 3}.{k + 1}. {v}
+              </Text>
+            ))}
+          </React.Fragment>
         ))}
-        <Text style={s.secao}>Cláusula Especial</Text>
-        <Text style={s.paragrafo}>{txt(d.clausula_especial)}</Text>
+        {minuta || d.clausula_especial?.trim() ? (
+          <>
+            <Text style={s.secao}>Cláusula Especial</Text>
+            <Text style={s.paragrafo}>{txt(d.clausula_especial)}</Text>
+          </>
+        ) : null}
         {n.observacoes ? (
           <>
             <Text style={s.secao}>Observações da negociação</Text>
@@ -287,13 +389,28 @@ export function ContratoModelo({ n }: { n: Negociacao }) {
         >
           <View style={s.assinatura}>
             <Text>{venda ? txt(e.razao_social) : txt(c.nome)}</Text>
+            {venda && representante ? <Text>{representante}</Text> : null}
             <Text>Vendedor</Text>
           </View>
           <View style={s.assinatura}>
             <Text>{venda ? txt(c.nome) : txt(e.razao_social)}</Text>
+            {!venda && representante ? <Text>{representante}</Text> : null}
             <Text>Comprador</Text>
           </View>
         </View>
+        <View
+          style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 45 }}
+          wrap={false}
+        >
+          {testemunhas.map((t, i) => (
+            <View key={i} style={s.assinatura}>
+              <Text>Testemunha {i + 1}</Text>
+              <Text>Nome: {txt(t?.nome)}</Text>
+              <Text>CPF: {t?.cpf ? formatarDocumento(t.cpf) : txt(null)}</Text>
+            </View>
+          ))}
+        </View>
+        {minuta ? <PendenciasDaMinuta decisao={dec} /> : null}
         <Rodape />
       </Page>
     </Document>

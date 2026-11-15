@@ -6,10 +6,15 @@ export function CampoNacionalidade({
   valor,
   onChange,
   className,
+  obrigatorio,
+  campo,
 }: {
   valor: string;
   onChange: (v: string) => void;
   className: string;
+  obrigatorio?: boolean;
+  /** Chave `data-campo` para o PDV levar o operador até aqui. */
+  campo?: string;
 }) {
   const id = useId();
   const [aberto, setAberto] = useState(false);
@@ -27,9 +32,11 @@ export function CampoNacionalidade({
     <div className="relative col-span-2 text-sm">
       <label htmlFor={id} className="text-muted-foreground">
         Nacionalidade
+        {obrigatorio ? <span aria-hidden> *</span> : null}
       </label>
       <input
         id={id}
+        data-campo={campo}
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={aberto}

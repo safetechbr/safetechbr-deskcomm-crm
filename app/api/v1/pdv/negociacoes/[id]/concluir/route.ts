@@ -15,6 +15,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { COLUNAS_DA_NEGOCIACAO, type Negociacao, pendenciasParaConcluir } from "@/lib/pdv/regras";
+import { faltandoParaConcluir } from "@/lib/pdv/retrato-da-operacao";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -43,9 +44,19 @@ export async function POST(
   const n = data as unknown as Negociacao;
   if (n.status !== "rascunho") return fail("conflict", t("Essa negociação já foi fechada."), 409, { requestId });
 
-  const faltas = pendenciasParaConcluir(n);
-  if (faltas.length > 0) {
-    return fail("validation_failed", t(faltas[0]!), 422, { requestId, details: { pendencias: faltas.map(t) } });
+  // Na venda, o contrato é a tela final: sem os dados obrigatórios dele a
+  // negociação não fecha. `faltando` diz o setor e o campo de cada falta;
+  // `pendencias` segue com as mensagens soltas para quem já lê esse formato.
+  const faltando = faltandoParaConcluir(n, pendenciasParaConcluir(n)).map((f) => ({
+    ...f,
+    setor: t(f.setor),
+    mensagem: t(f.mensagem),
+  }));
+  if (faltando.length > 0) {
+    return fail("validation_failed", faltando[0]!.mensagem, 422, {
+      requestId,
+      details: { pendencias: faltando.map((f) => f.mensagem), faltando },
+    });
   }
 
   const { error } = await supabase.rpc("fn_concluir_negociacao_de_veiculo", { p_id: id });

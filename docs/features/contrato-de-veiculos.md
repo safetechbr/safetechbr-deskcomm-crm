@@ -49,3 +49,26 @@ O bloco compartilha a RLS, auditoria e anonimização de `custom_fields` existen
 Nacionalidade usa um catálogo local de sugestões em `lib/contacts/nacionalidades.ts`. O campo começa vazio; a pessoa digita e seleciona por clique ou teclado. Busca normalizada ignora acentos e caixa e reconhece grafias femininas comuns. O dado segue o mesmo cadastro e a mesma fotografia contratual. Evidência da interface em `evidence/nacionalidade-com-busca/`.
 
 O cadastro único também aceita preenchimento pela CNH ou identidade, com leitura local de foto/PDF e conferência no próprio modal. Campos existentes prevalecem; os originais são guardados no cadastro do cliente com acesso restrito. Fluxo, limites e provas em [Documento do cliente no PDV](documento-do-cliente-no-pdv.md).
+
+## Retrato da operação e pasta documental
+
+`lib/pdv/retrato-da-operacao.ts` lê a negociação gravada e devolve o cenário (venda simples, venda com troca, compra direta), o tipo de comprador, os blocos que o documento deve imprimir ou omitir, os valores conciliados e as datas previstas de entrega e de recebimento da troca. Também lista só o que falta, apontando onde completar (empresa, cliente, veículo, troca, pagamentos, contrato). Datas previstas nunca são tratadas como evento ocorrido. A quitação aparece como não rastreada, porque o financeiro atual marca como pagos, na conclusão, todos os pagamentos que não são crediário.
+
+`lib/pdv/manifesto-da-pasta.ts` usa o retrato para listar os 11 documentos da pasta. Cada um fica como pronto, faltam dados, não se aplica ou modelo não implementado. Quando o sistema ainda não registra a condição de aplicação (garantia, despachante, proprietário registral, comprovante de residência), o item diz isso em vez de presumir. Nenhuma tela ou rota consome esses módulos ainda. Testes: `lib/pdv/retrato-da-operacao.test.ts`. Esta é uma análise funcional, não uma validação jurídica.
+
+## Minuta e versão para assinatura
+
+`lib/pdv/versao-do-contrato.ts` (`decidirVersaoDoContrato`) decide a versão a partir do retrato e do manifesto. O gerador do PDF só lê essa decisão.
+
+- **Minuta:** negociação em rascunho, cancelada, ou com pendência que bloqueia. Compra pela loja é sempre minuta, porque ainda não existe contrato de aquisição. A minuta leva "MINUTA" no cabeçalho e "Pendências desta minuta" na última página: motivos, dados que faltam com o lugar de cada um, avisos e documentos da pasta ainda sem emissão.
+- **Assinatura:** negociação concluída sem bloqueio. Os anexos que não têm gerador (termo de entrega e outros) não impedem a assinatura. Eles aparecem na resposta, e o contrato não cita anexo que não existe.
+- **Blocos por fato:** troca, quitação da troca e desconto só são impressos quando o retrato os liga. A cláusula especial vazia some na versão para assinatura.
+- **Valor por extenso:** é derivado só do valor em centavos (`lib/pdv/valor-por-extenso.ts`), nunca digitado.
+- **Comprador PJ:** é qualificado por CNPJ e sede, sem nacionalidade, nascimento nem RG.
+- **Datas:** a entrega e o recebimento da troca aparecem como "previstas". Financiamento aprovado não é crédito recebido, e o contrato não afirma recebimento.
+
+A rota `GET /api/v1/pdv/negociacoes/:id/contrato` acrescenta `-minuta` ao nome do arquivo e devolve dois cabeçalhos: `X-Contrato-Versao` (`minuta`|`assinatura`) e `X-Contrato-Anexos-Pendentes` (lista separada por vírgula). O contrato histórico, sem fotografia contratual, não muda. Para conferir:
+
+```bash
+npx vitest run --project produto lib/pdv/contrato-modelo.test.ts lib/pdv/valor-por-extenso.test.ts
+```

@@ -5,7 +5,11 @@ const texto = (max: number) => z.string().trim().max(max).optional().nullable();
 export const dadosCadastraisDoClienteSchema = z
   .object({
     nacionalidade: texto(80),
+    estado_civil: texto(40),
+    profissao: texto(80),
     rg: texto(30),
+    rg_orgao_expedidor: texto(20),
+    rg_uf: texto(2),
     cnh: texto(30),
     cnpj: z
       .string()

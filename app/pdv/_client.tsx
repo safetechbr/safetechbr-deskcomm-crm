@@ -3,6 +3,13 @@
 import * as React from "react";
 import { EditorDoContrato, EditorRegularizacao } from "@/components/pdv/dados-do-contrato";
 import { novoContrato, type DadosDoContrato } from "@/lib/pdv/modelo-contrato";
+import {
+  faltandoParaConcluir,
+  retratoDaOperacao,
+  type BlocosDaOperacao,
+  type FaltaParaConcluir,
+  type SetorDoPdv,
+} from "@/lib/pdv/retrato-da-operacao";
 import { toast } from "sonner";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -10,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/types";
 import {
   documentoValido,
   FORMAS_COM_BANCO,
@@ -30,9 +38,11 @@ import {
   type VeiculoDaNegociacao,
 } from "@/lib/pdv/regras";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
+import { centavosParaMascara, mascararMoeda } from "@/lib/money";
 import { formatarKm, formatarPreco, tituloDoVeiculo, type Veiculo } from "@/lib/veiculos/regras";
 import { clienteDoContato, type ContatoDoCadastro } from "@/lib/pdv/cadastro-cliente";
 import { CadastroClienteModal } from "./cadastro-cliente-modal";
+import { acharCampo, destacarCampo } from "@/components/pdv/destacar-campo";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import {
   CaretLeft,
@@ -148,6 +158,7 @@ function Campo({
   extra,
   placeholder,
   testid,
+  campo,
 }: {
   rotulo: string;
   valor: string | number | null | undefined;
@@ -156,6 +167,8 @@ function Campo({
   extra?: string;
   placeholder?: string;
   testid?: string;
+  /** Chave `onde.campo` da pendência, para o painel do que falta achar este campo. */
+  campo?: string;
 }) {
   return (
     <label className={`block text-xs ${extra ?? ""}`}>
@@ -167,6 +180,7 @@ function Campo({
         onChange={(e) => onChange(e.target.value)}
         className={`mt-1 ${CAMPO}`}
         data-testid={testid}
+        data-campo={campo}
       />
     </label>
   );
@@ -179,43 +193,41 @@ function CampoDinheiro({
   onChange,
   extra,
   testid,
+  campo,
 }: {
   rotulo: string;
   cents: number | null | undefined;
   onChange: (cents: number) => void;
   extra?: string;
   testid?: string;
+  campo?: string;
 }) {
-  const formatar = (c: number | null | undefined) =>
-    c
-      ? (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : "";
-  const [texto, setTexto] = React.useState(formatar(cents));
+  const [texto, setTexto] = React.useState(centavosParaMascara(cents));
   const ultimo = React.useRef(cents);
   React.useEffect(() => {
     if (cents !== ultimo.current) {
       ultimo.current = cents;
-      setTexto(formatar(cents));
+      setTexto(centavosParaMascara(cents));
     }
   }, [cents]);
   return (
     <label className={`block text-xs ${extra ?? ""}`}>
       <span className="text-muted-foreground">{rotulo}</span>
-      <div className="mt-1 flex h-9 items-center rounded-full border border-border/80 bg-surface px-3.5 text-sm shadow-xs transition-colors focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/20">
+      <div
+        data-campo={campo}
+        className="mt-1 flex h-9 items-center rounded-full border border-border/80 bg-surface px-3.5 text-sm shadow-xs transition-colors focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/20">
         <span className="mr-1 text-muted-foreground">R$</span>
         <input
           inputMode="decimal"
           value={texto}
           placeholder="0,00"
           onChange={(e) => {
-            setTexto(e.target.value);
-            const c = e.target.value.trim() === "" ? 0 : precoParaCentavos(e.target.value);
-            if (c !== null) {
-              ultimo.current = c;
-              onChange(c);
-            }
+            const mascarado = mascararMoeda(e.target.value);
+            setTexto(mascarado);
+            const c = mascarado === "" ? 0 : (precoParaCentavos(mascarado) ?? 0);
+            ultimo.current = c;
+            onChange(c);
           }}
-          onBlur={() => setTexto(formatar(ultimo.current))}
           className="h-full w-full bg-transparent tabular-nums outline-hidden"
           data-testid={testid}
         />
@@ -249,9 +261,12 @@ function Coluna({
   icone: Icone,
   indice = 0,
   className = "",
+  ancora,
   children,
 }: {
   className?: string;
+  /** Id do setor, para o painel do que falta rolar até ele. */
+  ancora?: string;
   titulo: string;
   atalho?: string;
   rodape?: React.ReactNode;
@@ -261,6 +276,7 @@ function Coluna({
 }) {
   return (
     <section
+      id={ancora}
       className={`ds-entra flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs ${className}`}
       style={{ animationDelay: `${indice * 60}ms` }}
     >
@@ -292,59 +308,63 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
   v,
   onChange,
   prefixo,
+  onde,
 }: {
   v: V;
   onChange: (v: V) => void;
   prefixo: string;
+  /** Lugar das pendências desta ficha: o veículo vendido ou o da troca. */
+  onde: "veiculo" | "troca";
 }) {
   const t = useT();
   const set = (campo: keyof VeiculoDaNegociacao, valor: unknown) =>
     onChange({ ...v, [campo]: valor });
+  const c = (campo: keyof VeiculoDaNegociacao) => `${onde}.${campo}`;
   return (
     <div className="grid grid-cols-2 gap-2">
-      <Campo rotulo={t("Marca")} valor={v.marca} onChange={(x) => set("marca", x)} />
+      <Campo rotulo={t("Marca")} valor={v.marca} onChange={(x) => set("marca", x)} campo={c("marca")} />
       <Campo
         rotulo={t("Modelo")}
         valor={v.modelo}
-        onChange={(x) => set("modelo", x)}
+        onChange={(x) => set("modelo", x)} campo={c("modelo")}
         testid={`${prefixo}-modelo`}
       />
       <Campo
         rotulo={t("Versão")}
         valor={v.versao}
-        onChange={(x) => set("versao", x)}
+        onChange={(x) => set("versao", x)} campo={c("versao")}
         extra="col-span-2"
       />
       <Campo
         rotulo={t("Ano fab.")}
         valor={v.ano_fabricacao}
-        onChange={(x) => set("ano_fabricacao", numeroOuNull(x))}
+        onChange={(x) => set("ano_fabricacao", numeroOuNull(x))} campo={c("ano_fabricacao")}
       />
       <Campo
         rotulo={t("Ano modelo")}
         valor={v.ano_modelo}
-        onChange={(x) => set("ano_modelo", numeroOuNull(x))}
+        onChange={(x) => set("ano_modelo", numeroOuNull(x))} campo={c("ano_modelo")}
       />
-      <Campo rotulo={t("Km")} valor={v.km} onChange={(x) => set("km", numeroOuNull(x))} />
-      <Campo rotulo={t("Cor")} valor={v.cor} onChange={(x) => set("cor", x)} />
+      <Campo rotulo={t("Km")} valor={v.km} onChange={(x) => set("km", numeroOuNull(x))} campo={c("km")} />
+      <Campo rotulo={t("Cor")} valor={v.cor} onChange={(x) => set("cor", x)} campo={c("cor")} />
       <Campo
         rotulo={t("Combustível")}
         valor={v.combustivel}
-        onChange={(x) => set("combustivel", x)}
+        onChange={(x) => set("combustivel", x)} campo={c("combustivel")}
       />
       <label className="text-xs">Condição
-        <select className={CAMPO} value={v.condicao ?? ""} onChange={(e) => set("condicao", e.target.value || null)}>
+        <select data-campo={c("condicao")} className={CAMPO} value={v.condicao ?? ""} onChange={(e) => set("condicao", e.target.value || null)}>
           <option value="">Selecione</option><option value="novo">Novo</option><option value="usado">Usado</option>
         </select>
       </label>
-      <div className="col-span-2"><EditorRegularizacao valor={v.regularizacao ?? []} onChange={(valor) => set("regularizacao", valor)} /></div>
-      <Campo rotulo={t("Câmbio")} valor={v.cambio} onChange={(x) => set("cambio", x)} />
-      <Campo rotulo={t("Placa")} valor={v.placa} onChange={(x) => set("placa", x.toUpperCase())} />
-      <Campo rotulo={t("Renavam")} valor={v.renavam} onChange={(x) => set("renavam", x)} />
+      <div className="col-span-2" data-campo={c("regularizacao")}><EditorRegularizacao valor={v.regularizacao ?? []} onChange={(valor) => set("regularizacao", valor)} /></div>
+      <Campo rotulo={t("Câmbio")} valor={v.cambio} onChange={(x) => set("cambio", x)} campo={c("cambio")} />
+      <Campo rotulo={t("Placa")} valor={v.placa} onChange={(x) => set("placa", x.toUpperCase())} campo={c("placa")} />
+      <Campo rotulo={t("Renavam")} valor={v.renavam} onChange={(x) => set("renavam", x)} campo={c("renavam")} />
       <Campo
         rotulo={t("Chassi")}
         valor={v.chassi}
-        onChange={(x) => set("chassi", x.toUpperCase())}
+        onChange={(x) => set("chassi", x.toUpperCase())} campo={c("chassi")}
         extra="col-span-2"
       />
     </div>
@@ -358,16 +378,23 @@ function ColunaCliente({
   r,
   setR,
   travado,
+  faltando,
+  pendenciasCom,
 }: {
   r: Rascunho;
   setR: (f: (r: Rascunho) => Rascunho) => void;
   travado: boolean;
+  faltando: readonly FaltaParaConcluir[];
+  /** Recalcula o que falta com outro cliente: o cadastro mostra a lista ao vivo. */
+  pendenciasCom: (cliente: ClienteDaNegociacao) => readonly FaltaParaConcluir[];
 }) {
   const t = useT();
   const [busca, setBusca] = React.useState("");
   const [achados, setAchados] = React.useState<ContatoEncontrado[]>([]);
   const [cadastroAberto, setCadastroAberto] = React.useState(false);
   const [editandoCadastro, setEditandoCadastro] = React.useState(false);
+  /** Campo a destacar quando o cadastro abre a partir de uma pendência. */
+  const [campoDoCadastro, setCampoDoCadastro] = React.useState<string | undefined>();
   const [carregandoCliente, setCarregandoCliente] = React.useState(false);
   const escolhaAtual = React.useRef(0);
   const botaoEditar = React.useRef<HTMLButtonElement>(null);
@@ -424,6 +451,7 @@ function ColunaCliente({
   return (
     <Coluna
       atalho="F2"
+      ancora="pdv-setor-comprador"
       icone={UserCircle}
       indice={0}
       titulo={r.tipo === "venda" ? t("Cliente (comprador)") : t("Cliente (vendedor)")}
@@ -536,13 +564,33 @@ function ColunaCliente({
         )}
       </fieldset>
 
+      <OQueFalta
+        faltando={faltando}
+        onCliente={(campo) => {
+          setCampoDoCadastro(campo);
+          setEditandoCadastro(identificado);
+          setCadastroAberto(true);
+        }}
+      />
+
       <CadastroClienteModal
         open={cadastroAberto}
-        onOpenChange={setCadastroAberto}
+        onOpenChange={(aberto) => {
+          setCadastroAberto(aberto);
+          if (!aberto) setCampoDoCadastro(undefined);
+        }}
+        campoInicial={campoDoCadastro}
+        onIrParaFora={(f) => {
+          setCadastroAberto(false);
+          setCampoDoCadastro(undefined);
+          // Depois de o modal devolver o foco, para a rolagem não brigar com ele.
+          window.setTimeout(() => irAoCampo(f), 250);
+        }}
         retornoDoFoco={editandoCadastro ? botaoEditar : botaoMais}
         inicial={editandoCadastro ? c : undefined}
         contactId={editandoCadastro ? r.contact_id : undefined}
         onSalvo={(cliente, contactId) => setR((x) => ({ ...x, contact_id: contactId, cliente }))}
+        pendencias={pendenciasCom}
       />
     </Coluna>
   );
@@ -597,12 +645,13 @@ function ColunaVeiculo({
 
   if (r.tipo === "compra") {
     return (
-      <Coluna icone={Storefront} indice={1} titulo={t("Veículo comprado")}>
+      <Coluna ancora="pdv-setor-veiculo" icone={Storefront} indice={1} titulo={t("Veículo comprado")}>
         <fieldset disabled={travado} className="space-y-3">
           <FichaDoVeiculo
             v={r.veiculo}
             onChange={(v) => setR((x) => ({ ...x, veiculo: v }))}
             prefixo="pdv-compra"
+            onde="veiculo"
           />
           <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
             <CampoDinheiro
@@ -646,7 +695,7 @@ function ColunaVeiculo({
   };
 
   return (
-    <Coluna atalho="F3" icone={Storefront} indice={1} titulo={t("Veículos")}>
+    <Coluna ancora="pdv-setor-veiculo" atalho="F3" icone={Storefront} indice={1} titulo={t("Veículos")}>
       <fieldset disabled={travado} className="space-y-3">
         {escolhido ? (
           <div
@@ -707,6 +756,7 @@ function ColunaVeiculo({
                 placeholder={t("Buscar no estoque por modelo, código ou placa…")}
                 className={`${CAMPO} pl-9`}
                 data-testid="pdv-busca-veiculo"
+                data-campo="veiculo.veiculo_id"
               />
             </div>
             {lista.length === 0 ? (
@@ -754,7 +804,7 @@ function ColunaVeiculo({
         {r.veiculo_id ? <details className="space-y-3 rounded-xl border p-3">
           <summary className="cursor-pointer text-sm">Revisar veículo no contrato</summary>
           <p className="text-xs text-muted-foreground">Estas alterações valem para esta negociação.</p>
-          <FichaDoVeiculo v={r.veiculo} onChange={(v) => setR((x) => ({ ...x, veiculo: v }))} prefixo="pdv-venda" />
+          <FichaDoVeiculo v={r.veiculo} onChange={(v) => setR((x) => ({ ...x, veiculo: v }))} prefixo="pdv-venda" onde="veiculo" />
         </details> : null}
         <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
           <CampoDinheiro
@@ -762,6 +812,7 @@ function ColunaVeiculo({
             cents={r.valor_cents}
             onChange={(c) => setR((x) => ({ ...x, valor_cents: c }))}
             testid="pdv-valor"
+            campo="veiculo.valor_cents"
           />
           <CampoDinheiro
             rotulo={t("Desconto")}
@@ -772,11 +823,15 @@ function ColunaVeiculo({
 
         <div className="border-t border-border/60 pt-3">
           {r.troca ? (
-            <div className="ds-entra mt-3 space-y-2 rounded-xl border border-border/60 bg-muted/50 p-3">
+            <div
+              id="pdv-setor-troca"
+              className="ds-entra mt-3 space-y-2 rounded-xl border border-border/60 bg-muted/50 p-3"
+            >
               <FichaDoVeiculo
                 v={r.troca}
                 onChange={(v) => setR((x) => ({ ...x, troca: v }))}
                 prefixo="pdv-troca"
+                onde="troca"
               />
               <div className="grid grid-cols-2 gap-2">
                 <CampoDinheiro
@@ -786,6 +841,7 @@ function ColunaVeiculo({
                     setR((x) => ({ ...x, troca: x.troca ? { ...x.troca, valor_cents: c } : null }))
                   }
                   testid="pdv-troca-valor"
+                  campo="troca.valor_cents"
                 />
                 <CampoDinheiro
                   rotulo={t("Saldo a quitar (financiamento)")}
@@ -797,6 +853,21 @@ function ColunaVeiculo({
                     }))
                   }
                 />
+                {r.troca.quitacao_cents > 0 ? (
+                  <Campo
+                    rotulo={t("Credor do financiamento da troca *")}
+                    valor={r.troca.gravame_credor}
+                    onChange={(v) =>
+                      setR((x) => ({
+                        ...x,
+                        troca: x.troca ? { ...x.troca, gravame_credor: v } : null,
+                      }))
+                    }
+                    extra="col-span-2"
+                    testid="pdv-troca-gravame"
+                    campo="troca.gravame_credor"
+                  />
+                ) : null}
               </div>
               <label className="flex items-center gap-2 text-xs">
                 <input
@@ -847,18 +918,223 @@ function Secao({
   );
 }
 
+/** Tela final: o contrato da negociação, dentro do PDV. */
+function TelaDoContrato({
+  negociacaoId,
+  concluida,
+  onVoltar,
+  onNova,
+}: {
+  negociacaoId: string;
+  concluida: boolean;
+  onVoltar: () => void;
+  onNova: () => void;
+}) {
+  const t = useT();
+  const url = `/api/v1/pdv/negociacoes/${negociacaoId}/contrato`;
+  const botao =
+    "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors";
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4" data-testid="pdv-tela-contrato">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onVoltar}
+          className={`${botao} text-muted-foreground hover:bg-accent-soft hover:text-accent`}
+          data-testid="pdv-contrato-voltar"
+        >
+          <CaretLeft className="size-3.5" aria-hidden />
+          {t("Voltar à negociação")}
+        </button>
+        <h2 className="text-sm font-semibold">
+          {concluida ? t("Contrato de compra e venda") : t("Prévia do contrato")}
+        </h2>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className={`${botao} text-accent hover:bg-accent-soft`}
+          >
+            <FileText className="size-3.5" aria-hidden />
+            {t("Abrir para imprimir")}
+          </a>
+          <a
+            href={url}
+            download
+            className={`${botao} text-accent hover:bg-accent-soft`}
+          >
+            {t("Baixar PDF")}
+          </a>
+          {concluida ? (
+            <button
+              type="button"
+              onClick={onNova}
+              className={`${botao} bg-accent text-accent-foreground hover:bg-accent/90`}
+              data-testid="pdv-contrato-nova"
+            >
+              <Plus className="size-3.5" aria-hidden />
+              {t("Nova negociação")}
+            </button>
+          ) : null}
+        </div>
+      </div>
+      <iframe
+        src={url}
+        title={t("Contrato")}
+        className="min-h-[60vh] w-full flex-1 rounded-xl border border-border/60 bg-white"
+        data-testid="pdv-contrato-iframe"
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// O que falta para concluir
+
+/** O rascunho visto como negociação, para as mesmas regras do contrato que o servidor aplica. */
+function comoNegociacao(r: Rascunho, aberta: Negociacao | null): Negociacao {
+  return {
+    ...r,
+    contrato: r.contrato ?? null,
+    id: aberta?.id ?? "",
+    numero: aberta?.numero ?? 0,
+    status: "rascunho",
+    contact_id: r.contact_id ?? null,
+    veiculo_id: r.veiculo_id ?? null,
+    desconto_cents: r.desconto_cents ?? 0,
+    troca_veiculo_id: aberta?.troca_veiculo_id ?? null,
+    vendedor_user_id: r.vendedor_user_id ?? null,
+    comissao_cents: r.comissao_cents ?? null,
+    observacoes: r.observacoes ?? null,
+    moeda: aberta?.moeda ?? "BRL",
+    concluida_em: null,
+    cancelada_em: null,
+    created_by: aberta?.created_by ?? null,
+    created_at: aberta?.created_at ?? "",
+    updated_at: aberta?.updated_at ?? "",
+  };
+}
+
+/** Chaves "lugar.campo" que o editor do contrato marca como pendentes. */
+function chavesDoQueFalta(faltando: readonly FaltaParaConcluir[]): ReadonlySet<string> {
+  return new Set(faltando.filter((f) => f.campo).map((f) => `${f.onde}.${f.campo}`));
+}
+
+const ORDEM_DOS_SETORES: SetorDoPdv[] = [
+  "Comprador",
+  "Veículo",
+  "Troca",
+  "Pagamento",
+  "Loja",
+  "Entrega e transferência",
+  "Contrato",
+];
+
+const ANCORA_DO_SETOR: Record<SetorDoPdv, string> = {
+  Comprador: "pdv-setor-comprador",
+  "Veículo": "pdv-setor-veiculo",
+  Troca: "pdv-setor-troca",
+  Pagamento: "pdv-setor-pagamento",
+  Loja: "pdv-setor-loja",
+  "Entrega e transferência": "pdv-setor-entrega",
+  Contrato: "pdv-setor-contrato",
+};
+
+function irParaOSetor(setor: SetorDoPdv) {
+  const el = document.getElementById(ANCORA_DO_SETOR[setor]);
+  if (!el) return;
+  if (el instanceof HTMLDetailsElement) el.open = true;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const campo = el.querySelector<HTMLElement>('[aria-invalid="true"]');
+  campo?.focus({ preventScroll: true });
+}
+
+/** Leva ao campo da pendência e o deixa vermelho; sem campo achado, fica no setor. */
+function irAoCampo(f: FaltaParaConcluir) {
+  irParaOSetor(f.setor);
+  // Depois de abrir o setor: o campo pode estar dentro de um <details> fechado.
+  window.setTimeout(() => {
+    const ancora = document.getElementById(ANCORA_DO_SETOR[f.setor]);
+    const chave = f.campo ? `${f.onde}.${f.campo}` : undefined;
+    // A chave é procurada na página inteira (os dados da loja moram fora do setor); sem
+    // campo dela na tela, o destaque fica no setor da pendência, nunca em outro.
+    const naPagina = chave ? document.querySelector(`[data-campo="${CSS.escape(chave)}"]`) : null;
+    const alvo = naPagina ? acharCampo(document, chave) : ancora ? acharCampo(ancora) : null;
+    if (alvo) destacarCampo(alvo);
+  }, 60);
+}
+
+/** Lista o que impede concluir, agrupada pelo setor onde se preenche. */
+function OQueFalta({
+  faltando,
+  onCliente,
+}: {
+  faltando: readonly FaltaParaConcluir[];
+  /** Pendência do comprador: abre o cadastro já no campo. */
+  onCliente?: (campo?: string) => void;
+}) {
+  const t = useT();
+  if (faltando.length === 0) return null;
+  const grupos = ORDEM_DOS_SETORES.map((setor) => ({
+    setor,
+    itens: faltando.filter((f) => f.setor === setor),
+  })).filter((g) => g.itens.length > 0);
+  const ir = (f: FaltaParaConcluir) =>
+    f.onde === "cliente" && onCliente ? onCliente(f.campo) : irAoCampo(f);
+  return (
+    <div
+      className="space-y-2 rounded-xl border border-warning-fg/30 bg-warning-bg/40 p-3 text-xs"
+      data-testid="pdv-o-que-falta"
+    >
+      <p className="font-semibold text-warning-fg">
+        {t("O que falta para concluir")} ({faltando.length})
+      </p>
+      <ul className="space-y-2">
+        {grupos.map((g) => (
+          <li key={g.setor} data-testid={`pdv-falta-${ANCORA_DO_SETOR[g.setor].replace("pdv-setor-", "")}`}>
+            <button
+              type="button"
+              onClick={() => ir(g.itens[0]!)}
+              className="font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              {t(g.setor)}
+            </button>
+            <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-muted-foreground">
+              {g.itens.map((f) => (
+                <li key={f.mensagem}>
+                  <button
+                    type="button"
+                    onClick={() => ir(f)}
+                    className="inline text-left underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    {t(f.mensagem)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function ColunaPagamento({
   r,
   setR,
   travado,
-  faltas,
+  faltando,
+  blocos,
   rodape,
   usuarioId,
 }: {
   r: Rascunho;
   setR: (f: (r: Rascunho) => Rascunho) => void;
   travado: boolean;
-  faltas: string[];
+  /** Tudo que impede concluir, por setor (caixa + contrato). */
+  faltando: FaltaParaConcluir[];
+  blocos: BlocosDaOperacao;
   /** Nulo em tela pequena: lá o rodapé fica fora da coluna, preso embaixo da tela. */
   rodape: React.ReactNode;
   usuarioId: string;
@@ -989,6 +1265,7 @@ function ColunaPagamento({
               tipo="date"
               valor={p.primeiro_vencimento}
               onChange={(x) => mudar(i, { primeiro_vencimento: x || null })}
+              campo="pagamentos.primeiro_vencimento"
             />
           ) : null}
           {comBanco ? (
@@ -997,9 +1274,20 @@ function ColunaPagamento({
               valor={p.banco}
               onChange={(x) => mudar(i, { banco: x })}
               extra="col-span-2"
+              campo="pagamentos.banco"
             />
           ) : null}
           {seletorConta(p.conta_id ?? "", (v) => mudar(i, { conta_id: v }), "Conta do pagamento")}
+          {p.forma === "cartao_credito" || p.forma === "cartao_debito" ? (
+            <Campo
+              rotulo={t("Bandeira do cartão")}
+              valor={p.bandeira}
+              onChange={(x) => mudar(i, { bandeira: x })}
+              placeholder="Visa, Mastercard, Elo…"
+              testid={`pdv-pagamento-${i}-bandeira`}
+              campo="pagamentos.bandeira"
+            />
+          ) : null}
           <Campo
             rotulo={t("Observação")}
             valor={p.observacao}
@@ -1015,13 +1303,13 @@ function ColunaPagamento({
 
   // Mensagem do estado REAL da negociação: itens, pendências do cadastro e saldo.
   const situacao =
-    resumo.total_cents <= 0 && faltas.length > 0
+    resumo.total_cents <= 0 && faltando.length > 0
       ? {
           texto: venda ? t("Aguardando itens") : t("Informe o veículo para começar."),
           cor: "bg-muted text-muted-foreground",
         }
-      : faltas.length > 0
-        ? { texto: t(faltas[0]!), cor: "bg-warning-bg text-warning-fg" }
+      : faltando.length > 0
+        ? { texto: t(faltando[0]!.mensagem), cor: "bg-warning-bg text-warning-fg" }
         : resumo.saldo_cents > 0
           ? {
               texto: `${t("Pagamento pendente")} · ${t("falta")} ${formatarPreco(resumo.saldo_cents)}`,
@@ -1080,10 +1368,11 @@ function ColunaPagamento({
           <input
             aria-label={ROTULO_DA_FORMA[forma]}
             inputMode="decimal"
-            value={((atual?.valor_cents ?? 0) / 100).toLocaleString("pt-BR", {
-              minimumFractionDigits: 2,
-            })}
-            onChange={(e) => atualizar({ valor_cents: precoParaCentavos(e.target.value) ?? 0 })}
+            value={centavosParaMascara(atual?.valor_cents)}
+            placeholder="0,00"
+            onChange={(e) =>
+              atualizar({ valor_cents: precoParaCentavos(mascararMoeda(e.target.value)) ?? 0 })
+            }
             className="h-full w-0 min-w-0 flex-1 bg-transparent px-3 text-sm outline-hidden"
           />
           {seletorConta(
@@ -1113,6 +1402,7 @@ function ColunaPagamento({
 
   return (
     <Coluna
+      ancora="pdv-setor-pagamento"
       icone={Receipt}
       indice={2}
       className="min-h-[32rem] lg:min-h-0"
@@ -1215,6 +1505,7 @@ function ColunaPagamento({
                       tipo="date"
                       valor={p.primeiro_vencimento}
                       onChange={(v) => mudar(i, { primeiro_vencimento: v })}
+                      campo="pagamentos.primeiro_vencimento"
                     />
                     <Campo
                       rotulo="Juros sobre o saldo (%)"
@@ -1345,15 +1636,20 @@ function ColunaPagamento({
             data-testid="pdv-situacao"
             className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-center text-xs font-medium transition-colors ${situacao.cor}`}
           >
-            {faltas.length === 0 && resumo.saldo_cents <= 0 ? (
+            {faltando.length === 0 && resumo.saldo_cents <= 0 ? (
               <CheckCircle className="size-4 shrink-0" weight="duotone" aria-hidden />
             ) : null}
             {situacao.texto}
           </div>
         </Secao>
 
-        <EditorDoContrato contrato={r.contrato} pagamentos={r.pagamentos}
-          onChange={(contrato, pagamentos) => setR((x) => ({ ...x, contrato, pagamentos }))} />
+        <EditorDoContrato
+          contrato={r.contrato}
+          pagamentos={r.pagamentos}
+          onChange={(contrato, pagamentos) => setR((x) => ({ ...x, contrato, pagamentos }))}
+          requisitos={{ venda, blocos }}
+          faltando={chavesDoQueFalta(faltando)}
+        />
         <label className="block">
           <span className="text-sm font-normal text-muted-foreground">
             {venda ? t("Observações da Venda") : t("Observações da Compra")}
@@ -1534,6 +1830,16 @@ export function PdvClient({
   );
   const resumo = resumoDaNegociacao(r);
   const faltas = pendenciasParaConcluir(r);
+  const atual = comoNegociacao(r, aberta);
+  const faltando = faltandoParaConcluir(atual, faltas);
+  const blocos = retratoDaOperacao(atual).blocos;
+  // A lista do servidor vale só para o rascunho que ele avaliou: editou, volta a regra local.
+  const [faltandoDoServidor, setFaltandoDoServidor] = React.useState<{
+    de: Rascunho;
+    lista: FaltaParaConcluir[];
+  } | null>(null);
+  const [contratoAberto, setContratoAberto] = React.useState<string | null>(null);
+  const oQueFalta = faltandoDoServidor?.de === r ? faltandoDoServidor.lista : faltando;
 
   function nova(tipo: TipoDeNegociacao) {
     setAba(tipo);
@@ -1581,8 +1887,8 @@ export function PdvClient({
       await salvarRascunho();
       return;
     }
-    if (faltas.length > 0) {
-      toast.error(t(faltas[0]!));
+    if (faltando.length > 0) {
+      avisarOQueFalta(faltando);
       return;
     }
     setSalvando(true);
@@ -1605,12 +1911,37 @@ export function PdvClient({
           ? t("Venda concluída!")
           : t("Compra concluída! O veículo entrou no estoque."),
       );
-      window.open(`/api/v1/pdv/negociacoes/${n.id}/contrato`, "_blank", "noopener");
+      setContratoAberto(n.id);
     } catch (e) {
-      showApiError(e);
+      const doServidor =
+        e instanceof ApiError && e.status === 422
+          ? (e.details?.faltando as FaltaParaConcluir[] | undefined)
+          : undefined;
+      if (doServidor && doServidor.length > 0) {
+        setFaltandoDoServidor({ de: r, lista: doServidor });
+        avisarOQueFalta(doServidor);
+      } else {
+        showApiError(e);
+      }
     } finally {
       setSalvando(false);
     }
+  }
+
+  function avisarOQueFalta(lista: readonly FaltaParaConcluir[]) {
+    toast.error(
+      lista.length === 1
+        ? t("Falta 1 item para concluir.")
+        : t("Faltam {n} itens para concluir.").replace("{n}", String(lista.length)),
+      {
+        description: lista
+          .slice(0, 4)
+          .map((f) => `${t(f.setor)}: ${t(f.mensagem)}`)
+          .join("\n"),
+      },
+    );
+    const primeiro = ORDEM_DOS_SETORES.find((s) => lista.some((f) => f.setor === s));
+    if (primeiro) irParaOSetor(primeiro);
   }
 
   async function cancelar() {
@@ -1677,7 +2008,11 @@ export function PdvClient({
                 <Button
                   onClick={finalizar}
                   disabled={salvando}
-                  title={faltas.length > 0 ? faltas.map(t).join("\n") : undefined}
+                  title={
+                    oQueFalta.length > 0
+                      ? oQueFalta.map((f) => `${t(f.setor)}: ${t(f.mensagem)}`).join("\n")
+                      : undefined
+                  }
                   className="rounded-full bg-white px-5 font-semibold text-accent shadow-xs hover:bg-white/90"
                   data-testid="pdv-finalizar"
                 >
@@ -1725,15 +2060,15 @@ export function PdvClient({
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {aberta ? (
             <>
-              <a
-                href={`/api/v1/pdv/negociacoes/${aberta.id}/contrato`}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={() => setContratoAberto(aberta.id)}
                 className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
+                data-testid="pdv-ver-contrato"
               >
                 <FileText className="size-3.5" aria-hidden />
-                {aberta.status === "concluida" ? t("Imprimir contrato") : t("Prévia do contrato")}
-              </a>
+                {aberta.status === "concluida" ? t("Ver contrato") : t("Prévia do contrato")}
+              </button>
               <button
                 type="button"
                 className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
@@ -1771,13 +2106,35 @@ export function PdvClient({
         </div>
       </header>
 
-      {aba === "historico" ? (
+      {contratoAberto ? (
+        <TelaDoContrato
+          negociacaoId={contratoAberto}
+          concluida={aberta?.id === contratoAberto && aberta.status === "concluida"}
+          onVoltar={() => setContratoAberto(null)}
+          onNova={() => {
+            setContratoAberto(null);
+            nova(r.tipo);
+          }}
+        />
+      ) : aba === "historico" ? (
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <Historico negociacoes={negociacoes} abrir={abrir} />
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)] lg:overflow-hidden">
-          <ColunaCliente r={r} setR={setR} travado={travado} />
+          <ColunaCliente
+            r={r}
+            setR={setR}
+            travado={travado}
+            faltando={oQueFalta}
+            pendenciasCom={(cliente) => {
+              const comOCliente = { ...r, cliente };
+              return faltandoParaConcluir(
+                comoNegociacao(comOCliente, aberta),
+                pendenciasParaConcluir(comOCliente),
+              );
+            }}
+          />
           <ColunaVeiculo
             r={r}
             setR={setR}
@@ -1789,7 +2146,8 @@ export function PdvClient({
             r={r}
             setR={setR}
             travado={travado}
-            faltas={faltas}
+            faltando={oQueFalta}
+            blocos={blocos}
             rodape={telaLarga ? rodapeDoPagamento : null}
             usuarioId={usuarioId}
             podeTrocarTipo={aberta === null}
@@ -1797,7 +2155,7 @@ export function PdvClient({
           />
         </div>
       )}
-      {!telaLarga ? <div className="shrink-0">{rodapeDoPagamento}</div> : null}
+      {!telaLarga && !contratoAberto ? <div className="shrink-0">{rodapeDoPagamento}</div> : null}
     </div>
   );
 }

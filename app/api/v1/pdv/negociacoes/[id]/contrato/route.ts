@@ -12,6 +12,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { renderContratoPdf, type LojaDoContrato } from "@/lib/pdv/contrato";
 import { COLUNAS_DA_NEGOCIACAO, type Negociacao } from "@/lib/pdv/regras";
+import { decidirVersaoDoContrato } from "@/lib/pdv/versao-do-contrato";
 import { marcaDaOrganizacaoParaPdf } from "@/lib/propostas/marca-da-organizacao-para-pdf";
 import { createClient } from "@/lib/supabase/server";
 
@@ -69,11 +70,15 @@ export async function GET(
     };
   }
 
+  // Só o modelo com fotografia contratual tem minuta/assinatura; o histórico segue igual.
+  const decisao = negociacao.contrato?.empresa ? decidirVersaoDoContrato(negociacao) : undefined;
+
   let buffer: Buffer;
   try {
     buffer = await renderContratoPdf({
       negociacao,
       loja,
+      decisao,
       vendedorNome: negociacao.vendedor_user_id === authz.user.id ? authz.user.full_name : null,
     });
   } catch {
@@ -84,9 +89,15 @@ export async function GET(
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename=contrato-${negociacao.tipo}-${negociacao.numero}.pdf`,
+      "Content-Disposition": `inline; filename=contrato-${negociacao.tipo}-${negociacao.numero}${decisao?.versao === "minuta" ? "-minuta" : ""}.pdf`,
       "Cache-Control": "no-store",
       "X-Request-Id": requestId,
+      ...(decisao
+        ? {
+            "X-Contrato-Versao": decisao.versao,
+            "X-Contrato-Anexos-Pendentes": decisao.anexos_pendentes.join(","),
+          }
+        : {}),
     },
   });
 }

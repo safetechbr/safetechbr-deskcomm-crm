@@ -536,3 +536,37 @@ export function simboloDaMoeda(moeda: string): string {
   const partes = formatadorDa(moeda).formatToParts(0);
   return partes.find((p) => p.type === "currency")?.value ?? moeda;
 }
+
+/**
+ * Máscara de dinheiro AO DIGITAR, no estilo maquininha: os dígitos entram pela
+ * direita como centavos e o separador de milhar e o decimal da moeda já
+ * aparecem enquanto a pessoa digita ("1" → "0,01", "123456" → "1.234,56").
+ * Sem dígito nenhum devolve "" — campo opcional continua vazio e o placeholder
+ * aparece; "0" digitado vira "0,00" (zero declarado), e o backspace em "0,00"
+ * esvazia o campo. O texto devolvido volta a centavos por `parseReaisToCents(texto, moeda)`.
+ * Limite de 13 dígitos (R$ 99 bilhões): número além disso perde precisão.
+ */
+export function mascararMoeda(texto: string, moeda: string = MOEDA_PADRAO): string {
+  const bruto = String(texto ?? "");
+  const todos = bruto.replace(/\D/g, "");
+  const digitos = todos.replace(/^0+/, "").slice(0, 13);
+  const { decimal, grupo } = separadoresDaMoeda(moeda);
+  if (!digitos) {
+    // Só zeros. Digitar "0" num campo vazio é declarar ZERO ("0,00") — não é
+    // apagar. Já o "0,0" que sobra do backspace em "0,00" é apagar: vira "".
+    const declarouZero = todos.length >= 3 || (todos.length > 0 && /^\d+$/.test(bruto));
+    return declarouZero ? `0${decimal}00` : "";
+  }
+  const cheio = digitos.padStart(3, "0");
+  const inteiro = cheio.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, grupo);
+  return `${inteiro}${decimal}${cheio.slice(-2)}`;
+}
+
+/** Centavos → texto já mascarado (valor inicial do campo). `null`/0 → "". */
+export function centavosParaMascara(
+  cents: number | null | undefined,
+  moeda: string = MOEDA_PADRAO,
+): string {
+  if (cents === null || cents === undefined || !Number.isFinite(cents) || cents <= 0) return "";
+  return mascararMoeda(String(Math.round(cents)), moeda);
+}
