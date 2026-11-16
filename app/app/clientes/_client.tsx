@@ -4,7 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useContactList } from "@/hooks/contacts/useContactList";
 import { useT } from "@/hooks/i18n/useT";
@@ -32,7 +38,9 @@ function nomeDe(c: Contact, t: (s: string) => string): string {
 
 function iniciais(nome: string): string {
   const partes = nome.split(/\s+/).filter(Boolean);
-  return ((partes[0]?.[0] ?? "") + (partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? "") : "")).toUpperCase();
+  return (
+    (partes[0]?.[0] ?? "") + (partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? "") : "")
+  ).toUpperCase();
 }
 
 /** `YYYY-MM-DD` sem passar por `Date`: o fuso não pode andar um dia com o aniversário. */
@@ -52,11 +60,14 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
     return () => clearTimeout(id);
   }, [entrada]);
 
-  const q = useContactList({ source: "manual", search: busca || undefined, order_by: "created_at", order_dir: "desc", limit: 100 });
-  const clientes = React.useMemo(
-    () => (q.data?.pages.flatMap((p) => p.data) ?? []).filter((c) => c.contact_type !== "fornecedor"),
-    [q.data],
-  );
+  // Cliente = quem foi cadastrado à mão OU tem negociação no PDV. Lead que veio de canal
+  // (source "whatsapp", "instagram"…) e comprou é o MESMO contato, com a origem preservada.
+  const q = useContactList({
+    search: busca || undefined,
+    order_by: "created_at",
+    order_dir: "desc",
+    limit: 100,
+  });
 
   const porCliente = React.useMemo(() => {
     const mapa = new Map<string, Negociacao[]>();
@@ -68,6 +79,21 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
     }
     return mapa;
   }, [negociacoes]);
+
+  const clientes = React.useMemo(
+    () =>
+      (q.data?.pages.flatMap((p) => p.data) ?? []).filter(
+        (c) => c.contact_type !== "fornecedor" && (c.source === "manual" || porCliente.has(c.id)),
+      ),
+    [q.data, porCliente],
+  );
+
+  // A lista traz todos os contatos (leads inclusive) e o filtro é local: puxa as páginas
+  // seguintes sozinho, com teto, para o lead que comprou não ficar escondido atrás de outros.
+  const paginas = q.data?.pages.length ?? 0;
+  React.useEffect(() => {
+    if (q.hasNextPage && !q.isFetchingNextPage && paginas < 30) void q.fetchNextPage();
+  }, [q, paginas]);
 
   const comEmail = clientes.filter((c) => c.email).length;
   const comTelefone = clientes.filter((c) => c.phone_number).length;
@@ -108,13 +134,13 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
       <label className="relative block max-w-sm">
         <MagnifyingGlass
           aria-hidden
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
         />
         <Input
           value={entrada}
           onChange={(e) => setEntrada(e.target.value)}
           placeholder={t("Buscar por nome, telefone ou e-mail")}
-          className="h-10 rounded-full border-border/80 bg-surface pl-9 pr-4 shadow-xs focus-visible:border-accent/50 focus-visible:ring-accent/20"
+          className="h-10 rounded-full border-border/80 bg-surface pr-4 pl-9 shadow-xs focus-visible:border-accent/50 focus-visible:ring-accent/20"
           aria-label={t("Buscar")}
         />
       </label>
@@ -126,7 +152,9 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
           <span className="flex size-12 items-center justify-center rounded-full bg-accent-soft text-accent">
             <UsersThree aria-hidden weight="duotone" className="size-6" />
           </span>
-          {busca ? t("Nenhum cliente encontrado para essa busca.") : t("Nenhum cliente cadastrado ainda.")}
+          {busca
+            ? t("Nenhum cliente encontrado para essa busca.")
+            : t("Nenhum cliente cadastrado ainda.")}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -138,7 +166,7 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                 key={c.id}
                 type="button"
                 onClick={() => setAberto(c)}
-                className="ds-entra ds-elevavel group rounded-xl border border-border/60 bg-surface p-4 text-left shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
+                className="ds-entra ds-elevavel group rounded-xl border border-border/60 bg-surface p-4 text-left shadow-xs focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:outline-hidden"
                 style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 data-testid={`cliente-${c.id}`}
               >
@@ -179,7 +207,9 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-muted-foreground">{t("Negociações")}</dt>
                     <dd>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums">{n}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums">
+                        {n}
+                      </span>
                     </dd>
                   </div>
                 </dl>
@@ -190,13 +220,21 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
       )}
 
       {q.hasNextPage && (
-        <Button variant="outline" className="rounded-full" onClick={() => void q.fetchNextPage()} disabled={q.isFetchingNextPage}>
+        <Button
+          variant="outline"
+          className="rounded-full"
+          onClick={() => void q.fetchNextPage()}
+          disabled={q.isFetchingNextPage}
+        >
           {t("Carregar mais")}
         </Button>
       )}
 
       <Dialog open={aberto !== null} onOpenChange={(v) => !v && setAberto(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl" data-testid="ficha-do-cliente">
+        <DialogContent
+          className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"
+          data-testid="ficha-do-cliente"
+        >
           {aberto && (
             <>
               <DialogHeader>
@@ -207,7 +245,10 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                 <Info rotulo={t("Telefone")} valor={aberto.phone_number} />
                 <Info rotulo={t("E-mail")} valor={aberto.email} />
                 <Info rotulo={t("Data de nascimento")} valor={dataCivil(aberto.birthdate)} />
-                <Info rotulo={t("Cliente desde")} valor={new Date(aberto.created_at).toLocaleDateString("pt-BR")} />
+                <Info
+                  rotulo={t("Cliente desde")}
+                  valor={new Date(aberto.created_at).toLocaleDateString("pt-BR")}
+                />
               </dl>
               <section className="space-y-2" data-testid="historico-do-cliente">
                 <h3 className="font-semibold">{t("Histórico")}</h3>
@@ -218,7 +259,10 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                 ) : (
                   <ul className="space-y-2">
                     {historico.map((h) => (
-                      <li key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface p-3 text-sm shadow-xs">
+                      <li
+                        key={h.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface p-3 text-sm shadow-xs"
+                      >
                         <div>
                           <div className="font-medium">
                             {h.tipo === "venda" ? t("Comprou") : t("Vendeu")}{" "}
@@ -229,8 +273,12 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold tabular-nums">{formatarPreco(resumoDaNegociacao(h).total_cents)}</span>
-                          <span className={`rounded-full px-2 py-0.5 text-xs ${COR_DO_STATUS[h.status]}`}>
+                          <span className="font-semibold tabular-nums">
+                            {formatarPreco(resumoDaNegociacao(h).total_cents)}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs ${COR_DO_STATUS[h.status]}`}
+                          >
                             {t(ROTULO_DO_STATUS_DA_NEGOCIACAO[h.status])}
                           </span>
                         </div>
