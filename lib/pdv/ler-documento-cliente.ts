@@ -9,6 +9,7 @@ import {
 import type { Worker } from "tesseract.js";
 import {
   nomeDaZonaMecanica,
+  nomeSuspeito,
   interpretarComprovante,
   interpretarDocumento,
   type LeituraDoDocumento,
@@ -41,6 +42,7 @@ export async function lerDocumentoCliente(
   validarArquivoDocumento(arquivo);
   const interpretar = tipo === "residencia" ? interpretarComprovante : interpretarDocumento;
   let nomePrecisouDeFoco = false;
+  let nomeFocado: string | undefined;
   let nomeMecanico: { nome: string; cnh: string; nascimento: string } | undefined;
   let worker: Worker | undefined;
   let encerrado = false;
@@ -147,14 +149,17 @@ export async function lerDocumentoCliente(
             );
         }
       }
-      if (!dados.nome) {
+      if (!dados.nome || nomeSuspeito(dados.nome)) {
+        const suspeito = !!dados.nome;
         nomePrecisouDeFoco = true;
         for (const quadro of quadrosDeNome(resultado.data.tsv, canvas.width, canvas.height)) {
           progresso("Lendo nome completo…");
           const nome = (await lerQuadro(quadro, false)).replace(/[|\[\]]/g, "").trim();
           const identificado = interpretarDocumento("NOME: " + nome).dados.nome;
           if (identificado) {
-            texto += "\nNOME: " + identificado;
+            if (!suspeito) texto += "\nNOME: " + identificado;
+            else if (!nomeSuspeito(identificado)) nomeFocado = identificado;
+            else continue;
             break;
           }
         }
@@ -359,6 +364,8 @@ export async function lerDocumentoCliente(
         nomeMecanico.nascimento === resultado.dados.nascimento
       )
         resultado.dados.nome = nomeMecanico.nome;
+      else if (nomeFocado && nomeSuspeito(resultado.dados.nome))
+        resultado.dados.nome = nomeFocado;
     }
     return resultado;
   } catch (e) {

@@ -11,6 +11,13 @@ import {
   type SetorDoPdv,
 } from "@/lib/pdv/retrato-da-operacao";
 import { toast } from "sonner";
+import {
+  guardarRascunho,
+  lerRascunho,
+  limparRascunho,
+  temConteudo,
+  type RascunhoGuardado,
+} from "@/lib/pdv/rascunho-local";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
@@ -1800,6 +1807,7 @@ export function PdvClient({
   contratoPadrao?: DadosDoContrato;
 }) {
   const t = useT();
+  const tagDeIdioma = useTagDeIdioma();
   const [aba, setAba] = React.useState<Aba>("venda");
   const [r, setRascunho] = React.useState<Rascunho>(() => rascunhoNovo("venda", contratoPadrao));
   const [aberta, setAberta] = React.useState<Negociacao | null>(null);
@@ -1808,8 +1816,22 @@ export function PdvClient({
   const [salvando, setSalvando] = React.useState(false);
 
   const travado = !podeNegociar || (aberta !== null && aberta.status !== "rascunho");
+  // Cópia local da venda em andamento (sobrevive a recarregar ou expirar a sessão).
+  const [sujo, setSujo] = React.useState(false);
+  const [recuperavel, setRecuperavel] = React.useState<RascunhoGuardado<Rascunho> | null>(null);
+  React.useEffect(() => {
+    // localStorage só existe no navegador; ler depois da hidratação evita divergência com o servidor.
+    let ativo = true;
+    queueMicrotask(() => {
+      if (ativo) setRecuperavel(lerRascunho<Rascunho>(usuarioId));
+    });
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioId]);
   const setR = React.useCallback(
-    (f: (r: Rascunho) => Rascunho) =>
+    (f: (r: Rascunho) => Rascunho) => {
+      setSujo(true);
       setRascunho((x) => {
         const novo = f(x);
         if (novo.modalidade === "crediario") {
@@ -1825,7 +1847,8 @@ export function PdvClient({
           ];
         }
         return novo;
-      }),
+      });
+    },
     [],
   );
   const resumo = resumoDaNegociacao(r);
@@ -1841,16 +1864,65 @@ export function PdvClient({
   const [contratoAberto, setContratoAberto] = React.useState<string | null>(null);
   const oQueFalta = faltandoDoServidor?.de === r ? faltandoDoServidor.lista : faltando;
 
-  function nova(tipo: TipoDeNegociacao) {
+  // Enquanto o aviso de recuperação está aberto, não sobrescreve a cópia guardada.
+  React.useEffect(() => {
+    if (!sujo || recuperavel || travado || aba === "historico") return;
+    if (!temConteudo(r)) return;
+    const id = setTimeout(
+      () => guardarRascunho(usuarioId, { aba, abertaId: aberta?.id ?? null, r }),
+      500,
+    );
+    return () => clearTimeout(id);
+  }, [r, sujo, recuperavel, travado, aba, aberta, usuarioId]);
+
+  React.useEffect(() => {
+    if (!sujo || travado || !temConteudo(r)) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [sujo, travado, r]);
+
+  async function nova(tipo: TipoDeNegociacao) {
+    await descarregar();
+    setSujo(false);
+    setRecuperavel(null);
+    limparRascunho(usuarioId);
     setAba(tipo);
     setAberta(null);
     setRascunho(rascunhoNovo(tipo, { ...contratoPadrao, assinatura_em: new Date().toISOString() }));
   }
 
-  function abrir(n: Negociacao) {
+  async function abrir(n: Negociacao) {
+    await descarregar();
+    setSujo(false);
     setAba(n.tipo);
     setAberta(n);
     setRascunho(rascunhoDe(n, contratoPadrao));
+  }
+
+  function recuperar() {
+    if (!recuperavel) return;
+    const salvaNoServidor = recuperavel.abertaId
+      ? negociacoes.find((n) => n.id === recuperavel.abertaId)
+      : null;
+    if (recuperavel.abertaId && salvaNoServidor?.status !== "rascunho") {
+      // A negociação mudou no servidor desde então; a cópia local não vale mais.
+      limparRascunho(usuarioId);
+      setRecuperavel(null);
+      toast.error(t("Essa venda já foi alterada em outro lugar e não pôde ser recuperada."));
+      return;
+    }
+    setAba(recuperavel.aba);
+    setAberta(salvaNoServidor ?? null);
+    setRascunho(recuperavel.r);
+    setSujo(true);
+    setRecuperavel(null);
+    toast.success(t("Venda em andamento recuperada."));
+  }
+
+  function descartarRecuperavel() {
+    limparRascunho(usuarioId);
+    setRecuperavel(null);
   }
 
   function guardar(n: Negociacao) {
@@ -1858,7 +1930,8 @@ export function PdvClient({
     setNegociacoes((lista) => [n, ...lista.filter((x) => x.id !== n.id)]);
   }
 
-  async function salvar(): Promise<Negociacao | null> {
+  async function salvar(silencioso = false): Promise<Negociacao | null> {
+    const enviado = r;
     const corpo = corpoDoRascunho(r);
     try {
       const res = aberta
@@ -1868,11 +1941,48 @@ export function PdvClient({
           })
         : await apiClient.post<{ data: Negociacao }>("/api/v1/pdv/negociacoes", corpo);
       guardar(res.data);
+      // Se o vendedor editou enquanto salvava, o que ele digitou depois ainda não está no servidor.
+      if (rAtual.current === enviado) {
+        setSujo(false);
+        limparRascunho(usuarioId);
+      }
       return res.data;
     } catch (e) {
-      showApiError(e);
+      if (!silencioso) showApiError(e);
       return null;
     }
+  }
+
+  // Salvamento automático no servidor: a venda aparece no histórico como rascunho.
+  const rAtual = React.useRef(r);
+  const salvarRef = React.useRef(salvar);
+  React.useEffect(() => {
+    rAtual.current = r;
+    salvarRef.current = salvar;
+  });
+  const emVoo = React.useRef<Promise<unknown> | null>(null);
+  const [repetir, setRepetir] = React.useState(0);
+  const podeSalvarAuto = sujo && !recuperavel && !travado && aba !== "historico" && temConteudo(r);
+  const salvarAuto = React.useCallback(async () => {
+    if (emVoo.current) {
+      await emVoo.current;
+    }
+    const enviado = rAtual.current;
+    const p = salvarRef.current(true).finally(() => {
+      emVoo.current = null;
+      if (rAtual.current !== enviado) setRepetir((n) => n + 1);
+    });
+    emVoo.current = p;
+    await p;
+  }, []);
+  React.useEffect(() => {
+    if (!podeSalvarAuto || emVoo.current) return;
+    const id = setTimeout(() => void salvarAuto(), 1500);
+    return () => clearTimeout(id);
+  }, [r, podeSalvarAuto, repetir, salvarAuto]);
+  /** Grava agora o que ainda não foi para o servidor (sair, trocar de aba, nova negociação). */
+  async function descarregar() {
+    if (podeSalvarAuto) await salvarAuto();
   }
 
   async function salvarRascunho() {
@@ -2034,6 +2144,13 @@ export function PdvClient({
       <header className="ds-entra flex flex-wrap items-center gap-3 border-b border-border/60 bg-surface px-4 py-2.5">
         <a
           href="/app"
+          onClick={(e) => {
+            if (!podeSalvarAuto) return;
+            e.preventDefault();
+            void descarregar().finally(() => {
+              window.location.href = "/app";
+            });
+          }}
           className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent-soft hover:text-accent focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:outline-hidden"
         >
           <CaretLeft className="size-4" aria-hidden />
@@ -2091,7 +2208,7 @@ export function PdvClient({
                 aria-selected={aba === a.id}
                 onClick={() =>
                   a.id === "historico"
-                    ? setAba("historico")
+                    ? void descarregar().then(() => setAba("historico"))
                     : a.id !== r.tipo || aberta
                       ? nova(a.id)
                       : setAba(a.id)
@@ -2105,6 +2222,29 @@ export function PdvClient({
           </div>
         </div>
       </header>
+
+      {recuperavel && !contratoAberto ? (
+        <div
+          role="alert"
+          data-testid="pdv-recuperar-rascunho"
+          className="flex flex-wrap items-center gap-3 border-b border-warning-fg/20 bg-warning-bg px-4 py-2 text-sm text-warning-fg"
+        >
+          <span>
+            {t("Encontramos uma venda em andamento salva neste navegador")}
+            {" ("}
+            {new Date(recuperavel.salvoEm).toLocaleString(tagDeIdioma)}
+            {")."}
+          </span>
+          <div className="ml-auto flex gap-2">
+            <Button type="button" size="sm" onClick={recuperar}>
+              {t("Recuperar")}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={descartarRecuperavel}>
+              {t("Descartar")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {contratoAberto ? (
         <TelaDoContrato

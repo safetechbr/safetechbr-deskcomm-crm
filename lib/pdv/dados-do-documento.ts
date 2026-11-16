@@ -89,9 +89,11 @@ export function interpretarDocumento(texto: string): LeituraDoDocumento {
       if (/^\s*\//.test(semRotulo) || /HABILITA[CÇ][AÃ]O/i.test(semRotulo)) semRotulo = "";
       const candidatos = [semRotulo, ...linhas.slice(i + 1, i + 3)];
       for (const candidato of candidatos) {
+        // A caixa do campo pode vir como "[ NOME | 15/02/2019 |" ou "[ NOME [ 15/02/2019":
+        // corta no próximo delimitador para a data vizinha não invalidar o nome.
         const nome = candidato
-          .split("|")[0]!
-          .replace(/[\[\]]/g, "")
+          .replace(/^[\s|\[\]]+/, "")
+          .split(/[|\[\]]/)[0]!
           .trim();
         if (!nome) continue;
         if (/^(?:NAME|NOMBRE)\b/.test(chave(nome))) continue;
@@ -269,6 +271,16 @@ export function interpretarComprovante(texto: string): LeituraDoDocumento {
         ? ["Há mais de um endereço no arquivo. Confira os dados."]
         : [],
   };
+}
+
+/** Nome com palavra curta fora das partículas comuns: típico de letras perdidas pelo OCR ("EI EL"). */
+export function nomeSuspeito(nome?: string): boolean {
+  if (!nome) return false;
+  return nome
+    .toUpperCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .some((p) => p.length <= 2 && !["DE", "DA", "DO", "DI", "DU", "E"].includes(p));
 }
 
 /** Zona mecânica da CNH-e: só utiliza nome quando registro e nascimento coincidem. */
