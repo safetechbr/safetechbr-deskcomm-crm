@@ -463,7 +463,7 @@ function ColunaCliente({
       indice={0}
       titulo={r.tipo === "venda" ? t("Cliente (comprador)") : t("Cliente (vendedor)")}
     >
-      <fieldset disabled={travado || carregandoCliente} className="space-y-3">
+      <fieldset disabled={travado || carregandoCliente} className="min-w-0 space-y-3">
         <div className="flex items-center gap-2">
           <div className="relative min-w-0 flex-1">
             <MagnifyingGlass
@@ -516,8 +516,8 @@ function ColunaCliente({
             className="space-y-2 rounded-xl border border-border/60 bg-accent-soft/40 p-3 text-sm"
             data-testid="pdv-cliente-resumo"
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
+            <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1.5">
+              <div className="min-w-0 max-w-full flex-1 basis-40">
                 <div className="flex items-center gap-1.5 font-medium">
                   <CheckCircle
                     className="size-4 shrink-0 text-accent"
@@ -533,7 +533,7 @@ function ColunaCliente({
                     t("Sem documento ou contato informado.")}
                 </div>
               </div>
-              <div className="flex shrink-0 gap-2 text-xs font-medium">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
                 <button type="button" ref={botaoEditar} className="text-accent underline-offset-2 hover:underline"
                   onClick={() => { setEditandoCadastro(true); setCadastroAberto(true); }} data-testid="pdv-editar-cliente">
                   {t("Editar cadastro")}
@@ -1091,7 +1091,7 @@ function OQueFalta({
     f.onde === "cliente" && onCliente ? onCliente(f.campo) : irAoCampo(f);
   return (
     <div
-      className="space-y-2 rounded-xl border border-warning-fg/30 bg-warning-bg/40 p-3 text-xs"
+      className="min-w-0 space-y-2 rounded-xl border border-warning-fg/30 bg-warning-bg/40 p-3 text-xs break-words"
       data-testid="pdv-o-que-falta"
     >
       <p className="font-semibold text-warning-fg">

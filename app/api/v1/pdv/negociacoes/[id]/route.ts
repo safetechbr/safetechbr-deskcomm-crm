@@ -14,6 +14,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { COLUNAS_DA_NEGOCIACAO, negociacaoPatchSchema } from "@/lib/pdv/regras";
+import { sincronizarContatoComNegociacao } from "@/lib/pdv/sincronizar-contato";
 import { vendedorEhDaOrganizacao } from "@/lib/pdv/vendedores";
 import { createClient } from "@/lib/supabase/server";
 
@@ -107,6 +108,15 @@ export async function PATCH(
   if (error) return fail("internal_error", "Erro ao salvar a negociação.", 500, { requestId });
   if (!data)
     return fail("conflict", t("Negociação já fechada não pode ser alterada."), 409, { requestId });
+
+  const contatoId = (data as { contact_id?: string | null }).contact_id;
+  if (!cancelar && contatoId && parsed?.data?.cliente)
+    await sincronizarContatoComNegociacao(
+      supabase,
+      authz.org.orgId,
+      contatoId,
+      parsed.data.cliente,
+    );
 
   await audit({
     organizationId: authz.org.orgId,

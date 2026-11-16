@@ -271,6 +271,13 @@ function Formulario({
       qc.invalidateQueries({ queryKey: ["conversation"] });
       qc.invalidateQueries({ queryKey: ["contact", id] });
       toast.success(t("Cadastro do cliente salvo."));
+      if ((c.documento ?? "").replace(/\D/g, "").length === 11 && contato.cpf_available === false) {
+        // O contato é gravado sem CPF quando a cifra do banco está indisponível:
+        // o CPF segue na negociação, mas não no cadastro. Avisa em vez de calar.
+        toast.error(
+          t("O CPF não foi gravado no cadastro do cliente (cifra do banco indisponível)."),
+        );
+      }
       onSalvo(
         {
           ...clienteDoContato(contato, c.documento),

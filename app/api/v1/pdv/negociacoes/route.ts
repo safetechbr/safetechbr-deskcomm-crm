@@ -20,6 +20,7 @@ import {
   TIPOS_DE_NEGOCIACAO,
 } from "@/lib/pdv/regras";
 import { vendedorEhDaOrganizacao } from "@/lib/pdv/vendedores";
+import { sincronizarContatoComNegociacao } from "@/lib/pdv/sincronizar-contato";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -135,6 +136,13 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (error) return fail("internal_error", "Erro ao salvar a negociação.", 500, { requestId });
 
   const criada = data as { id: string; tipo: string; numero: number };
+  if (entrada.contact_id)
+    await sincronizarContatoComNegociacao(
+      supabase,
+      authz.org.orgId,
+      entrada.contact_id,
+      entrada.cliente,
+    );
   await audit({
     organizationId: authz.org.orgId,
     actorUserId: authz.user.id,

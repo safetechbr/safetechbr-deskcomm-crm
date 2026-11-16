@@ -80,6 +80,8 @@ export interface ContatoDoCadastro {
   email?: string | null;
   birthdate?: string | null;
   cpf_decrypted?: string | null;
+  /** false = o banco não gravou o CPF no contato (cifra indisponível). */
+  cpf_available?: boolean;
   custom_fields?: Record<string, unknown> | null;
 }
 /** A negociação captura o cadastro atual; alterações futuras não reescrevem contratos antigos. */
