@@ -13,7 +13,7 @@ import { useEffect, useId, useState } from "react";
  */
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { exemploDoCampoDeMoeda, lerCampoDeMoeda, semAMoeda, valorDoCampoDeMoeda } from "@/lib/leads/campo-de-moeda";
-import { MOEDA_PADRAO } from "@/lib/money";
+import { mascararMoeda, MOEDA_PADRAO } from "@/lib/money";
 import { Input } from "@/components/ui/input";
 import { perfilDoPais } from "@/lib/legal/perfil-do-pais";
 import { Textarea } from "@/components/ui/textarea";
@@ -238,7 +238,14 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
                   type="text"
                   inputMode="decimal"
                   value={rascunhosDeMoeda[f.key] ?? formatado}
-                  onChange={(e) => setRascunhosDeMoeda((current) => ({ ...current, [f.key]: e.target.value }))}
+                  onChange={(e) =>
+                    setRascunhosDeMoeda((current) => {
+                      const texto = e.target.value;
+                      // Letra sem nenhum dígito não é valor: mantém o rascunho.
+                      if (!/\d/.test(texto) && /\p{L}/u.test(texto.replace(/[A-Z]{3}/g, ""))) return current;
+                      return { ...current, [f.key]: mascararMoeda(texto, moedaDoCampo) };
+                    })
+                  }
                   onBlur={() => gravarMoeda(f.key)}
                   onKeyDown={(e) => {
                     // Enter envia o formulário sem tirar o foco. Entrega o

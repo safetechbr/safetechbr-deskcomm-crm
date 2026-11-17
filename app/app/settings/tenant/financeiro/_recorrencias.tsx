@@ -15,7 +15,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useMoedaDaOrgAtiva } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
-import { MOEDA_PADRAO, formatCents, parseReaisToCents } from "@/lib/money";
+import {
+  MOEDA_PADRAO,
+  centavosParaMascara,
+  formatCents,
+  mascararMoeda,
+  parseReaisToCents,
+} from "@/lib/money";
 
 export type Recorrencia = {
   id: string;
@@ -128,7 +134,7 @@ export function Recorrencias({
             placeholder="0,00"
             inputMode="decimal"
             value={valor}
-            onChange={(e) => setValor(e.target.value)}
+            onChange={(e) => setValor(mascararMoeda(e.target.value, moeda))}
           />
 
           <label className="flex flex-col gap-1 text-xs text-text-muted">
@@ -203,7 +209,7 @@ export function Recorrencias({
                       setNome(r.name);
                       setDirecao(r.direction);
                       setContaId(r.account_id);
-                      setValor((r.amount_cents / 100).toFixed(2).replace(".", ","));
+                      setValor(centavosParaMascara(r.amount_cents, moeda));
                       setDia(String(r.day_of_month));
                       setEditandoId(r.id);
                     }}

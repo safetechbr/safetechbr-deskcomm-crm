@@ -18,7 +18,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { apiClient } from "@/lib/api/client";
-import { formatCents, parseReaisToCents } from "@/lib/money";
+import { centavosParaMascara, formatCents, mascararMoeda, parseReaisToCents } from "@/lib/money";
 
 import { AtendimentosSemComanda, type Pendente } from "./_pendentes";
 
@@ -376,7 +376,7 @@ function FormularioDeItem({
             // não sobrescreve o que alguém já digitou: quem digitou um valor
             // antes de escolher o serviço tinha um motivo.
             if (escolhido?.default_price_cents != null && preco.trim() === "") {
-              setPreco((escolhido.default_price_cents / 100).toFixed(2));
+              setPreco(centavosParaMascara(escolhido.default_price_cents, moeda));
             }
           }}
           className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
@@ -407,7 +407,7 @@ function FormularioDeItem({
           inputMode="decimal"
           placeholder="0,00"
           data-testid="item-valor"
-          onChange={(e) => setPreco(e.target.value)}
+          onChange={(e) => setPreco(mascararMoeda(e.target.value, moeda))}
           className="w-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>

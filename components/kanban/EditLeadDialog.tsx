@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEditLead } from "@/hooks/kanban/useUpdateLead";
 import type { Lead } from "@/lib/types/leads";
 import { updateLeadSchema, type UpdateLeadInput } from "@/lib/schemas/leads";
-import { MOEDA_PADRAO, parseReaisToCents, simboloDaMoeda } from "@/lib/money";
+import { centavosParaMascara, mascararMoeda, MOEDA_PADRAO, parseReaisToCents, simboloDaMoeda } from "@/lib/money";
 import { ContactTagsEditor } from "@/components/inbox/ContactTagsEditor";
 import { EcoDoValor } from "./EcoDoValor";
 
@@ -44,9 +44,11 @@ interface Props {
   pipelineId: string;
 }
 
-function centsToReais(cents: number | null | undefined): string {
+function centsToReais(cents: number | null | undefined, moeda: string): string {
   if (cents === null || cents === undefined) return "";
-  return (cents / 100).toFixed(2).replace(".", ",");
+  // Zero continua "0,00" (e não vazio): salvar sem mexer não apaga o valor.
+  if (cents === 0) return (0).toFixed(2).replace(".", ",");
+  return centavosParaMascara(cents, moeda);
 }
 
 export function EditLeadDialog({ open, onOpenChange, lead, pipelineId }: Props) {
@@ -61,7 +63,7 @@ export function EditLeadDialog({ open, onOpenChange, lead, pipelineId }: Props) 
     defaultValues: {
       title: lead.title,
       description: lead.description ?? "",
-      valueReais: centsToReais(lead.value_cents),
+      valueReais: centsToReais(lead.value_cents, moedaDoValor),
       expected_close_date: lead.expected_close_date ?? "",
     },
   });
@@ -71,7 +73,7 @@ export function EditLeadDialog({ open, onOpenChange, lead, pipelineId }: Props) 
       form.reset({
         title: lead.title,
         description: lead.description ?? "",
-        valueReais: centsToReais(lead.value_cents),
+        valueReais: centsToReais(lead.value_cents, moedaDoValor),
         expected_close_date: lead.expected_close_date ?? "",
       });
     }
@@ -149,7 +151,10 @@ export function EditLeadDialog({ open, onOpenChange, lead, pipelineId }: Props) 
                 id="valueReais"
                 inputMode="decimal"
                 placeholder="0,00"
-                {...form.register("valueReais")}
+                {...form.register("valueReais", {
+                  onChange: (e) =>
+                    form.setValue("valueReais", mascararMoeda(e.target.value, moedaDoValor)),
+                })}
               />
               <EcoDoValor control={form.control} moeda={moedaDoValor} />
               {form.formState.errors.valueReais && (

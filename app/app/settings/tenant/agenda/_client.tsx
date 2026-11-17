@@ -10,7 +10,7 @@ import { ConfiguracaoDoServico } from "@/components/agenda/ConfiguracaoDoServico
 
 import { useMoedaDaOrgAtiva } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
-import { MOEDA_PADRAO, parseReaisToCents } from "@/lib/money";
+import { centavosParaMascara, mascararMoeda, MOEDA_PADRAO, parseReaisToCents } from "@/lib/money";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -848,8 +848,13 @@ export function TiposDeAgendamentoClient({
                       defaultValue={
                         tipo.default_price_cents === null
                           ? ""
-                          : (tipo.default_price_cents / 100).toFixed(2)
+                          : tipo.default_price_cents === 0
+                            ? (0).toFixed(2).replace(".", ",")
+                            : centavosParaMascara(tipo.default_price_cents, moeda)
                       }
+                      onChange={(e) => {
+                        e.currentTarget.value = mascararMoeda(e.currentTarget.value, moeda);
+                      }}
                       data-testid={`editar-preco-${tipo.id}`}
                       className="rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
                     />

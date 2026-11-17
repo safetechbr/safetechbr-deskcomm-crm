@@ -1,7 +1,6 @@
 "use client";
-import { EditorDaEmpresa, EditorDeClausulas } from "@/components/pdv/dados-do-contrato";
+import { EditorDaEmpresa, EditorDoRepresentante } from "@/components/pdv/dados-do-contrato";
 import { configuracaoContratoSchema } from "@/lib/pdv/modelo-contrato";
-import { CLAUSULAS_DO_MODELO } from "@/lib/pdv/clausulas-modelo";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -266,8 +265,9 @@ export function TenantForm({ initial, onSave, onSaved }: Props) {
           <p className="text-sm text-muted-foreground">Razão social, nome de exibição e CNPJ vêm dos campos acima. Os dados abaixo preenchem os novos contratos e podem ser revisados em cada negociação.</p>
           <EditorDaEmpresa valor={configuracaoContratoSchema.parse(form.dados_contrato ?? {})}
             onChange={(v) => set("dados_contrato", { ...configuracaoContratoSchema.parse(form.dados_contrato ?? {}), ...v })} somenteComplemento />
-          <EditorDeClausulas valor={form.dados_contrato?.clausulas ?? CLAUSULAS_DO_MODELO}
-            onChange={(clausulas) => set("dados_contrato", { ...configuracaoContratoSchema.parse(form.dados_contrato ?? {}), clausulas })} />
+          <EditorDoRepresentante valor={configuracaoContratoSchema.parse(form.dados_contrato ?? {})}
+            onChange={(v) => set("dados_contrato", { ...configuracaoContratoSchema.parse(form.dados_contrato ?? {}), ...v })} />
+          <p className="text-sm text-muted-foreground">As cláusulas do contrato são fixas, do modelo do produto. Condições de uma operação específica entram na cláusula especial, no PDV.</p>
         </details>
         <div className="flex sm:justify-end">
           <Button type="submit" disabled={isPending} className="w-full sm:w-auto">

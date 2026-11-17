@@ -42,7 +42,8 @@ export async function POST(
     .maybeSingle();
   if (!data) return fail("not_found", t("Negociação não encontrada."), 404, { requestId });
   const n = data as unknown as Negociacao;
-  if (n.status !== "rascunho") return fail("conflict", t("Essa negociação já foi fechada."), 409, { requestId });
+  if (n.status !== "rascunho")
+    return fail("conflict", t("Essa negociação já foi fechada."), 409, { requestId });
 
   // Na venda, o contrato é a tela final: sem os dados obrigatórios dele a
   // negociação não fecha. `faltando` diz o setor e o campo de cada falta;
@@ -69,7 +70,12 @@ export async function POST(
     }
     if (error.code === "42501") return fail("forbidden", t("Sem permissão."), 403, { requestId });
     if (error.code === "23505") {
-      return fail("conflict", t("Outro veículo entrou no estoque ao mesmo tempo. Tente de novo."), 409, { requestId });
+      return fail(
+        "conflict",
+        t("Outro veículo entrou no estoque ao mesmo tempo. Tente de novo."),
+        409,
+        { requestId },
+      );
     }
     return fail("internal_error", "Erro ao concluir a negociação.", 500, { requestId });
   }

@@ -1,4 +1,5 @@
 "use client";
+import { centavosParaMascara, mascararMoeda, parseReaisToCents } from "@/lib/money";
 import { useEffect, useState, useCallback } from "react";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
@@ -128,7 +129,7 @@ export function CrediariosClient({
                             size="sm"
                             onClick={() => {
                               setParcela(p);
-                              setValor((p.amount_cents / 100).toFixed(2));
+                              setValor(centavosParaMascara(p.amount_cents));
                               setDataParcela(p.due_date);
                             }}
                           >
@@ -337,7 +338,7 @@ export function CrediariosClient({
                         void operar(editar, {
                           operacao: "editar",
                           parcela_id: parcela.id,
-                          valor_cents: Math.round(Number(valor.replace(",", ".")) * 100),
+                          valor_cents: parseReaisToCents(valor) ?? 0,
                           vencimento: dataParcela,
                         });
                       }}
@@ -348,7 +349,7 @@ export function CrediariosClient({
                           required
                           inputMode="decimal"
                           value={valor}
-                          onChange={(e) => setValor(e.target.value)}
+                          onChange={(e) => setValor(mascararMoeda(e.target.value))}
                         />
                       </label>
                       <label className="block text-sm">

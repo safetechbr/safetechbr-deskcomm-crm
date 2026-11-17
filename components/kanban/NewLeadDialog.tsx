@@ -36,7 +36,7 @@ import type { Lead } from "@/lib/types/leads";
 import { createLeadSchema, type CreateLeadInput } from "@/lib/schemas/leads";
 import { camposExigidosNoDestino, validaCamposExigidos } from "@/lib/leads/campos-exigidos";
 import { CustomFieldsEditor } from "@/components/contacts/CustomFieldsEditor";
-import { MOEDA_PADRAO, parseReaisToCents, simboloDaMoeda } from "@/lib/money";
+import { mascararMoeda, MOEDA_PADRAO, parseReaisToCents, simboloDaMoeda } from "@/lib/money";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import type { Contact } from "@/lib/types/contacts";
 import { AbrirConversaAposSalvar } from "@/components/channels/AbrirConversaAposSalvar";
@@ -490,7 +490,10 @@ export function NewLeadDialog({
                 id="valueReais"
                 inputMode="decimal"
                 placeholder="0,00"
-                {...form.register("valueReais")}
+                {...form.register("valueReais", {
+                  onChange: (e) =>
+                    form.setValue("valueReais", mascararMoeda(e.target.value, moedaDoValor)),
+                })}
               />
               <EcoDoValor control={form.control} moeda={moedaDoValor} />
               {form.formState.errors.valueReais && (

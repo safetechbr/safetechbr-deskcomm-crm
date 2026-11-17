@@ -164,7 +164,9 @@ describe.each(telas)("%s: salvar o campo de moeda (#3428)", (tela) => {
   describe.each(["clique", "Enter"])("envio por %s", (envio) => {
     it.each([
       ["BRL", "1.500,25", 1500.25],
-      ["USD", "1,300", 1300],
+      // Com a máscara ao digitar, os dígitos entram como centavos: em dólar,
+      // mil e trezentos é "1,300.00" (o separador é o da moeda).
+      ["USD", "1,300.00", 1300],
     ] as const)("%s: grava %s com o valor correto", async (moeda, texto, valor) => {
       estado.moeda = moeda;
       // O clique é o controle: já funcionava antes da correção. Enter precisa

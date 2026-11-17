@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/api/client";
 import { disponivelCents, percentualUsado, somar } from "@/lib/financeiro/cartoes";
-import { formatCentsBRL, parseReaisToCents } from "@/lib/money";
+import { formatCentsBRL, mascararMoeda, parseReaisToCents } from "@/lib/money";
 import { Bank, CreditCard, Plus } from "@/lib/ui/icons";
 
 type Conta = {
@@ -287,7 +287,7 @@ function ContaDialog({
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="conta-inicial">Saldo inicial (R$)</Label>
-              <Input id="conta-inicial" inputMode="decimal" value={inicial} placeholder="0,00" onChange={(e) => setInicial(e.target.value)} />
+              <Input id="conta-inicial" inputMode="decimal" value={inicial} placeholder="0,00" onChange={(e) => setInicial(mascararMoeda(e.target.value))} />
             </div>
           </div>
           {erro && <p className="text-sm text-red-600">{erro}</p>}
@@ -372,7 +372,7 @@ function CartaoDialog({
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="cartao-limite">Limite (R$)</Label>
-            <Input id="cartao-limite" inputMode="decimal" value={limite} placeholder="0,00" onChange={(e) => setLimite(e.target.value)} />
+            <Input id="cartao-limite" inputMode="decimal" value={limite} placeholder="0,00" onChange={(e) => setLimite(mascararMoeda(e.target.value))} />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">

@@ -36,7 +36,7 @@ import {
   type Filtros,
   type Movimentacao,
 } from "@/lib/financeiro/movimentacoes";
-import { formatCentsBRL, parseReaisToCents } from "@/lib/money";
+import { formatCentsBRL, mascararMoeda, parseReaisToCents } from "@/lib/money";
 import { CaretLeft, CaretRight, DotsThree, Plus } from "@/lib/ui/icons";
 
 type Conta = { id: string; name: string };
@@ -418,7 +418,7 @@ function NovaMovimentacao({
                 inputMode="decimal"
                 value={valor}
                 placeholder="0,00"
-                onChange={(e) => setValor(e.target.value)}
+                onChange={(e) => setValor(mascararMoeda(e.target.value))}
               />
             </div>
             <div className="flex flex-col gap-1">

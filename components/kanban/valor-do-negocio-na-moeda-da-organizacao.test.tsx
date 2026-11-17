@@ -94,13 +94,14 @@ afterEach(() => {
 });
 
 describe("o valor do negócio é lido na moeda da organização (#3331)", () => {
-  it("⭐ dólar: `1,300` grava mil e trezentos dólares, e o eco concorda", async () => {
+  it("⭐ dólar: `1,300.00` grava mil e trezentos dólares, e o eco concorda", async () => {
     const usuario = userEvent.setup();
     renderForm(<LeadFieldsForm lead={negocio("USD")} pipelineId={FUNIL} />);
 
     const campo = screen.getByLabelText(/Valor/);
     await usuario.clear(campo);
-    await usuario.type(campo, "1,300");
+    // Com a máscara, os dígitos entram pela direita como centavos.
+    await usuario.type(campo, "1,300.00");
 
     // O eco é a metade visível: `= $1,300.00`, e não `= $1.30`.
     expect(await screen.findByText(/= \$1,300\.00/)).toBeTruthy();
@@ -123,14 +124,14 @@ describe("o valor do negócio é lido na moeda da organização (#3331)", () => 
     expect(screen.getByText(/Valor \(\$\)/)).toBeTruthy();
     const campo = screen.getByLabelText(/Valor/);
     await usuario.clear(campo);
-    await usuario.type(campo, "1,300");
+    await usuario.type(campo, "1,300.00");
     await usuario.click(screen.getByRole("button", { name: /Salvar/ }));
 
     await waitFor(() => expect(editar.mutateAsync).toHaveBeenCalled());
     expect(valorGravado()).toBe(130000);
   });
 
-  it("e em real nada muda: `1,300` continua um e trinta (a vírgula é o decimal)", async () => {
+  it("e em real nada muda: `1,30` continua um e trinta (a vírgula é o decimal)", async () => {
     // A outra metade do acordo: o conserto não pode mexer na regra do pt-BR,
     // que é a de quem já usa o produto.
     orgAtiva.atual = { currency: "BRL", country: null, orgId: "org-1" };
@@ -139,7 +140,7 @@ describe("o valor do negócio é lido na moeda da organização (#3331)", () => 
 
     const campo = screen.getByLabelText(/Valor/);
     await usuario.clear(campo);
-    await usuario.type(campo, "1,300");
+    await usuario.type(campo, "1,30");
 
     expect(await screen.findByText(/= R\$\s?1,30/)).toBeTruthy();
 

@@ -29,7 +29,13 @@ export function NovoClienteClient() {
   const org = useActiveOrg();
   const perfil = perfilDoPais(org?.country);
   const criar = useCreateContact();
-  const [v, setV] = React.useState({ name: "", cpf: "", birthdate: "", phone_number: "", email: "" });
+  const [v, setV] = React.useState({
+    name: "",
+    cpf: "",
+    birthdate: "",
+    phone_number: "",
+    email: "",
+  });
   const [erro, setErro] = React.useState<string | null>(null);
   const campo = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setV((x) => ({ ...x, [k]: e.target.value }));
@@ -38,9 +44,15 @@ export function NovoClienteClient() {
     e.preventDefault();
     setErro(null);
     if (!v.name.trim()) return setErro(t("Informe o nome do cliente."));
-    if (!v.phone_number.trim() && !v.email.trim()) return setErro(t("Informe o telefone ou o e-mail."));
+    if (!v.phone_number.trim() && !v.email.trim())
+      return setErro(t("Informe o telefone ou o e-mail."));
 
-    const payload: Record<string, unknown> = { reuse_existing_phone: true, source: "manual", contact_type: "cliente", name: v.name.trim() };
+    const payload: Record<string, unknown> = {
+      reuse_existing_phone: true,
+      source: "manual",
+      contact_type: "cliente",
+      name: v.name.trim(),
+    };
     if (v.email.trim()) payload.email = v.email.trim();
     if (v.phone_number.trim()) payload.phone_number = v.phone_number.trim();
     if (v.cpf.trim()) payload.cpf = v.cpf.trim();
@@ -59,11 +71,15 @@ export function NovoClienteClient() {
   }
 
   return (
-    <form onSubmit={(e) => void salvar(e)} className="mx-auto max-w-3xl space-y-6 p-6" data-testid="novo-cliente">
+    <form
+      onSubmit={(e) => void salvar(e)}
+      className="mx-auto max-w-3xl space-y-6 p-6"
+      data-testid="novo-cliente"
+    >
       <div className="ds-entra">
         <Link
           href="/app/clientes"
-          className="inline-flex items-center gap-1 rounded-full text-sm text-muted-foreground transition-colors hover:text-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
+          className="inline-flex items-center gap-1 rounded-full text-sm text-muted-foreground transition-colors hover:text-accent focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:outline-hidden"
         >
           <CaretLeft className="size-4" aria-hidden />
           {t("Clientes")}
@@ -89,11 +105,23 @@ export function NovoClienteClient() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="c-cpf">{perfil.documento.rotulo}</Label>
-            <Input id="c-cpf" className={CAMPO} value={v.cpf} onChange={campo("cpf")} placeholder={perfil.documento.exemplo} />
+            <Input
+              id="c-cpf"
+              className={CAMPO}
+              value={v.cpf}
+              onChange={campo("cpf")}
+              placeholder={perfil.documento.exemplo}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="c-nasc">{t("Data de Nascimento")}</Label>
-            <Input id="c-nasc" className={CAMPO} type="date" value={v.birthdate} onChange={campo("birthdate")} />
+            <Input
+              id="c-nasc"
+              className={CAMPO}
+              type="date"
+              value={v.birthdate}
+              onChange={campo("birthdate")}
+            />
           </div>
         </div>
       </section>
@@ -116,17 +144,33 @@ export function NovoClienteClient() {
             <Label htmlFor="c-tel">
               {perfil.codigo === PAIS_PADRAO ? t("Telefone (DDD + número)") : t("Telefone (E.164)")}
             </Label>
-            <Input id="c-tel" className={CAMPO} value={v.phone_number} onChange={campo("phone_number")} placeholder={perfil.telefoneExemplo} />
+            <Input
+              id="c-tel"
+              className={CAMPO}
+              value={v.phone_number}
+              onChange={campo("phone_number")}
+              placeholder={perfil.telefoneExemplo}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="c-email">{t("E-mail")}</Label>
-            <Input id="c-email" className={CAMPO} type="email" value={v.email} onChange={campo("email")} placeholder="nome@exemplo.com" />
+            <Input
+              id="c-email"
+              className={CAMPO}
+              type="email"
+              value={v.email}
+              onChange={campo("email")}
+              placeholder="nome@exemplo.com"
+            />
           </div>
         </div>
       </section>
 
       {erro && (
-        <p role="alert" className="ds-entra rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg">
+        <p
+          role="alert"
+          className="ds-entra rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error-fg"
+        >
           {erro}
         </p>
       )}

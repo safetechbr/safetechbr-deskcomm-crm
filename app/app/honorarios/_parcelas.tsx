@@ -16,7 +16,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { useT } from "@/hooks/i18n/useT";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { apiClient } from "@/lib/api/client";
-import { MOEDA_PADRAO, formatCents, parseReaisToCents } from "@/lib/money";
+import { MOEDA_PADRAO, formatCents, mascararMoeda, parseReaisToCents } from "@/lib/money";
 import { randomId } from "@/lib/random-id";
 
 type Parcela = {
@@ -233,7 +233,7 @@ function FormularioDeParcela({
           inputMode="decimal"
           placeholder="0,00"
           data-testid="parcela-valor"
-          onChange={(e) => setValor(e.target.value)}
+          onChange={(e) => setValor(mascararMoeda(e.target.value, moeda))}
           className="w-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text"
         />
       </label>

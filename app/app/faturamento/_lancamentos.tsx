@@ -16,7 +16,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { diaDeHojeLocal } from "@/lib/ai/pacing-knobs";
-import { formatCents, parseReaisToCents } from "@/lib/money";
+import { formatCents, mascararMoeda, parseReaisToCents } from "@/lib/money";
 
 export type Lancamento = {
   id: string;
@@ -146,7 +146,7 @@ export function ListaDeLancamentos({
               inputMode="decimal"
               placeholder="0,00"
               data-testid="lancamento-valor"
-              onChange={(e) => setValor(e.target.value)}
+              onChange={(e) => setValor(mascararMoeda(e.target.value, moeda))}
               className="w-28 rounded-md border border-border bg-surface-elevated p-2 text-sm text-text max-md:min-h-11"
             />
           </label>

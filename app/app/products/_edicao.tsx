@@ -1,5 +1,6 @@
 "use client";
 
+import { mascararMoeda } from "@/lib/money";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -131,7 +132,7 @@ export function EdicaoDoProduto({ produto, aoFechar }: { produto: Produto; aoFec
           {t("Preço de venda")}
           <input
             value={rascunho.preco}
-            onChange={(e) => setRascunho({ ...rascunho, preco: e.target.value })}
+            onChange={(e) => setRascunho({ ...rascunho, preco: mascararMoeda(e.target.value) })}
             placeholder="5.499,00"
             className="mt-1 h-9 w-full rounded-md border px-3"
             disabled={desabilitado}
@@ -142,7 +143,7 @@ export function EdicaoDoProduto({ produto, aoFechar }: { produto: Produto; aoFec
           {t("Custo")} <span className="text-muted-foreground">{t("(opcional)")}</span>
           <input
             value={rascunho.custo}
-            onChange={(e) => setRascunho({ ...rascunho, custo: e.target.value })}
+            onChange={(e) => setRascunho({ ...rascunho, custo: mascararMoeda(e.target.value) })}
             placeholder="4.100,00"
             className="mt-1 h-9 w-full rounded-md border px-3"
             disabled={desabilitado}

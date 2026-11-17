@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api/client";
 import { queryDaTela } from "@/lib/catalogo/busca-da-tela";
 import { MAXIMO_DE_FOTOS } from "@/lib/catalogo/fotos";
-import { formatCents } from "@/lib/money";
+import { formatCents, mascararMoeda } from "@/lib/money";
 import { precoParaCentavos, type Produto } from "@/lib/schemas/produtos";
 
 import { EdicaoDoProduto } from "./_edicao";
@@ -471,7 +471,7 @@ export function ProdutosClient({
               {t("Preço de venda")}
               <input
                 value={rascunho.preco}
-                onChange={(e) => setRascunho({ ...rascunho, preco: e.target.value })}
+                onChange={(e) => setRascunho({ ...rascunho, preco: mascararMoeda(e.target.value) })}
                 placeholder="5.499,00"
                 className="mt-1 h-9 w-full rounded-md border px-3"
                 data-testid="produto-preco"
@@ -481,7 +481,7 @@ export function ProdutosClient({
               {t("Custo")} <span className="text-muted-foreground">{t("(opcional)")}</span>
               <input
                 value={rascunho.custo}
-                onChange={(e) => setRascunho({ ...rascunho, custo: e.target.value })}
+                onChange={(e) => setRascunho({ ...rascunho, custo: mascararMoeda(e.target.value) })}
                 placeholder="4.100,00"
                 className="mt-1 h-9 w-full rounded-md border px-3"
               />

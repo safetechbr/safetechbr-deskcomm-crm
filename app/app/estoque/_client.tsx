@@ -13,6 +13,7 @@ import { useT } from "@/hooks/i18n/useT";
 import { ImageIcon, MagnifyingGlass } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
+import { centavosParaMascara, mascararMoeda } from "@/lib/money";
 import { CATEGORIAS_PADRAO, listaDeCategorias, mesmaCategoria, sugerirCategoria } from "@/lib/veiculos/categorias";
 import { interpretarModeloFipe, marcasDoCatalogo, modelosDaMarca } from "@/lib/veiculos/catalogo";
 import {
@@ -88,9 +89,7 @@ function doVeiculo(v: Veiculo): Rascunho {
     chassi: v.chassi ?? "",
     renavam: v.renavam ?? "",
     placa_final: v.placa_final ?? "",
-    preco: v.preco_cents
-      ? (v.preco_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
-      : "",
+    preco: centavosParaMascara(v.preco_cents),
     opcionais: v.opcionais ?? "",
     descricao: v.descricao ?? "",
   };
@@ -620,7 +619,9 @@ function FormularioDoVeiculo({
           {campo("ano_fabricacao", t("Ano de fabricação"), undefined, "lista-anos")}
           {campo("ano_modelo", t("Ano do modelo"), undefined, "lista-anos")}
           {campo("km", t("Quilometragem"))}
-          {campo("preco", t("Preço (R$)"))}
+          {campo("preco", t("Preço (R$)"), undefined, undefined, (v) =>
+            setR({ ...r, preco: mascararMoeda(v) }),
+          )}
           {campo("motor", t("Motor (ex.: 1.0 turbo)"))}
           {campo("cambio", t("Câmbio (ex.: automático)"))}
           {campo("combustivel", t("Combustível"))}
