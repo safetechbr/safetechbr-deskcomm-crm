@@ -17,6 +17,9 @@
  * depois, que é a outra metade do acordo: quem opera só em real não vê
  * diferença.
  *
+ * Nota: os campos agora usam máscara de maquininha (`mascararMoeda`): os dígitos
+ * entram como centavos. Por isso o teste digita `130000` (= 1.300,00), não `1,300`.
+ *
  * A régua vem de duas pontas, e as duas são `organizations.currency`:
  *   - comandas e faturamento RECEBEM a moeda do componente pai (que a leu no
  *     servidor via `moedaDaOrganizacao`);
@@ -141,7 +144,7 @@ describe("comandas — o preço do item é lido na moeda da comanda aberta (#336
 
     await usuario.click(await screen.findByTestId(`comanda-${COMANDA.number}`));
     await usuario.type(await screen.findByTestId("item-descricao"), "Corte");
-    await usuario.type(screen.getByTestId("item-valor"), "1,300");
+    await usuario.type(screen.getByTestId("item-valor"), "130000");
     await usuario.click(screen.getByTestId("incluir-item"));
 
     await waitFor(() =>
@@ -180,7 +183,7 @@ describe("faturamento — o lançamento avulso é lido na moeda da organização
 
   it("⭐ dólar: `1,300` grava 130000, e não 130", async () => {
     const onCriar = montar("USD");
-    await lancar("1,300");
+    await lancar("130000");
     expect(onCriar).toHaveBeenCalledWith(expect.objectContaining({ amount_cents: 130000 }));
   });
 
@@ -201,7 +204,7 @@ describe("honorários — a parcela é lida na moeda da organização (#3367)", 
     const usuario = userEvent.setup();
     renderTela(<Parcelas contratoId="contrato-1" podeGerenciar />);
 
-    await usuario.type(await screen.findByTestId("parcela-valor"), "1,300");
+    await usuario.type(await screen.findByTestId("parcela-valor"), "130000");
     // `type="date"` não aceita digitação caractere a caractere no jsdom.
     fireEvent.change(screen.getByTestId("parcela-vencimento"), {
       target: { value: "2026-02-05" },
@@ -239,7 +242,7 @@ describe("agenda — o preço padrão do serviço é lido na moeda da organizaç
     await usuario.click(await screen.findByTestId(`editar-${TIPO_ID}`));
     const preco = screen.getByTestId(`editar-preco-${TIPO_ID}`);
     await usuario.clear(preco);
-    await usuario.type(preco, "1,300");
+    await usuario.type(preco, "130000");
     await usuario.click(screen.getByTestId(`salvar-${TIPO_ID}`));
 
     await waitFor(() =>
@@ -269,7 +272,7 @@ describe("recorrências — o valor do todo-mês é lido na moeda da organizaç�
 
     await usuario.type(screen.getByLabelText("Nome do lançamento"), "Aluguel");
     await usuario.selectOptions(screen.getByLabelText("Conta"), "conta-1");
-    await usuario.type(screen.getByLabelText("Valor"), "1,300");
+    await usuario.type(screen.getByLabelText("Valor"), "130000");
     await usuario.click(screen.getByRole("button", { name: "Adicionar" }));
 
     expect(onCriar).toHaveBeenCalledWith(

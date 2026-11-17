@@ -177,6 +177,14 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
     setRevisao(null);
   }
 
+  const reservaInvalida = salvandoReserva || horas < 1 || horas > 24 || !Number.isInteger(horas);
+  const atual = revisao ? lista.data?.find((x) => x.id === revisao.veiculo.id) : undefined;
+  const envioBloqueado =
+    !!revisao &&
+    (enviando !== null ||
+      revisao.texto.trim() === "" ||
+      !!bloqueioDoVeiculo((atual ?? revisao.veiculo).status, atual?.reserva, usuario.id));
+
   return (
     <>
       <div className="flex flex-col gap-2">
@@ -277,7 +285,7 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
               <input type="datetime-local" value={visita} onChange={e => setVisita(e.target.value)} className="rounded-md border bg-background p-2" />
             </label>
             <p className="text-xs text-muted-foreground">{t("Prazo máximo: 24 horas. A visita deve ocorrer dentro desse período.")}</p>
-            <Button disabled={salvandoReserva || horas < 1 || horas > 24 || !Number.isInteger(horas)} onClick={() => void salvarReserva()}>{salvandoReserva ? t("Salvando…") : t("Confirmar reserva")}</Button>
+            <Button disabled={reservaInvalida} onClick={() => void salvarReserva()}>{salvandoReserva ? t("Salvando…") : t("Confirmar reserva")}</Button>
           </DialogContent>
         </Dialog>
       ) : null}
@@ -307,7 +315,7 @@ function CorpoDoEstoque({ conversationId }: { conversationId: string }) {
               </Button>
               <Button
                 size="sm"
-                disabled={enviando !== null || revisao.texto.trim() === "" || !!bloqueioDoVeiculo((lista.data?.find(v => v.id === revisao.veiculo.id) ?? revisao.veiculo).status, lista.data?.find(v => v.id === revisao.veiculo.id)?.reserva, usuario.id)}
+                disabled={envioBloqueado}
                 onClick={() => void enviar(revisao.veiculo, revisao.texto.trim())}
               >
                 {enviando ? t("Enviando…") : t("Enviar")}

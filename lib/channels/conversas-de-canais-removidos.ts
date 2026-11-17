@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { nomeDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { apagarHistoricoDoCanal, type HistoricoApagado } from "./apagar-historico";
 
 /**
@@ -54,7 +55,7 @@ export async function listarSobrasDeCanaisRemovidos(
     ((data ?? []) as LinhaDoCanal[]).map(async (c) => ({
       id: c.id,
       provider: c.provider,
-      nome: c.display_name?.trim() || c.phone_number?.trim() || c.provider,
+      nome: nomeDoContato({ display_name: c.display_name }) ?? (c.phone_number?.trim() || c.provider),
       conversas: await contar("conversations", c.id),
       mensagens: await contar("messages", c.id),
     })),
