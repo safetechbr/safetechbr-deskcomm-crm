@@ -3,7 +3,24 @@
 import * as React from "react";
 import Link from "next/link";
 
+import { useQuery } from "@tanstack/react-query";
+
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { apiClient } from "@/lib/api/client";
+import { useDeleteContact } from "@/hooks/contacts/useDeleteContact";
+import { CadastroClienteModal } from "@/app/pdv/cadastro-cliente-modal";
+import { clienteDoContato, type ContatoDoCadastro } from "@/lib/pdv/cadastro-cliente";
+import type { ClienteDaNegociacao } from "@/lib/pdv/regras";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +31,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { useContactList } from "@/hooks/contacts/useContactList";
 import { useT } from "@/hooks/i18n/useT";
-import { CaretRight, EnvelopeSimple, MagnifyingGlass, Phone, UsersThree } from "@/lib/ui/icons";
+import {
+  Eye,
+  MagnifyingGlass,
+  MapPin,
+  PencilSimple,
+  Phone,
+  Trash,
+  UsersThree,
+} from "@/lib/ui/icons";
 import {
   resumoDaNegociacao,
   ROTULO_DO_STATUS_DA_NEGOCIACAO,
@@ -49,11 +74,61 @@ function dataCivil(iso: string | null): string | null {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
 }
 
+function formatarDocumento(d: string | null | undefined): string | null {
+  const n = (d ?? "").replace(/\D/g, "");
+  if (n.length === 11) return n.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (n.length === 14) return n.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return d?.trim() || null;
+}
+
+function enderecoEmLinha(c: ClienteDaNegociacao): string | null {
+  const rua = [c.endereco, c.numero].filter(Boolean).join(", ");
+  const resto = [c.complemento, c.bairro, [c.cidade, c.uf].filter(Boolean).join("/")]
+    .filter(Boolean)
+    .join(" · ");
+  const linha = [rua, resto, c.cep ? `CEP ${c.cep}` : ""].filter(Boolean).join(" — ");
+  return linha || null;
+}
+
+/** Cadastro completo (CPF decifrado e endereço) do contato, lido só quando a ficha ou a edição abre. */
+function useCadastroDoCliente(id: string | null) {
+  return useQuery({
+    queryKey: ["contact", id, "ficha"],
+    enabled: !!id,
+    queryFn: async () => {
+      const res = await apiClient.get<{ data: ContatoDoCadastro }>(`/api/v1/contacts/${id}`, {
+        headers: { "X-Decrypt-Purpose": "Exibir e editar o cadastro do cliente" },
+      });
+      return clienteDoContato(res.data);
+    },
+  });
+}
+
+function EditarCliente({ id, onFechar }: { id: string; onFechar: () => void }) {
+  const q = useCadastroDoCliente(id);
+  const retorno = React.useRef<HTMLElement | null>(null);
+  if (!q.data) return null;
+  return (
+    <CadastroClienteModal
+      open
+      contactId={id}
+      inicial={q.data}
+      retornoDoFoco={retorno}
+      onOpenChange={(v) => !v && onFechar()}
+      onSalvo={() => undefined}
+    />
+  );
+}
+
 export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
   const t = useT();
   const [entrada, setEntrada] = React.useState("");
   const [busca, setBusca] = React.useState("");
   const [aberto, setAberto] = React.useState<Contact | null>(null);
+  const [editandoId, setEditandoId] = React.useState<string | null>(null);
+  const [excluir, setExcluir] = React.useState<Contact | null>(null);
+  const apagar = useDeleteContact();
+  const ficha = useCadastroDoCliente(aberto?.id ?? null);
 
   React.useEffect(() => {
     const id = setTimeout(() => setBusca(entrada.trim()), 250);
@@ -162,11 +237,9 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
             const nome = nomeDe(c, t);
             const n = porCliente.get(c.id)?.length ?? 0;
             return (
-              <button
+              <div
                 key={c.id}
-                type="button"
-                onClick={() => setAberto(c)}
-                className="ds-entra ds-elevavel group rounded-xl border border-border/60 bg-surface p-4 text-left shadow-xs focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:outline-hidden"
+                className="ds-entra ds-elevavel rounded-xl border border-border/60 bg-surface p-4 shadow-xs"
                 style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 data-testid={`cliente-${c.id}`}
               >
@@ -180,10 +253,6 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                       {t("Cliente desde")} {new Date(c.created_at).toLocaleDateString("pt-BR")}
                     </div>
                   </div>
-                  <CaretRight
-                    aria-hidden
-                    className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-accent"
-                  />
                 </div>
                 <dl className="mt-4 space-y-1.5 border-t border-border/50 pt-3 text-sm">
                   {c.phone_number && (
@@ -195,15 +264,6 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                       <dd className="tabular-nums">{c.phone_number}</dd>
                     </div>
                   )}
-                  {c.email && (
-                    <div className="flex items-center justify-between gap-2">
-                      <dt className="flex items-center gap-1.5 text-muted-foreground">
-                        <EnvelopeSimple aria-hidden className="size-3.5" />
-                        {t("E-mail")}
-                      </dt>
-                      <dd className="truncate">{c.email}</dd>
-                    </div>
-                  )}
                   <div className="flex items-center justify-between gap-2">
                     <dt className="text-muted-foreground">{t("Negociações")}</dt>
                     <dd>
@@ -213,7 +273,42 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                     </dd>
                   </div>
                 </dl>
-              </button>
+                <div className="mt-4 flex gap-2 border-t border-border/50 pt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-full"
+                    aria-label={`${t("Ver")} ${nome}`}
+                    onClick={() => setAberto(c)}
+                    data-testid={`ver-${c.id}`}
+                  >
+                    <Eye aria-hidden className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-full"
+                    aria-label={`${t("Editar")} ${nome}`}
+                    onClick={() => setEditandoId(c.id)}
+                    data-testid={`editar-${c.id}`}
+                  >
+                    <PencilSimple aria-hidden className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-full text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400"
+                    aria-label={`${t("Excluir")} ${nome}`}
+                    onClick={() => setExcluir(c)}
+                    data-testid={`excluir-${c.id}`}
+                  >
+                    <Trash aria-hidden className="size-4" />
+                  </Button>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -242,6 +337,8 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                 <DialogDescription>{t("Ficha do cliente")}</DialogDescription>
               </DialogHeader>
               <dl className="grid gap-3 rounded-xl bg-muted/60 p-4 text-sm sm:grid-cols-2">
+                <Info rotulo={t("Nome completo")} valor={nomeDe(aberto, t)} />
+                <Info rotulo={t("CPF/CNPJ")} valor={formatarDocumento(ficha.data?.documento)} />
                 <Info rotulo={t("Telefone")} valor={aberto.phone_number} />
                 <Info rotulo={t("E-mail")} valor={aberto.email} />
                 <Info rotulo={t("Data de nascimento")} valor={dataCivil(aberto.birthdate)} />
@@ -250,6 +347,34 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                   valor={new Date(aberto.created_at).toLocaleDateString("pt-BR")}
                 />
               </dl>
+              {ficha.data && (
+                <dl
+                  className="grid gap-3 rounded-xl bg-muted/60 p-4 text-sm sm:grid-cols-2"
+                  data-testid="ficha-cadastro"
+                >
+                  <Info rotulo={t("Nacionalidade")} valor={ficha.data.nacionalidade ?? null} />
+                  <Info rotulo={t("Estado civil")} valor={ficha.data.estado_civil ?? null} />
+                  <Info rotulo={t("Profissão")} valor={ficha.data.profissao ?? null} />
+                  <Info
+                    rotulo={t("RG")}
+                    valor={
+                      [ficha.data.rg, ficha.data.rg_orgao_expedidor, ficha.data.rg_uf]
+                        .filter(Boolean)
+                        .join(" ") || null
+                    }
+                  />
+                  <Info rotulo={t("CNH")} valor={ficha.data.cnh ?? null} />
+                  <div className="sm:col-span-2">
+                    <dt className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin aria-hidden className="size-3.5" />
+                      {t("Endereço")}
+                    </dt>
+                    <dd className="font-medium" data-testid="ficha-endereco">
+                      {enderecoEmLinha(ficha.data) || "—"}
+                    </dd>
+                  </div>
+                </dl>
+              )}
               <section className="space-y-2" data-testid="historico-do-cliente">
                 <h3 className="font-semibold">{t("Histórico")}</h3>
                 {historico.length === 0 ? (
@@ -287,13 +412,50 @@ export function ClientesClient({ negociacoes }: { negociacoes: Negociacao[] }) {
                   </ul>
                 )}
               </section>
-              <Button asChild variant="outline" className="justify-self-start rounded-full">
-                <Link href={`/app/contacts/${aberto.id}`}>{t("Abrir ficha completa")}</Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  className="rounded-full"
+                  onClick={() => {
+                    setEditandoId(aberto.id);
+                    setAberto(null);
+                  }}
+                >
+                  <PencilSimple aria-hidden className="size-4" />
+                  {t("Editar")}
+                </Button>
+                <Button asChild variant="outline" className="rounded-full">
+                  <Link href={`/app/contacts/${aberto.id}`}>{t("Abrir ficha completa")}</Link>
+                </Button>
+              </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      {editandoId && <EditarCliente id={editandoId} onFechar={() => setEditandoId(null)} />}
+
+      <AlertDialog open={excluir !== null} onOpenChange={(v) => !v && setExcluir(null)}>
+        <AlertDialogContent data-testid="confirmar-exclusao">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Excluir cliente")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {excluir ? nomeDe(excluir, t) : ""} —{" "}
+              {t("Esta ação não pode ser desfeita. Deseja continuar?")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("Cancelar")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (excluir) apagar.mutate(excluir.id);
+                setExcluir(null);
+              }}
+            >
+              {t("Excluir")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

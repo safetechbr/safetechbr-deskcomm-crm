@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import * as React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Contact } from "@/lib/types/contacts";
 import type { Negociacao } from "@/lib/pdv/regras";
@@ -37,6 +37,17 @@ vi.mock("@/hooks/contacts/useContactList", () => ({
 }));
 vi.mock("@/hooks/i18n/useT", () => ({ useT: () => (s: string) => s }));
 
+const apagar = vi.fn();
+vi.mock("@/hooks/contacts/useDeleteContact", () => ({
+  useDeleteContact: () => ({ mutate: apagar }),
+}));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: undefined }),
+}));
+vi.mock("@/app/pdv/cadastro-cliente-modal", () => ({
+  CadastroClienteModal: () => null,
+}));
+
 import { ClientesClient } from "./_client";
 
 describe("Clientes", () => {
@@ -47,5 +58,21 @@ describe("Clientes", () => {
     expect(screen.getByTestId("cliente-a")).toBeTruthy();
     expect(screen.getByTestId("cliente-c")).toBeTruthy();
     expect(screen.queryByTestId("cliente-b")).toBeNull();
+  });
+
+  it("cada cliente tem ver, editar e excluir; excluir pede confirmação", () => {
+    render(<ClientesClient negociacoes={[]} />);
+    expect(screen.getByTestId("ver-c")).toBeTruthy();
+    expect(screen.getByTestId("editar-c")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("excluir-c"));
+    expect(apagar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    expect(apagar).toHaveBeenCalledWith("c");
+  });
+
+  it("ver abre a ficha do cliente", () => {
+    render(<ClientesClient negociacoes={[]} />);
+    fireEvent.click(screen.getByTestId("ver-c"));
+    expect(screen.getByTestId("ficha-do-cliente")).toBeTruthy();
   });
 });
