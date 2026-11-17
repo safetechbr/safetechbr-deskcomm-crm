@@ -142,9 +142,7 @@ export function sidebarGroups(
   return NAV_GROUPS.map((group) => {
     const items = NAV_DESTINATIONS.filter(
       (d) =>
-        d.group === group.id &&
-        sobeAoMenuLateral(d, !!settings?.destinos) &&
-        visible.has(d.href),
+        d.group === group.id && sobeAoMenuLateral(d, !!settings?.destinos) && visible.has(d.href),
     );
     return { group, items: group.id === "acoes_rapidas" ? comAtalhos(items, visible) : items };
   }).filter(
@@ -166,7 +164,9 @@ function comAtalhos(items: NavDestination[], visible: Set<string>): NavDestinati
     return [{ ...original, label: a.label ?? original.label, group: "acoes_rapidas" as const }];
   });
   const i = items.findIndex((d) => d.href === ATALHOS_DEPOIS_DE);
-  return i < 0 ? [...atalhos, ...items] : [...items.slice(0, i + 1), ...atalhos, ...items.slice(i + 1)];
+  return i < 0
+    ? [...atalhos, ...items]
+    : [...items.slice(0, i + 1), ...atalhos, ...items.slice(i + 1)];
 }
 
 /**

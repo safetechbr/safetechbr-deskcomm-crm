@@ -44,7 +44,11 @@ export default async function EstoquePage() {
   if (error) throw new Error(`Não consegui ler o estoque: ${error.message}`);
   const veiculos = (data ?? []) as unknown as Veiculo[];
 
-  const reservas = await reservasAtivas(supabase, activeOrg.orgId, veiculos.map(v => v.id));
+  const reservas = await reservasAtivas(
+    supabase,
+    activeOrg.orgId,
+    veiculos.map((v) => v.id),
+  );
   for (const v of veiculos) v.reserva = reservas.get(v.id) ?? null;
 
   const caminhos = veiculos.flatMap((v) =>
@@ -66,7 +70,9 @@ export default async function EstoquePage() {
       urlsDasFotos={urlsDasFotos}
       podeEditar={podeEditar}
       titulo={t("Estoque")}
-      subtitulo={t("Os veículos da loja, com fotos e ficha, prontos para enviar ao cliente no atendimento.")}
+      subtitulo={t(
+        "Os veículos da loja, com fotos e ficha, prontos para enviar ao cliente no atendimento.",
+      )}
     />
   );
 }
