@@ -37,6 +37,7 @@ export default async function EstoquePage() {
     .from("veiculos")
     .select(COLUNAS_DO_VEICULO)
     .eq("organization_id", activeOrg.orgId)
+    .neq("status", "em_oficina") // em oficina ainda não é estoque: só entra ao ser liberado
     .order("status")
     .order("modelo")
     .limit(500);

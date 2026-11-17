@@ -45,6 +45,7 @@ export default async function PdvPage() {
       .select(COLUNAS_DO_VEICULO)
       .eq("organization_id", activeOrg.orgId)
       .neq("status", "vendido")
+      .neq("status", "em_oficina")
       .order("modelo")
       .limit(500),
     supabase

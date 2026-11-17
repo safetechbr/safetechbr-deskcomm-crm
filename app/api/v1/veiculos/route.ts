@@ -34,6 +34,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   const params = req.nextUrl.searchParams;
   const supabase = await createClient();
   let q = supabase.from("veiculos").select(COLUNAS_DO_VEICULO).eq("organization_id", authz.org.orgId);
+  // Veículo em oficina ainda não é estoque (só a Oficina o enxerga).
+  q = q.neq("status", "em_oficina");
 
   const status = params.get("status");
   if (status && (STATUS_DO_VEICULO as readonly string[]).includes(status)) q = q.eq("status", status);

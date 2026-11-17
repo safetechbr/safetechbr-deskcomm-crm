@@ -832,6 +832,9 @@ export const AUDIT_ACTIONS = [
   "veiculo.video_set",
   "veiculo.video_removed",
   "veiculo.presented",
+  "veiculo.os_saved",
+  "veiculo.custo_updated",
+  "veiculo.liberado",
   "veiculo.reservado",
   "veiculo.reserva_liberada",
   // O PDV da loja de carros (migration 9031): venda/compra de veículo.

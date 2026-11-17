@@ -19,6 +19,7 @@ export {
   UserPlus,
   UsersThree,
   Storefront,
+  Wrench,
   ShoppingCart,
   Lightning,
   Robot,

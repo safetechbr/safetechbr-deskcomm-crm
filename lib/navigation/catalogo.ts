@@ -203,6 +203,16 @@ export const NAV_CATALOG = [
     sidebar: true,
   },
   {
+    // Todo carro comprado ou recebido em troca passa por aqui antes do Estoque.
+    href: "/app/oficina",
+    label: "Oficina",
+    description:
+      "Veículos que entraram na loja: ordem de serviço, custos e liberação para o estoque.",
+    icon: "Wrench",
+    group: "estoque",
+    sidebar: true,
+  },
+  {
     // Atalho do PDV, com o nome de ação: é a mesma tela, por outra porta.
     href: "/app/nova-venda",
     label: "Nova venda",
