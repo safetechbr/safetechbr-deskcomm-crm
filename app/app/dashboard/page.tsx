@@ -17,6 +17,10 @@ export const metadata: Metadata = { title: "Dashboard" };
  * Os últimos 30 dias de vendas bastam para o gráfico e os cartões; o filtro de
  * período roda no navegador sobre esse mesmo recorte.
  */
+function isoDiasAtras(dias: number): string {
+  return new Date(Date.now() - dias * 24 * 3600 * 1000).toISOString();
+}
+
 export default async function DashboardPage() {
   const user = await requireAuth();
   const t = (texto: string) => traduzir(texto, user.idioma);
@@ -24,7 +28,7 @@ export default async function DashboardPage() {
   if (!activeOrg) redirect("/app/settings/profile");
 
   const supabase = await createClient();
-  const desde = new Date(Date.now() - 32 * 24 * 3600 * 1000).toISOString();
+  const desde = isoDiasAtras(32);
   const [negociacoes, veiculos, contatos] = await Promise.all([
     supabase
       .from("negociacoes_de_veiculo")
@@ -41,7 +45,8 @@ export default async function DashboardPage() {
       .select("id", { count: "exact", head: true })
       .eq("organization_id", activeOrg.orgId),
   ]);
-  if (negociacoes.error) throw new Error(`Não consegui ler as vendas: ${negociacoes.error.message}`);
+  if (negociacoes.error)
+    throw new Error(`Não consegui ler as vendas: ${negociacoes.error.message}`);
 
   const estoque = { disponivel: 0, reservado: 0, vendido: 0 };
   for (const v of veiculos.data ?? []) {

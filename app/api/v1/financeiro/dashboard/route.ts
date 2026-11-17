@@ -38,6 +38,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   const orgId = authz.org.orgId;
   const supabase = await createClient();
 
+  // O construtor de filtros do PostgREST tem tipo genérico por tabela; aqui só encadeia.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function buscar(filtro: (q: any) => any): Promise<LancamentoDash[] | null> {
     const todos: LancamentoDash[] = [];
     for (let p = 0; p < MAX_PAGINAS; p++) {
@@ -62,7 +64,8 @@ export async function GET(req: NextRequest): Promise<Response> {
     buscar((q) => q.gte("entry_date", de).lte("entry_date", ate)),
     buscar((q) => q.eq("status", "pending")),
   ]);
-  if (!periodo || !pendentes) return fail("internal_error", "Falha ao ler os lançamentos.", 500, { requestId });
+  if (!periodo || !pendentes)
+    return fail("internal_error", "Falha ao ler os lançamentos.", 500, { requestId });
 
   return ok({ periodo, pendentes } satisfies DashboardFinanceiro, { requestId });
 }
