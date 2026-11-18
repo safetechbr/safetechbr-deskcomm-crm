@@ -65,7 +65,7 @@ export default async function PublicLayout({ children }: { children: React.React
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-sm space-y-6">
           {marca.logoUrl || marca.logoDarkUrl ? (
-            <div className="flex justify-center">
+            <div className="ds-logo-entra flex justify-center">
               {/*
                 <img> em vez de next/image pelo mesmo motivo da barra lateral: a URL
                 é de quem hospeda e o `next/image` exige allowlist de domínios
@@ -109,7 +109,7 @@ export default async function PublicLayout({ children }: { children: React.React
               </div>
             </div>
           ) : marcaEhADoProduto({ name: marca.nome, logoUrl: null }) ? (
-            <div className="flex justify-center">
+            <div className="ds-logo-entra flex justify-center">
               <LogotipoDoProduto nome={marca.nome} className="h-12 w-auto" />
             </div>
           ) : null}
