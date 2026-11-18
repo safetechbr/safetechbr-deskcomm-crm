@@ -2044,6 +2044,9 @@ jobs:
       - name: Build de produção (com o ambiente do E2E)
         run: pnpm e2e:build
         env:
+          # O heap padrão do Node estourou ("JavaScript heap out of memory") no build
+          # de produção na main em 2026-11-17; o runner público tem 16 GB.
+          NODE_OPTIONS: --max-old-space-size=6144
           NEXT_TELEMETRY_DISABLED: "1"
           # `off`, NÃO vazio. Vazio seleciona o Sentry DA COMUNIDADE — está
           # escrito em lib/sentry/dsn.ts:8-10, e é o default de propósito num

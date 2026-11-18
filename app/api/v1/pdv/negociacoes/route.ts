@@ -35,7 +35,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   let q = supabase
     .from("negociacoes_de_veiculo")
     .select(COLUNAS_DA_NEGOCIACAO)
-    .eq("organization_id", authz.org.orgId);
+    .eq("organization_id", authz.org.orgId)
+    .neq("status", "excluida");
   const tipo = params.get("tipo");
   if (tipo && (TIPOS_DE_NEGOCIACAO as readonly string[]).includes(tipo)) q = q.eq("tipo", tipo);
   const status = params.get("status");

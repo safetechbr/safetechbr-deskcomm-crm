@@ -5,6 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
+import { z } from "zod";
 
 import { registrarCategoriaDaLoja } from "@/lib/veiculos/categorias-da-loja";
 import { audit } from "@/lib/audit";
@@ -19,6 +20,7 @@ import {
   BUCKET_DAS_FOTOS_DE_VEICULO,
   BUCKET_DO_VIDEO_DE_VEICULO,
   COLUNAS_DO_VEICULO,
+  descreverVeiculo,
   veiculoPatchSchema,
 } from "@/lib/veiculos/regras";
 
@@ -68,13 +70,16 @@ export async function PATCH(
     action: parsed.data.status ? "veiculo.status_changed" : "veiculo.updated",
     resourceType: "veiculos",
     resourceId: id,
+    metadata: { ...descreverVeiculo(data), ...(parsed.data.status ? { status: parsed.data.status } : {}) },
     requestId,
   });
   return ok(data, { requestId });
 }
 
+const excluirSchema = z.object({ motivo: z.string().trim().min(3).max(1000) });
+
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const supportDenied = await requireSupportWrite();
@@ -85,11 +90,13 @@ export async function DELETE(
   const t = (texto: string) => traduzir(texto, authz.user.idioma);
   const orgId = authz.org.orgId;
   const { id } = await params;
+  const corpo = excluirSchema.safeParse(await req.json().catch(() => null));
+  if (!corpo.success) return fail("validation_failed", t("Informe o motivo da exclusão."), 422, { requestId });
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("veiculos")
-    .select("fotos, video")
+    .select("fotos, video, codigo, modelo, placa")
     .eq("organization_id", orgId)
     .eq("id", id)
     .maybeSingle();
@@ -113,6 +120,7 @@ export async function DELETE(
     action: "veiculo.deleted",
     resourceType: "veiculos",
     resourceId: id,
+    metadata: { motivo: corpo.data.motivo, ...descreverVeiculo(data) },
     requestId,
   });
   return ok({ id }, { requestId });

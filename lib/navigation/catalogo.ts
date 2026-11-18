@@ -1153,6 +1153,15 @@ export const NAV_CATALOG = [
     minRole: "manager",
   },
   {
+    href: "/app/settings/atividades",
+    label: "Histórico de atividades",
+    description: "Quem cadastrou, alterou, vendeu ou excluiu no estoque e nas vendas, com o motivo das exclusões.",
+    icon: "ClockCounterClockwise",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
+  },
+  {
     // A porta que faltava para o vocabulário de etiquetas (issue #852). Até
     // aqui a etiqueta só ENTRAva no vocabulário — cada agente escrevia a que
     // quisesse em `add_tag` — e não havia por onde corrigir, juntar as duas

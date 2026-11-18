@@ -19,6 +19,7 @@ import {
   arquivoPertenceAoVeiculo,
   BUCKET_DAS_FOTOS_DE_VEICULO,
   COLUNAS_DO_VEICULO,
+  descreverVeiculo,
   proximoCodigoDeVeiculo,
   STATUS_DO_VEICULO,
   veiculoCreateSchema,
@@ -160,6 +161,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     action: "veiculo.created",
     resourceType: "veiculos",
     resourceId: (data as unknown as { id: string }).id,
+    metadata: descreverVeiculo(data),
     requestId,
   });
   return ok(data, { requestId, status: 201 });

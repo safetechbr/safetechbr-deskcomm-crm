@@ -52,6 +52,7 @@ export default async function PdvPage() {
       .from("negociacoes_de_veiculo")
       .select(COLUNAS_DA_NEGOCIACAO)
       .eq("organization_id", activeOrg.orgId)
+      .neq("status", "excluida")
       .order("created_at", { ascending: false })
       .limit(100),
   ]);

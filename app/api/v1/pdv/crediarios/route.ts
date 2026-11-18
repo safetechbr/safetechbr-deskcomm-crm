@@ -34,6 +34,7 @@ export async function GET() {
     .select("id,numero,cliente")
     .eq("organization_id", auth.org.orgId)
     .in("id", ids)
+    .neq("status", "excluida")
     .order("numero", { ascending: false });
   if (err)
     return fail("internal_error", "Não foi possível carregar as vendas.", 500, { requestId });

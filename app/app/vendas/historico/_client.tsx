@@ -1,8 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
+import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { DialogoDeMotivo } from "@/components/feedback/DialogoDeMotivo";
 import { Button } from "@/components/ui/button";
+import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import {
   ChartLineUp,
@@ -11,6 +16,7 @@ import {
   FileText,
   MagnifyingGlass,
   Receipt,
+  Trash,
   WarningOctagon,
 } from "@/lib/ui/icons";
 import {
@@ -55,10 +61,12 @@ export function HistoricoDeVendasClient({
   negociacoes,
   titulo,
   subtitulo,
+  podeExcluir,
 }: {
   negociacoes: Negociacao[];
   titulo: string;
   subtitulo: string;
+  podeExcluir: boolean;
 }) {
   const t = useT();
   const [busca, setBusca] = React.useState("");
@@ -328,6 +336,7 @@ export function HistoricoDeVendasClient({
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
+                    {podeExcluir ? <ExcluirNegociacao negociacao={n} /> : null}
                   </td>
                 </tr>
               ))}
@@ -336,6 +345,50 @@ export function HistoricoDeVendasClient({
         </div>
       )}
     </div>
+  );
+}
+
+/** A lixeira da linha: abre o pop-up que exige o motivo, que fica no histórico de atividades. */
+function ExcluirNegociacao({ negociacao }: { negociacao: Negociacao }) {
+  const t = useT();
+  const router = useRouter();
+  const [aberto, setAberto] = React.useState(false);
+
+  async function excluir(motivo: string) {
+    try {
+      await apiClient.delete(`/api/v1/pdv/negociacoes/${negociacao.id}`, { motivo });
+    } catch (e) {
+      showApiError(e);
+      throw e;
+    }
+    toast.success(t("Venda excluída."));
+    router.refresh();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAberto(true)}
+        aria-label={t("Excluir venda")}
+        title={t("Excluir venda")}
+        className="ml-1 inline-flex items-center rounded-full p-1.5 align-middle text-muted-foreground transition-colors hover:bg-error-bg hover:text-error-fg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30"
+        data-testid={`excluir-negociacao-${negociacao.numero}`}
+      >
+        <Trash className="size-4" aria-hidden />
+      </button>
+      <DialogoDeMotivo
+        aberto={aberto}
+        aoMudar={setAberto}
+        titulo={`${t("Excluir negociação")} #${negociacao.numero}`}
+        descricao={
+          negociacao.status === "concluida"
+            ? t("Tudo é desfeito: o carro volta ao estoque, o carro da troca sai, parcelas pendentes são canceladas e os valores pagos são estornados no financeiro.")
+            : t("A negociação some do histórico.")
+        }
+        aoConfirmar={excluir}
+      />
+    </>
   );
 }
 

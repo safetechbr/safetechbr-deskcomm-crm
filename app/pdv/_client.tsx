@@ -2080,10 +2080,10 @@ export function PdvClient({
   const telaLarga = useTelaLarga();
   const rodapeDoPagamento =
     aba !== "historico" ? (
-      <footer className="bg-accent text-accent-foreground" data-testid="pdv-rodape">
+      <footer className="border-t border-border/60 bg-surface text-foreground" data-testid="pdv-rodape">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div data-testid="pdv-saldo" className="min-w-0">
-            <div className="text-[10px] tracking-wider uppercase opacity-90">
+            <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
               {r.tipo === "venda" ? t("Total") : t("Valor da compra")}
             </div>
             <div className="text-xl leading-tight font-bold tabular-nums">
@@ -2097,7 +2097,7 @@ export function PdvClient({
                 size="sm"
                 onClick={cancelar}
                 disabled={salvando}
-                className="rounded-full text-accent-foreground hover:bg-white/15 hover:text-accent-foreground"
+                className="rounded-full text-foreground hover:bg-muted hover:text-foreground"
               >
                 {t("Cancelar")}
               </Button>
@@ -2109,7 +2109,7 @@ export function PdvClient({
                   size="sm"
                   onClick={salvarRascunho}
                   disabled={salvando}
-                  className="rounded-full text-accent-foreground hover:bg-white/15 hover:text-accent-foreground"
+                  className="rounded-full text-foreground hover:bg-muted hover:text-foreground"
                   data-testid="pdv-salvar"
                 >
                   <span className="sr-only">{t("Salvar rascunho")}</span>
@@ -2123,7 +2123,7 @@ export function PdvClient({
                       ? oQueFalta.map((f) => `${t(f.setor)}: ${t(f.mensagem)}`).join("\n")
                       : undefined
                   }
-                  className="rounded-full bg-white px-5 font-semibold text-accent shadow-xs hover:bg-white/90"
+                  className="rounded-full bg-primary px-5 font-semibold text-primary-foreground shadow-xs hover:bg-primary/90"
                   data-testid="pdv-finalizar"
                 >
                   {r.modalidade === "reserva"
