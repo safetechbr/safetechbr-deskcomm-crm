@@ -118,6 +118,7 @@ function makeDb(opts: DbOpts = {}): Registro {
     private filtros: Array<[string, unknown]> = [];
     private inclusoes: Array<[string, unknown[]]> = [];
     private limite: number | undefined;
+    private inicio = 0;
     private ordenacao: { col: string; ascending: boolean } | undefined;
     private head = false;
     private contar = false;
@@ -154,6 +155,11 @@ function makeDb(opts: DbOpts = {}): Registro {
       this.limite = n;
       return this;
     }
+    range(de: number, ate: number): this {
+      this.inicio = de;
+      this.limite = ate - de + 1;
+      return this;
+    }
     maybeSingle(): this {
       this.single = true;
       return this;
@@ -172,7 +178,7 @@ function makeDb(opts: DbOpts = {}): Registro {
         let achadas = this.casam();
         const order = this.ordenacao;
         if (order) achadas.sort((a, b) => String(a[order.col]).localeCompare(String(b[order.col])) * (order.ascending ? 1 : -1));
-        if (this.limite !== undefined) achadas = achadas.slice(0, this.limite);
+        if (this.limite !== undefined) achadas = achadas.slice(this.inicio, this.inicio + this.limite);
         if (this.contar) return { data: null, error: null, count: achadas.length };
         if (this.head) return { data: null, error: null };
         return { data: this.single ? (achadas[0] ?? null) : achadas, error: null };
@@ -316,7 +322,13 @@ describe("DELETE /api/v1/channel-sessions/[id]", () => {
   it("canal COM CONVERSAS + delete_conversations:true → apaga o histórico DEPOIS de revogar e some de vez", async () => {
     authOk();
     const db = makeDb({
-      rows: { conversations: [{ id: "c1", organization_id: ORG, channel_session_id: CANAL }] },
+      rows: {
+        conversations: [{ id: "c1", organization_id: ORG, channel_session_id: CANAL }],
+        crm_lead_activities: [
+          { lead_id: "l1", organization_id: ORG, type: "lead_created", source_module: "canal.ingest", source_id: "c1" },
+        ],
+        crm_leads: [{ id: "l1", organization_id: ORG, retomado_de_lead_id: null }],
+      },
     });
     wahaOk(db);
     const { DELETE } = await import("./route");
@@ -332,11 +344,13 @@ describe("DELETE /api/v1/channel-sessions/[id]", () => {
     expect(db.eventos).toEqual([
       "waha:logout",
       "waha:delete",
+      "delete:crm_leads",
       "delete:messages",
       "delete:voice_calls",
       "delete:conversations",
       "delete:channel_sessions",
     ]);
+    expect(db.linhas("crm_leads")).toEqual([]); // card do funil não sobra
     for (const e of db.escritas.filter((e) => e.table !== "channel_sessions"))
       expect(e.filtros).toContainEqual(["organization_id", ORG]);
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: "channel.deleted" }));

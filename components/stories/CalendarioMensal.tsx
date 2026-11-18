@@ -38,7 +38,7 @@ export function CalendarioMensal({ itens, onAbrir, onNovo, podeCriar }: VisaoPro
                 type="button"
                 disabled={!podeCriar}
                 onClick={() => onNovo(d)}
-                className={`self-start rounded px-1 tabular-nums hover:bg-accent-soft ${d.toDateString() === hoje ? "bg-accent text-accent-foreground" : ""}`}
+                className={`self-start rounded-md px-1 tabular-nums hover:bg-accent-soft ${d.toDateString() === hoje ? "bg-accent text-accent-foreground" : ""}`}
                 aria-label={`${t("Novo Story em")} ${d.toLocaleDateString("pt-BR")}`}
               >
                 {d.getDate()}
@@ -48,7 +48,7 @@ export function CalendarioMensal({ itens, onAbrir, onNovo, podeCriar }: VisaoPro
                   key={s.id}
                   type="button"
                   onClick={() => onAbrir(s.id)}
-                  className="truncate rounded bg-accent-soft px-1 text-left text-accent hover:brightness-95"
+                  className="truncate rounded-md bg-accent-soft px-1 text-left text-accent hover:brightness-95"
                 >
                   {new Date(s.agendada_para).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 </button>

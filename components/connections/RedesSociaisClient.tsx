@@ -21,37 +21,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiClient } from "@/lib/api/client";
 import { canalDesativado } from "@/lib/channels/desativado";
+import { PASSOS_DO_PROVEDOR } from "@/lib/channels/passos-do-provedor-social";
 import { useT } from "@/hooks/i18n/useT";
 import { ChannelAiAccess } from "./ChannelAiAccess";
 import { RenomearConexao } from "./RenomearConexao";
-
-/**
- * Passo a passo para quem ainda não tem a chave. A ORDEM importa: a chave só
- * serve depois de a conta existir e de as redes estarem sincronizadas nela.
- * Só `signup` e `dashboard/api-keys` foram confirmados na documentação do
- * Zernio; o passo 2 abre o painel porque o caminho exato da tela de contas
- * exige login e não pôde ser verificado.
- */
-const PASSOS_DO_PROVEDOR = [
-  {
-    titulo: "Crie sua conta no Zernio.",
-    texto: "É onde suas redes sociais ficam ligadas.",
-    link: "Criar conta",
-    href: "https://zernio.com/signup",
-  },
-  {
-    titulo: "Sincronize suas redes sociais.",
-    texto: "No painel, conecte Instagram, Facebook, LinkedIn e as demais contas.",
-    link: "Abrir o painel",
-    href: "https://zernio.com/dashboard",
-  },
-  {
-    titulo: "Gere a chave de API.",
-    texto: "Clique em Create API key e copie na hora: ela não é mostrada de novo.",
-    link: "Ir para as chaves de API",
-    href: "https://zernio.com/dashboard/api-keys",
-  },
-] as const;
 
 type Account = {
   id: string;
@@ -642,14 +615,14 @@ export function RedesSociaisClient() {
               {conversasDoCanal > 0 && (
                 <fieldset className="space-y-1 rounded-md border border-destructive/40 p-3 text-sm">
                   <legend className="px-1 font-medium">
-                    {t("Também excluir as conversas deste canal?")}
+                    {t("Também excluir as conversas e os cards do funil deste canal?")}
                   </legend>
                   <p className="text-xs text-muted-foreground">
                     {`${conversasDoCanal} ${t(conversasDoCanal === 1 ? "conversa" : "conversas")}${
                       mensagensDoCanal > 0
                         ? ` ${t("e")} ${mensagensDoCanal} ${t(mensagensDoCanal === 1 ? "mensagem" : "mensagens")}`
                         : ""
-                    }. ${t("Isso não pode ser desfeito.")}`}
+                    }. ${t("Os cards e leads que nasceram dessas conversas saem de todos os funis.")} ${t("Isso não pode ser desfeito.")}`}
                   </p>
                   <div className="flex gap-4 pt-1">
                     <label className="flex items-center gap-1.5">

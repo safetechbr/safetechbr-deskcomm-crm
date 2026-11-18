@@ -28,7 +28,7 @@ type Resumo = {
 
 const CORES = ["#ef4444", "#f97316", "#eab308", "#3b82f6", "#8b5cf6", "#14b8a6", "#64748b"];
 const SELECT_CLASS =
-  "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 
 function hojeISO() {
   const d = new Date();

@@ -77,6 +77,10 @@ if [ -z "$release" ] && [ -n "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1;
     if [ -n "$pai" ]; then
       release="$(gh release view -R "$pai" --json tagName -q .tagName 2>/dev/null || true)"
       [ -n "$release" ] && origem_das_tags="https://github.com/$pai.git"
+    else
+      # A API respondeu e disse "zero releases" (não é rede fora): não há
+      # update.sh publicado para conferir, só o deste checkout.
+      [ "$(cd "$ROOT" && gh release list --limit 1 --json tagName -q length 2>/dev/null || true)" = 0 ] && release="nenhuma"
     fi
   fi
 fi
@@ -84,7 +88,7 @@ if [ -z "$release" ]; then
   release="$(cd "$ROOT" && bash -c 'source "$1/_common.sh" >/dev/null 2>&1; ultima_release_estavel' _ "$KIT" || true)"
 fi
 case "$release" in
-  v[0-9]*) ;;
+  v[0-9]*|nenhuma) ;;
   *) echo "FATAL: não consegui saber qual é a última release publicada (sem rede? API fora?)." >&2
      echo "       Diga qual com CONFERENCIA_KIT_RELEASE=vX.Y.Z e rode de novo." >&2
      exit 1 ;;
@@ -153,8 +157,12 @@ conferir() {
 
 falhas=0
 conferir "update.sh deste checkout" "$KIT/update.sh" || falhas=$((falhas + 1))
+if [ "$release" = nenhuma ]; then
+  echo "    ⚠ repositório sem release publicada: só o update.sh deste checkout foi conferido"
+else
 conferir "update.sh da última release ($release)" "$(update_sh_da "$release")" || falhas=$((falhas + 1))
-if [ "$release" != "$ANTES_DO_FILTRO" ]; then
+fi
+if [ "$release" != "$ANTES_DO_FILTRO" ] && [ "$release" != nenhuma ]; then
   conferir "update.sh da $ANTES_DO_FILTRO (sem filtro por tabela)" "$(update_sh_da "$ANTES_DO_FILTRO")" || falhas=$((falhas + 1))
 fi
 [ "$falhas" -eq 0 ] || exit 1

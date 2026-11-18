@@ -4091,3 +4091,16 @@ Cartão Atendimento da Central/ficha → serviço autenticado → transação de
 ### Envio do estoque sem bloquear a revisão
 
 Confirmar ficha → revisão fecha imediatamente → preparação e itens em fila por conversa → progresso, histórico e conclusão/erro. Trocar de conversa e recolher o bloco preserva a tarefa e o destino. Provas em `components/inbox/EstoqueDaConversa.test.tsx` e `hooks/inbox/useEnvioDeVeiculo.test.tsx`; limite e execução em `docs/testing/envio-veiculo-segundo-plano.md`. Controle sem fechamento imediato fica vermelho. Não houve envio real nem QA visual (conector de navegador indisponível).
+
+
+### Evidências visuais das telas da loja de carros
+
+Capturas versionadas das entregas recentes, uma linha por fluxo:
+
+- Cadastro de cliente unificado (dados, endereço e um formulário só): `evidence/cadastro-cliente-unificado/dados-cadastrais.png` · `evidence/cadastro-cliente-unificado/endereco.png` · `evidence/cadastro-cliente-unificado/sem-formulario-duplicado.png`
+- Contrato gerado pelo modelo: `evidence/contrato-modelo/pagina-1.png` · `evidence/contrato-modelo/pagina-2.png` · `evidence/contrato-modelo/pagina-3.png`
+- Documento do cliente em bloco simplificado: `evidence/documento-do-cliente/bloco-simplificado.png`
+- Funil e central com rolagem independente: `evidence/funil-rolagem-independente/funil.jpg` · `evidence/funil-rolagem-independente/central.jpg`
+- Login simplificado: `evidence/login-simplificado/login.jpg`
+- Nacionalidade com busca e sugestão: `evidence/nacionalidade-com-busca/sugestao-brasileiro.png`
+- Reserva de veículo pelo responsável e liberação: `evidence/reserva-de-veiculo/reserva-do-responsavel.jpg` · `evidence/reserva-de-veiculo/reserva-liberada.jpg`

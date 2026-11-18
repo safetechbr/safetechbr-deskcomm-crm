@@ -41,6 +41,8 @@ vi.mock("@/hooks/channels/usePacingKnobs", () => ({
 }));
 
 vi.mock("@/components/connections/AntiBanSheet", () => ({ AntiBanSheet: () => null }));
+// A faixa de conversas de canais removidos tem fetch próprio; fora do escopo destes testes.
+vi.mock("@/components/connections/ConversasDeCanaisRemovidos", () => ({ ConversasDeCanaisRemovidos: () => null }));
 
 const listagem: {
   data: ChannelSession[] | undefined;

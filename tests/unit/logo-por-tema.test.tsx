@@ -57,10 +57,12 @@ describe("par de logos e herança", () => {
     expect(m.logoDarkUrl).toBe(escura);
     expect(m.origens.logoDarkUrl).toBe("organizacao");
   });
-  it("sem arte escura mantém o logo padrão protegido", () => {
+  it("sem arte escura usa o logo padrão no escuro, sem caixa atrás", () => {
+    // A proteção do #659 saiu da moldura branca para o filtro do LogoAdaptativo
+    // (components/branding/LogoAdaptativo.tsx), que nunca desenha fundo.
     campo();
     expect(imagem("escuro").src).toBe(clara);
-    expect(imagem("escuro").parentElement!.className).toContain("bg-white");
+    expect(imagem("escuro").parentElement!.className).not.toContain("bg-white");
   });
   it("arte escura preserva transparência e não altera a prévia clara", () => {
     campo(escura);
@@ -86,6 +88,5 @@ describe("par de logos e herança", () => {
     fireEvent.click(screen.getByText("Remover logo escuro"));
     await waitFor(() => expect(imagem("escuro").src).toBe(clara));
     expect(fetchMock.mock.calls[1]![0]).toContain("tema=escuro");
-    expect(imagem("escuro").parentElement!.className).toContain("bg-white");
   });
 });

@@ -209,10 +209,10 @@ describe("a parte 4 do e2e fala com os serviços que ela sobe", () => {
     expect(r.status).toBe(0);
   });
 
-  it("o WAHA do CI roda NOWEB — o único engine que o produto aceita", () => {
-    // Guarda de vacuidade: se o produto deixar de exigir NOWEB, este caso passa
+  it("o WAHA do CI roda NOWEB — um dos engines que o produto aceita", () => {
+    // Guarda de vacuidade: se o produto deixar de aceitar NOWEB, este caso passa
     // a vigiar uma regra que não existe mais.
-    expect(ler("lib/waha/client.ts")).toMatch(/actualEngine !== "NOWEB"/);
+    expect(ler("lib/waha/client.ts")).toMatch(/ENGINES_SUPORTADOS = new Set\(\[[^\]]*"NOWEB"/);
     const passo = passoInteiro(NOME_DO_PASSO_DOS_SERVICOS);
     expect(passo, "sem a linha o contêiner cai no default WEBJS e o createSession lança").toMatch(
       /^\s*WHATSAPP_DEFAULT_ENGINE:\s*["']?NOWEB["']?\s*$/m,

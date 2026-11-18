@@ -43,6 +43,8 @@ vi.mock("@/lib/ai/dispatcher/rate-limit", () => ({
 }));
 vi.mock("@/lib/audit", () => ({ audit: mocks.audit }));
 vi.mock("@/lib/branding/instalacao", () => ({ invalidarMarcaDaInstalacao: vi.fn() }));
+// A trava do admin mestre tem teste próprio (lib/branding/logo-bloqueado.test.ts); aqui o caso é o tema.
+vi.mock("@/lib/branding/logo-bloqueado", () => ({ logoDasEmpresasBloqueado: async () => false }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     rpc: mocks.rpc,

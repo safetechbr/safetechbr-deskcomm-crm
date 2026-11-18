@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- O launchd não lê ~/Downloads (privacidade do macOS): o script vai para fora dele.
+     Liga:    D="$HOME/Library/Application Support/deskcomm"; mkdir -p "$D" && cp vaga-mac.sh "$D/"
+              sed "s#__DIR__#$D#" com.deskcomm.vaga-mac.plist > ~/Library/LaunchAgents/com.deskcomm.vaga-mac.plist
+              launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.deskcomm.vaga-mac.plist
+     Desliga: launchctl bootout gui/$(id -u)/com.deskcomm.vaga-mac; docker rm -f deskcomm-vaga-mac -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.deskcomm.vaga-mac</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/bash</string><string>__DIR__/vaga-mac.sh</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/deskcomm-vaga-mac.log</string>
+  <key>StandardErrorPath</key><string>/tmp/deskcomm-vaga-mac.log</string>
+</dict>
+</plist>

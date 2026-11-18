@@ -331,7 +331,7 @@ describe("NewContactDialog · salvar e iniciar conversa (#3483)", () => {
     expect(corpoDo(fetchMock, "/open-with-contact")).toMatchObject({ contact_id: "ct-77" });
     // O claim do Inbox: "assuma se estiver livre".
     expect(corpoDo(fetchMock, "/claim")).toEqual({ expected_assignee: null });
-    expect(toastMock.success).toHaveBeenCalledWith("Contato criado");
+    expect(toastMock.success).toHaveBeenCalledWith("Cadastro salvo");
   });
 
   it("o botão de sempre ('Criar contato') continua sem abrir conversa nenhuma", async () => {
@@ -342,7 +342,7 @@ describe("NewContactDialog · salvar e iniciar conversa (#3483)", () => {
     await user.type(screen.getByLabelText(/Telefone/i), "+5511987654321");
     await user.click(screen.getByRole("button", { name: "Criar contato" }));
 
-    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith("Contato criado"));
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith("Cadastro salvo"));
     // A conversa não nasce de um clique que não a pediu: quem só quer cadastrar
     // não pode ganhar um atendimento aberto no Inbox.
     expect(caminhos(fetchMock)).toEqual(["/api/v1/contacts"]);
@@ -366,7 +366,7 @@ describe("NewContactDialog · salvar e iniciar conversa (#3483)", () => {
     // navegar — e o cadastro JÁ foi feito: ele não é desfeito pela recusa.
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/claim"))).toBe(false);
     expect(pushMock).not.toHaveBeenCalled();
-    expect(toastMock.success).toHaveBeenCalledWith("Contato criado");
+    expect(toastMock.success).toHaveBeenCalledWith("Cadastro salvo");
   });
 
   it("contato salvo sem telefone: não abre conversa e diz o motivo", async () => {

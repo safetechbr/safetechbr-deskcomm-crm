@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./apagar-historico", () => ({
   apagarHistoricoDoCanal: vi.fn(async (_a: unknown, _o: string, id: string) => ({
+    negocios: id === "c1" ? 4 : 1,
     mensagens: id === "c1" ? 5 : 2,
     chamadas_de_voz: 0,
     conversas: id === "c1" ? 3 : 1,
@@ -72,7 +73,7 @@ describe("conversas de canais removidos", () => {
     });
     const r = await apagarSobrasDeCanaisRemovidos(admin, "org1");
     expect(r.canais).toBe(2);
-    expect(r.total).toEqual({ mensagens: 7, chamadas_de_voz: 0, conversas: 4 });
+    expect(r.total).toEqual({ negocios: 5, mensagens: 7, chamadas_de_voz: 0, conversas: 4 });
     expect(apagarHistoricoDoCanal).not.toHaveBeenCalledWith(admin, "org1", "c3");
   });
 });

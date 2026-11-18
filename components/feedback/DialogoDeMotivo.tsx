@@ -58,7 +58,7 @@ export function DialogoDeMotivo({
           <DialogDescription>{descricao}</DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5">
-          <label htmlFor={id} className="text-sm font-medium">
+          <label htmlFor={id} className="block text-sm font-medium">
             {t("Motivo da exclusão")}
           </label>
           <Textarea

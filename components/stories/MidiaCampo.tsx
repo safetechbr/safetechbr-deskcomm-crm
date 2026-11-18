@@ -36,9 +36,9 @@ export function MidiaCampo({ midia, onChange, multiplo, onVarias }: {
       {midia &&
         (midia.type === "image" ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={midia.url} alt="" className="h-20 w-12 rounded object-cover" />
+          <img src={midia.url} alt="" className="h-20 w-12 rounded-md object-cover" />
         ) : (
-          <video src={midia.url} className="h-20 w-12 rounded object-cover" muted />
+          <video src={midia.url} className="h-20 w-12 rounded-md object-cover" muted />
         ))}
       <input ref={ref} type="file" hidden multiple={multiplo} accept="image/jpeg,image/png,video/mp4,video/quicktime" onChange={(e) => escolher(e.target.files)} />
       <Button type="button" variant="outline" size="sm" disabled={enviando} onClick={() => ref.current?.click()}>

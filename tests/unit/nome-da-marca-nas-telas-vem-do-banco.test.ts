@@ -124,12 +124,12 @@ describe("o nome em texto das páginas públicas vem do BANCO", () => {
     ).map((p) => path.relative(RAIZ, p).replace(/\\/g, "/"));
 
     // A guarda de vacuidade do caso POSITIVO: o resolvedor não pode sumir do
-    // conjunto sem que alguém perceba — sete é o piso medido hoje (home,
-    // fachada de acesso, login, get-started, onboarding/welcome e o layout do
-    // onboarding, mais o `/legal` do #2511).
+    // conjunto sem que alguém perceba — sete é o piso medido hoje (fachada de
+    // acesso, login, get-started, onboarding/welcome e o layout do onboarding,
+    // mais o `/legal` do #2511). A home (`app/page.tsx`) virou só redirect para
+    // /app ou /login e não escreve mais o nome em texto.
     expect(comResolvedor.length).toBeGreaterThanOrEqual(7);
     expect(comResolvedor).toContain("app/legal/layout.tsx");
-    expect(comResolvedor).toContain("app/page.tsx");
 
     for (const relativo of comResolvedor) {
       expect(

@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RedesSociaisClient } from "./RedesSociaisClient";
+import { PASSOS_DO_PROVEDOR } from "@/lib/channels/passos-do-provedor-social";
 const h = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), remove: vi.fn() }));
 vi.mock("@/lib/api/client", () => ({ apiClient: { get: h.get, post: h.post, delete: h.remove } }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams() }));
@@ -203,13 +204,7 @@ it("guia o cliente até a chave: criar conta, sincronizar redes e gerar a chave"
   h.get.mockResolvedValue({ data: { configured: false, label: "", networks: [], accounts: [] } });
   mount();
   const conta = await screen.findByRole("link", { name: "Criar conta" });
-  expect(conta).toHaveAttribute("href", "https://zernio.com/signup");
-  expect(screen.getByRole("link", { name: "Abrir o painel" })).toHaveAttribute(
-    "href",
-    "https://zernio.com/dashboard",
-  );
-  expect(screen.getByRole("link", { name: "Ir para as chaves de API" })).toHaveAttribute(
-    "href",
-    "https://zernio.com/dashboard/api-keys",
-  );
+  expect(conta).toHaveAttribute("href", PASSOS_DO_PROVEDOR[0].href);
+  expect(screen.getByRole("link", { name: "Abrir o painel" })).toHaveAttribute("href", PASSOS_DO_PROVEDOR[1].href);
+  expect(screen.getByRole("link", { name: "Ir para as chaves de API" })).toHaveAttribute("href", PASSOS_DO_PROVEDOR[2].href);
 });

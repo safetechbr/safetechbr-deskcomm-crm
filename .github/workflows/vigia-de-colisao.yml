@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   vigia:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.EXECUTOR_PROPRIO == 'ligado' && 'deskcomm-proprio' || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       # `fetch-depth: 0` não é preciso: o script lê a ÁRVORE de origin/main, não

@@ -47,7 +47,7 @@ const TIPO_ROTULO: Record<Conta["kind"], string> = {
   other: "Outra",
 };
 const SELECT_CLASS =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 
 export function ContasECartoesClient() {
   const qc = useQueryClient();

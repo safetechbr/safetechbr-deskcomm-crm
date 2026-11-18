@@ -827,8 +827,8 @@ function ExcluirCanalDialog({
       toast.success(
         querApagar
           ? res.data.archived
-            ? t("Canal removido e conversas excluídas. Parte da configuração continua guardada.")
-            : t("Canal e conversas excluídos.")
+            ? t("Canal removido; conversas e cards do funil excluídos. Parte da configuração continua guardada.")
+            : t("Canal, conversas e cards do funil excluídos.")
           : !res.data.archived
           ? t("Canal excluído.")
           : conversas > 0
@@ -877,7 +877,7 @@ function ExcluirCanalDialog({
               {impact && impact.history.conversations > 0 && (
                 <fieldset className="space-y-1 rounded-md border border-destructive/40 p-3">
                   <legend className="px-1 text-sm font-medium text-foreground">
-                    {t("Também excluir as conversas deste canal?")}
+                    {t("Também excluir as conversas e os cards do funil deste canal?")}
                   </legend>
                   <p className="text-xs">
                     {`${[
@@ -885,7 +885,7 @@ function ExcluirCanalDialog({
                       contar(impact.history.messages, "mensagem", "mensagens", t),
                     ]
                       .filter(Boolean)
-                      .join(` ${t("e")} `)}. ${t("Isso não pode ser desfeito.")}`}
+                      .join(` ${t("e")} `)}. ${t("Os cards e leads que nasceram dessas conversas saem de todos os funis.")} ${t("Isso não pode ser desfeito.")}`}
                   </p>
                   <div className="flex gap-4 pt-1 text-sm text-foreground">
                     <label className="flex items-center gap-1.5">
