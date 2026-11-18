@@ -26,7 +26,7 @@ DeskcommCRM é um sistema operacional de vendas open source com agentes de IA na
 - **Auth:** Supabase Auth via `@supabase/ssr`. Cookie SameSite=Strict, HttpOnly, Secure
 - **Realtime:** Supabase Realtime (postgres_changes + broadcast)
 - **Storage:** Supabase Storage (bucket `whatsapp-media` privado, URLs assinadas)
-- **WhatsApp:** WAHA Plus, engine NOWEB
+- **WhatsApp:** WAHA Plus, engines NOWEB ou GOWS (o instalador sobe NOWEB; a VPS de produção da SafeTech roda GOWS desde 2026-11-17)
 - **Filas/eventos:** `event_log` table + workers (não usar Inngest/Trigger no MVP)
 - **Rate limit:** Upstash Redis sliding window
 - **AI:** Vercel AI Gateway (Anthropic primário; embeddings pela OpenAI ou, por escolha da organização, pelo Google — `lib/ai/embeddings/chave.ts`); strings tipo `"anthropic/claude-sonnet-4-6"`
@@ -141,7 +141,8 @@ DeskcommCRM é um sistema operacional de vendas open source com agentes de IA na
 
 ### WAHA
 - Imagem NOWEB pinada por arquitetura: `latest-2026.7.2` em x86 e `noweb-arm-2026.7.2` em ARM64. A prova local criou duas sessões CORE simultâneas até `SCAN_QR_CODE`; não prova pairing, duas contas `WORKING` nem envio. Não bloquear segunda sessão por tier: conferir resposta estruturada e pós-condição da operação.
-- Engine NOWEB default; WEBJS apenas se precisar stickers animados / botões
+- Engines aceitos: NOWEB e GOWS (`engineSuportado`, em `lib/waha/client.ts`). O instalador ainda sobe NOWEB; WEBJS apenas se precisar stickers animados / botões
+- GOWS (whatsmeow): adotado na produção em 2026-11-17 porque o NOWEB ficava WORKING e enviava, mas parava de receber (o `message.any` só chegava em rajada depois de reconnect). Os campos normalizados do WAHA são iguais; o `_data` cru muda (`Info`/`Message`) e é traduzido para a forma NOWEB num ponto só, `lib/waha/gows.ts`, aplicado pelo `preprocess` de `lib/waha/envelope.ts`. Trocar de engine NÃO migra a sessão: cada número escaneia o QR de novo
 - Auth: env do WAHA recebe **hash SHA512 hex** da api key; cliente envia plaintext em `X-Api-Key`
 - Webhooks: HMAC SHA512 com `crypto.timingSafeEqual`
 - Anti-banimento: throttle 1 msg/1.2s + jitter ≤800ms. Campanha 1 msg/5s. Warm-up 7-14d. Spinning de copy. Janela de disparo 7h-22h (domingo LIBERADO por default desde 2026-08-20; a janela é knob por canal). Janela de RESPOSTA por canal (0495, `channel_knobs.resposta_*`), que herda a de disparo quando vazia — só `inbound_turn`/`case_reply_turn` a leem

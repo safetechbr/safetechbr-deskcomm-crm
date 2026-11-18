@@ -512,7 +512,7 @@ export function EditorDoContrato({
               mudar={(v) => mudar({ financiamento_prazo_dias: numero(v) })}
             />
           ) : null}
-          {blocos?.financiamento_bancario || blocos?.parcelas_a_loja ? (
+          {venda ? (
             <Campo
               nome="Retenção por mês de uso, se desfeito (%)"
               tipo="number"

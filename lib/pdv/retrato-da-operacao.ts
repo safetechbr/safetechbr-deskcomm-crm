@@ -53,7 +53,8 @@ export interface PendenciaDoDocumento {
   campo?: string;
   /**
    * `bloqueia`: impede a versão para assinatura.
-   * `aviso`: sai em branco ou pede revisão, mas não impede a minuta.
+   * `aviso`: sai em branco ou pede revisão; também impede a versão para
+   *   assinatura (o contrato sai como minuta), mas não trava a negociação.
    */
   gravidade: "bloqueia" | "aviso";
   mensagem: string;
@@ -454,9 +455,10 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
         representante_cpf: "o CPF do representante legal da loja",
         consulta_debitos_em: "a data da consulta de débitos no Detran",
         test_drive: "se o comprador fez o test-drive",
-        ...(blocos.parcelas_a_loja || blocos.financiamento_bancario
-          ? { retencao_percentual_mes: "o percentual de retenção por mês de uso" }
-          : {}),
+        entrega_hora: "o horário da entrega do veículo",
+        ...(troca ? { recebimento_troca_hora: "o horário do recebimento do veículo da troca" } : {}),
+        // A cláusula de inadimplemento imprime o percentual em toda venda.
+        ...(venda ? { retencao_percentual_mes: "o percentual de retenção por mês de uso" } : {}),
       },
       "aviso",
     );

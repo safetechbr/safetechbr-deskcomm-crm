@@ -53,7 +53,7 @@ Componentes envolvidos:
 
 1. **Roteamento webhook**: path-token assinado (UUIDv4) em vez de subdomain — `POST /api/wa/webhook/:webhook_path_token`. Atende T-07 e isola tenant sem expor `session_name`.
 2. **Fila de outbound**: **pg_boss** (Postgres-backed) no MVP por simplicidade operacional (zero infra extra) e custo; migração pra Inngest fica trivial pós-MVP se throughput exigir.
-3. **Engine WAHA**: **NOWEB** default global. WEBJS opcional por feature (stickers animados, listas/botões) — flag por sessão `engine='WEBJS'`; revisitar se o catálogo de features WEBJS-only crescer.
+3. **Engine WAHA**: **NOWEB** default global. WEBJS opcional por feature (stickers animados, listas/botões) — flag por sessão `engine='WEBJS'`; revisitar se o catálogo de features WEBJS-only crescer. **Atualização 2026-11-17:** GOWS também é aceito (`engineSuportado`, em `lib/waha/client.ts`) e é o engine da VPS de produção da SafeTech — o NOWEB parou de receber mensagem ao vivo; ver `lib/waha/gows.ts`.
 4. **Áudio OGG no Safari**: `<audio preload="none">` + botão "Baixar" como fallback inicial; **re-encode server-side** com ffmpeg fica como fast-follow se complaints de UX surgirem (cron `transcode-audio` opt-in por tenant).
 5. **Spinning de copy**: DSL inline `{a|b|c}` + variáveis `{{var}}` parseado server-side com gramática regex bem definida (vide §8.2).
 6. **Warm-up**: tabela auxiliar `channel_session_warmup` mantém contagens diárias (não calcula on-demand — performance sob carga).

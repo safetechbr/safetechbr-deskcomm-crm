@@ -158,6 +158,16 @@ export const CHAVES_DO_FILTRO_FIXAS = Object.fromEntries(
 ) as Omit<typeof CONVERSAS_IGNORADAS, "groups">;
 
 /**
+ * Engines cujo contrato de sessão e de webhook o CRM conhece. GOWS entrou em
+ * nov/2026: o NOWEB parou de entregar mensagem recebida em produção.
+ */
+const ENGINES_SUPORTADOS = new Set(["NOWEB", "GOWS"]);
+
+export function engineSuportado(engine: string | null | undefined): boolean {
+  return typeof engine === "string" && ENGINES_SUPORTADOS.has(engine.toUpperCase());
+}
+
+/**
  * Teto de relógio das chamadas ao WAHA.
  *
  * 15s não é número escolhido aqui: é o que `docs/specs/03-spec-whatsapp-waha.md`
@@ -364,9 +374,10 @@ export class WahaClient {
     if (!session.config) return false;
     const engine = typeof session.engine === "string" ? session.engine : session.engine?.engine;
     const actualEngine = engine ?? (await this.getServerVersion()).engine;
-    // O contrato de criação atual é NOWEB. Engine desconhecido não é licença:
+    // O contrato de criação vale para NOWEB e GOWS (o `_data` do GOWS é
+    // traduzido em `lib/waha/gows.ts`). Engine desconhecido não é licença:
     // a operação já foi tentada, mas não podemos confirmar uma sessão incompatível.
-    if (actualEngine !== "NOWEB") return false;
+    if (!engineSuportado(actualEngine)) return false;
     const ignore = session.config.ignore;
     if (ignore === undefined) return true; // sessão legada; convergência preserva webhooks
     if (!ignore || typeof ignore !== "object" || Array.isArray(ignore)) return false;
@@ -511,7 +522,7 @@ export class WahaClient {
       // errado seria recusar o próprio propósito da função.
       const engine = typeof sessao.engine === "string" ? sessao.engine : sessao.engine?.engine;
       const actualEngine = engine ?? (await this.getServerVersion()).engine;
-      if (actualEngine !== "NOWEB") {
+      if (!engineSuportado(actualEngine)) {
         logger.warn("[waha] engine incompatível; não vou reescrever o filtro da sessão", {});
         return false;
       }

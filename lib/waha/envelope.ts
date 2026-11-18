@@ -35,6 +35,8 @@ import { z } from "zod";
 
 import { conferirEnvelope, lerEnvelope, type LeituraDeEnvelope } from "@/lib/webhooks/contrato";
 
+import { payloadGowsComoNoweb } from "./gows";
+
 /** Texto do fio: string, ausente ou `null`. Nunca outro tipo. */
 const texto = z.string().nullish();
 const numero = z.number().nullish();
@@ -85,7 +87,7 @@ const wahaKeySchema = z.looseObject({
   participant: z.unknown().optional(),
 });
 
-export const wahaPayloadSchema = z.looseObject({
+const wahaPayloadObjeto = z.looseObject({
   id: texto,
   from: texto,
   to: texto,
@@ -157,13 +159,21 @@ export const wahaPayloadSchema = z.looseObject({
   }).nullish(),
 });
 
+/**
+ * O payload como o CRM o lê. O engine GOWS manda o `_data` cru noutra forma
+ * (`Info`/`Message`); o `preprocess` acrescenta a forma NOWEB (`key`,
+ * `pushName`, `message`) antes de validar — ver `lib/waha/gows.ts`. Payload
+ * NOWEB passa intacto.
+ */
+export const wahaPayloadSchema = z.preprocess(payloadGowsComoNoweb, wahaPayloadObjeto);
+
 export const wahaEnvelopeSchema = z.looseObject({
   event: texto,
   session: texto,
   payload: wahaPayloadSchema.nullish(),
 });
 
-export type WahaPayload = z.infer<typeof wahaPayloadSchema>;
+export type WahaPayload = z.infer<typeof wahaPayloadObjeto>;
 export type WahaEnvelope = z.infer<typeof wahaEnvelopeSchema>;
 
 /**

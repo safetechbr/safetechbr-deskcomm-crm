@@ -124,6 +124,8 @@ export function novoContrato(
     empresa,
     local: [empresa.cidade, empresa.uf].filter(Boolean).join("/"),
     assinatura_em: agora,
+    // O e-mail do titular (LGPD) cai no e-mail da loja quando a configuração não tem um próprio.
+    ...(empresa.email ? { email_lgpd: empresa.email } : {}),
     ...(config.success
       ? Object.fromEntries(
           (["representante_nome", "representante_cpf", "representante_cargo", "email_lgpd"] as const)

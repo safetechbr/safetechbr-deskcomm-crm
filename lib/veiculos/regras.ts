@@ -88,6 +88,12 @@ export const veiculoPatchSchema = veiculoCreateSchema.partial();
 export const COLUNAS_DO_VEICULO =
   "id, placa, chassi, renavam, condicao, regularizacao, codigo, marca, modelo, categoria, versao, ano_fabricacao, ano_modelo, km, motor, cambio, combustivel, cor, placa_final, preco_cents, moeda, opcionais, descricao, status, fotos, video, entrada_em, vendido_em, created_at";
 
+/** O que o histórico de atividades mostra do veículo, mesmo depois de excluído. */
+export function descreverVeiculo(v: unknown): { codigo?: string; modelo?: string; placa?: string | null } {
+  const { codigo, modelo, placa } = (v ?? {}) as { codigo?: string; modelo?: string; placa?: string | null };
+  return { codigo, modelo, placa };
+}
+
 export interface Veiculo {
   placa?: string | null;
   chassi?: string | null;

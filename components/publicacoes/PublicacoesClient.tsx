@@ -240,7 +240,7 @@ export function PublicacoesClient() {
             <h2 className="text-sm font-semibold">{t("Regras de segurança")}</h2>
             <p className="text-xs text-muted-foreground">
               {t(
-                "O Deskcomm segura cada postagem e só a envia quando estas regras permitem, para proteger a conta contra bloqueio.",
+                "O M Auto segura cada postagem e só a envia quando estas regras permitem, para proteger a conta contra bloqueio.",
               )}
             </p>
           </div>

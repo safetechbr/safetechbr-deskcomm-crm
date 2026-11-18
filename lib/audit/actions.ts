@@ -842,6 +842,7 @@ export const AUDIT_ACTIONS = [
   "negociacao_veiculo.updated",
   "negociacao_veiculo.concluded",
   "negociacao_veiculo.cancelled",
+  "negociacao_veiculo.deleted",
 
   // As tarefas do CRM (migration 0210). Tarefa é combinado de trabalho entre
   // pessoas do time — quem a criou, quem mudou o prazo e quem a apagou é

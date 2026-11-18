@@ -98,11 +98,12 @@ function contrato(r: RetratoDaOperacao): ItemDaPasta {
       motivo: "Compra pela loja exige um contrato de aquisição próprio. " + SEM_GERADOR,
       pendencias: [],
     };
-  const bloqueios = r.pendencias.filter((p) => p.gravidade === "bloqueia");
+  // Mesma regra de ./versao-do-contrato.ts: aviso também faz a minuta.
+  const faltam = r.pendencias.length > 0;
   return {
     ...base,
-    situacao: bloqueios.length ? "faltam_dados" : "pronto",
-    motivo: bloqueios.length
+    situacao: faltam ? "faltam_dados" : "pronto",
+    motivo: faltam
       ? "Minuta disponível; complete os dados para a versão de assinatura."
       : "Dados suficientes para a versão de assinatura.",
     pendencias: r.pendencias,

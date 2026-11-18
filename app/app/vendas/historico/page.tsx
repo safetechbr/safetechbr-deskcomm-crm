@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
+import { ROLE_RANK } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { COLUNAS_DA_NEGOCIACAO, type Negociacao } from "@/lib/pdv/regras";
 import { createClient } from "@/lib/supabase/server";
@@ -27,6 +28,7 @@ export default async function HistoricoDeVendasPage() {
     .from("negociacoes_de_veiculo")
     .select(COLUNAS_DA_NEGOCIACAO)
     .eq("organization_id", activeOrg.orgId)
+    .neq("status", "excluida")
     .order("created_at", { ascending: false })
     .limit(1000);
   if (error) throw new Error(`Não consegui ler o histórico de vendas: ${error.message}`);
@@ -36,6 +38,7 @@ export default async function HistoricoDeVendasPage() {
       negociacoes={(data ?? []) as unknown as Negociacao[]}
       titulo={t("Histórico de Vendas")}
       subtitulo={t("Todas as vendas e compras de veículos feitas no PDV.")}
+      podeExcluir={ROLE_RANK[activeOrg.role] >= ROLE_RANK.manager}
     />
   );
 }

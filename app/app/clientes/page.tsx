@@ -27,6 +27,7 @@ export default async function ClientesPage() {
     .select(COLUNAS_DA_NEGOCIACAO)
     .eq("organization_id", activeOrg.orgId)
     .not("contact_id", "is", null)
+    .neq("status", "excluida")
     .order("created_at", { ascending: false })
     .limit(2000);
   if (error) throw new Error(`Não consegui ler o histórico dos clientes: ${error.message}`);

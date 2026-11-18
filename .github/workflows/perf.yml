@@ -37,6 +37,9 @@ jobs:
       - name: Build
         run: pnpm build
         env:
+          # O heap padrão do Node estourou ("JavaScript heap out of memory") no build
+          # de produção na main em 2026-11-17; o runner público tem 16 GB.
+          NODE_OPTIONS: --max-old-space-size=6144
           NEXT_TELEMETRY_DISABLED: "1"
           # "off", não vazio: vazio seleciona o Sentry DA COMUNIDADE
           # (lib/sentry/dsn.ts:8-10). A intenção aqui sempre foi desligar, e

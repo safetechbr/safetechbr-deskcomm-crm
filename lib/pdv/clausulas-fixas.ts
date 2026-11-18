@@ -57,7 +57,7 @@ export function clausulasFixas(n: Negociacao, blocos: BlocosDaOperacao): Clausul
   const gerais: SecaoDoContrato = {
     titulo: "Disposições gerais",
     itens: [
-      `Os dados pessoais das partes são tratados para a execução deste contrato, o cumprimento de obrigações legais e regulatórias (registro no Detran, obrigações fiscais) e o exercício regular de direitos, e são compartilhados apenas com órgãos de trânsito, instituições financeiras envolvidas na operação, despachante e autoridades, quando necessário. O titular pode exercer os direitos do art. 18 da Lei 13.709/2018 (LGPD) pelo e-mail ${txt(d.email_lgpd)}.`,
+      `Os dados pessoais das partes são tratados para a execução deste contrato, o cumprimento de obrigações legais e regulatórias (registro no Detran, obrigações fiscais) e o exercício regular de direitos, e são compartilhados apenas com órgãos de trânsito, instituições financeiras envolvidas na operação, despachante e autoridades, quando necessário. O titular pode exercer os direitos do art. 18 da Lei 13.709/2018 (LGPD) pelo e-mail ${txt(d.email_lgpd || e?.email)}.`,
       ...(venda && d.venda_fora_do_estabelecimento
         ? [
             "Contratada fora do estabelecimento comercial, a compra pode ser desfeita pelo COMPRADOR em até 7 (sete) dias contados da assinatura ou do recebimento do veículo, com devolução imediata dos valores pagos, monetariamente atualizados (art. 49 do Código de Defesa do Consumidor).",
@@ -125,7 +125,9 @@ export function clausulasFixas(n: Negociacao, blocos: BlocosDaOperacao): Clausul
     ],
   };
 
-  const contaDe = d.transferencia_conta_de === "quitacao" ? "da quitação do preço" : "da assinatura";
+  // Sem escolha explícita, venda com parcelas à loja conta da quitação; à vista, da assinatura.
+  const contaDeEfetivo = d.transferencia_conta_de ?? (blocos.parcelas_a_loja ? "quitacao" : "assinatura");
+  const contaDe = contaDeEfetivo === "quitacao" ? "da quitação do preço" : "da assinatura";
   const taxas =
     d.transferencia_taxas_por === "vendedora"
       ? "pela VENDEDORA"
@@ -137,7 +139,7 @@ export function clausulasFixas(n: Negociacao, blocos: BlocosDaOperacao): Clausul
     itens: [
       blocos.financiamento_bancario
         ? `O veículo será transferido com o gravame da instituição financeira${bancos ? ` (${bancos})` : ""}. A VENDEDORA emitirá a ATPV-e (Resolução CONTRAN 809/2020) em até ${prazo(d.transferencia_prazo_dias, "dias úteis")} contados da assinatura.`
-        : `A VENDEDORA emitirá a ATPV-e (Resolução CONTRAN 809/2020) em até ${prazo(d.transferencia_prazo_dias, "dias úteis")} contados ${d.transferencia_conta_de ? contaDe : `de ${LACUNA}`}.`,
+        : `A VENDEDORA emitirá a ATPV-e (Resolução CONTRAN 809/2020) em até ${prazo(d.transferencia_prazo_dias, "dias úteis")} contados ${contaDe}.`,
       "O COMPRADOR registrará a transferência em até 30 (trinta) dias da emissão da ATPV-e (art. 123, § 1º, e art. 233 do Código de Trânsito Brasileiro).",
       "A VENDEDORA fará a comunicação de venda ao Detran (art. 134 do Código de Trânsito Brasileiro).",
       `As taxas de transferência serão pagas ${taxas}.${d.despachante_cents ? ` O serviço de despachante, opcional, custa ${preco(d.despachante_cents)}.` : ""}`,

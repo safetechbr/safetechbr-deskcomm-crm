@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { DialogoDeMotivo } from "@/components/feedback/DialogoDeMotivo";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useT } from "@/hooks/i18n/useT";
@@ -337,6 +338,7 @@ function FormularioDoVeiculo({
   const [condicao, setCondicao] = React.useState(veiculo?.condicao ?? "");
   const [regularizacao, setRegularizacao] = React.useState(veiculo?.regularizacao ?? []);
   const [ocupado, setOcupado] = React.useState(false);
+  const [excluindo, setExcluindo] = React.useState(false);
   const [fotos, setFotos] = React.useState<string[]>(veiculo?.fotos ?? []);
   const [temVideo, setTemVideo] = React.useState(Boolean(veiculo?.video));
   const fotoRef = React.useRef<HTMLInputElement>(null);
@@ -513,17 +515,17 @@ function FormularioDoVeiculo({
     }
   }
 
-  async function excluir() {
-    if (!veiculo || !window.confirm(t("Excluir este veículo e suas fotos? Não dá para desfazer.")))
-      return;
+  async function excluir(motivo: string) {
+    if (!veiculo) return;
     try {
-      await apiClient.delete(`/api/v1/veiculos/${veiculo.id}`);
-      toast.success(t("Veículo excluído"));
-      aoFechar();
-      router.refresh();
+      await apiClient.delete(`/api/v1/veiculos/${veiculo.id}`, { motivo });
     } catch (e) {
       showApiError(e);
+      throw e;
     }
+    toast.success(t("Veículo excluído"));
+    aoFechar();
+    router.refresh();
   }
 
   return (
@@ -753,7 +755,7 @@ function FormularioDoVeiculo({
         <div className="flex items-center justify-between gap-2 pt-2">
           <div>
             {veiculo ? (
-              <Button variant="ghost" onClick={() => void excluir()} disabled={ocupado}>
+              <Button variant="ghost" onClick={() => setExcluindo(true)} disabled={ocupado}>
                 {t("Excluir")}
               </Button>
             ) : null}
@@ -767,6 +769,13 @@ function FormularioDoVeiculo({
             </Button>
           </div>
         </div>
+        <DialogoDeMotivo
+          aberto={excluindo}
+          aoMudar={setExcluindo}
+          titulo={t("Excluir veículo")}
+          descricao={t("O veículo e suas fotos saem do estoque. Não dá para desfazer.")}
+          aoConfirmar={excluir}
+        />
       </DialogContent>
     </Dialog>
   );
