@@ -23,9 +23,9 @@ export function PilulaDoStory({ story, onAbrir }: { story: StoryItem; onAbrir: (
     >
       {midia?.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={midia.url} alt="" className="size-9 shrink-0 rounded object-cover" />
+        <img src={midia.url} alt="" className="size-9 shrink-0 rounded-md object-cover" />
       ) : (
-        <span className="size-9 shrink-0 rounded bg-muted" />
+        <span className="size-9 shrink-0 rounded-md bg-muted" />
       )}
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="font-medium tabular-nums">{horaDe(story.agendada_para)}</span>

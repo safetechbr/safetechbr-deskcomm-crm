@@ -875,7 +875,7 @@ export const NAV_CATALOG = [
     href: "/app/stories",
     label: "Stories",
     description:
-      "Automação de Stories do Instagram: kanban semanal, calendário, janelas de horários, repetição e lote.",
+      "Automação de Stories do Instagram: quadro semanal, calendário, janelas de horários, repetição e lote.",
     icon: "ClockCountdown",
     group: "social",
     pai: "Instagram",

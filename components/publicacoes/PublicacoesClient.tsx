@@ -162,6 +162,11 @@ export function PublicacoesClient() {
   }
 
   async function agendar() {
+    // Fora do render: Date.now() no corpo do componente é impuro (react-hooks/purity).
+    if (new Date(quando).getTime() <= Date.now()) {
+      setError(t("Escolha uma data e hora no futuro."));
+      return;
+    }
     setBusy("create");
     setError(null);
     try {
@@ -218,8 +223,7 @@ export function PublicacoesClient() {
     midias.length > 0 &&
     contas.length > 0 &&
     !!quando &&
-    !busy &&
-    new Date(quando).getTime() > Date.now();
+    !busy;
   const porDia = new Map<string, Item[]>();
   for (const item of state?.items ?? []) {
     const dia = item.agendada_para

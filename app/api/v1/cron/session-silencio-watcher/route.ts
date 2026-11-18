@@ -7,7 +7,7 @@
  * costuma receber? A regra mora em `lib/channels/silencio.ts` (pura, testada).
  *
  * Ao detectar: abre UM aviso na Central (dedup pelo aviso aberto da sessão) e
- * tenta `POST /api/sessions/{nome}/restart` no WAHA, no máximo 1 vez a cada 30
+ * tenta reiniciar a sessão no transporte (`reiniciarSessao`), no máximo 1 vez a cada 30
  * min e 3 seguidas — esgotado, só avisa. NÃO reinicia sessão `FAILED`,
  * `SCAN_QR_CODE` ou `STOPPED` (só `WORKING`), nem com envio em andamento.
  * Fecha o aviso sozinho quando volta a entrar mensagem.
@@ -25,6 +25,7 @@ import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
 import { autorizaCron } from "@/lib/auth/cron-auth";
 import { CHANNEL_SESSION_REF_COLUMNS, resolveSessionRef } from "@/lib/channels";
+import { PROVIDER_REINICIAVEL, reiniciarSessao } from "@/lib/channels/reiniciar-sessao";
 import { avaliarSilencio, SEM_REINICIOS, type EstadoDeReinicio } from "@/lib/channels/silencio";
 import { ehNomeDeSessaoE2E } from "@/lib/channels/sessoes-e2e";
 import { logger } from "@/lib/logger";
@@ -64,7 +65,7 @@ async function handle(req: NextRequest): Promise<Response> {
     .from("channel_sessions")
     .select(`id, organization_id, status, metadata, ${CHANNEL_SESSION_REF_COLUMNS}`)
     .is("archived_at", null)
-    .eq("provider", "waha")
+    .eq("provider", PROVIDER_REINICIAVEL)
     .eq("status", "WORKING")
     .limit(LIMITE);
   if (error) {
@@ -166,7 +167,7 @@ async function handle(req: NextRequest): Promise<Response> {
         })
         .eq("id", s.id);
 
-      const reiniciou = await reiniciarNoWaha(nome);
+      const reiniciou = await reiniciarSessao(nome);
       if (reiniciou) reiniciados++;
       logger.warn("[session-silencio-watcher] sessão muda", {
         sessionId: s.id,
@@ -216,23 +217,6 @@ async function abrirAviso(
     ref_kind: "channel_session",
     ref_id: s.id,
   });
-}
-
-/** Restart da sessão no WAHA. Falha vira `false`, nunca exceção. */
-async function reiniciarNoWaha(nome: string): Promise<boolean> {
-  const base = process.env.WAHA_API_BASE_URL;
-  const chave = process.env.WAHA_API_KEY;
-  if (!base || !chave) return false;
-  try {
-    const res = await fetch(`${base}/api/sessions/${encodeURIComponent(nome)}/restart`, {
-      method: "POST",
-      headers: { "X-Api-Key": chave },
-      signal: AbortSignal.timeout(15_000),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
 }
 
 export async function GET(req: NextRequest): Promise<Response> {

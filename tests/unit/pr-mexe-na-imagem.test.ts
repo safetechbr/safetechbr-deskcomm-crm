@@ -108,6 +108,9 @@ describe("pr-mexe-na-imagem", () => {
     // dublê de tests/ DE PROPÓSITO — o trabalho dele é medir se as suposições do
     // dublê (somarCiclo, cobranças geradas de saída) batem com o Asaas de verdade.
     "scripts/smoke-asaas.ts",
+    // gera à mão o PDF de exemplo do contrato de veículo a partir da MESMA fixture
+    // dos testes, para o exemplo não divergir do que os testes conferem.
+    "scripts/gerar-exemplo-contrato.ts",
   ]);
 
   it("nenhum arquivo que entra na imagem importa de pasta que o .dockerignore exclui", () => {

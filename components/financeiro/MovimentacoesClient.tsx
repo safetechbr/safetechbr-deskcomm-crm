@@ -43,7 +43,7 @@ type Conta = { id: string; name: string };
 type Plano = { id: string; name: string; direction: string | null };
 
 const SELECT_CLASS =
-  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-9 rounded-md border border-input bg-background px-2 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 
 function hojeISO() {
   const d = new Date();

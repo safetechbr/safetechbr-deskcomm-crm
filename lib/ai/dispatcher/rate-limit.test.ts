@@ -29,6 +29,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// O setup carrega `.env.local`; com Upstash real lá, o caminho vira rede (que trava sob
+// fake timers). Este arquivo testa SÓ o contador em memória, então o Redis fica sem config.
+vi.mock("@/lib/env", () => ({ env: { UPSTASH_REDIS_REST_URL: "", UPSTASH_REDIS_REST_TOKEN: "" } }));
+
 describe("contador em memória", () => {
   beforeEach(() => {
     vi.resetModules();

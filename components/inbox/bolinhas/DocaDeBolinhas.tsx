@@ -17,7 +17,7 @@ import {
 import { ChatCircle, X } from "@/lib/ui/icons";
 import { JanelaDaConversa } from "./JanelaDaConversa";
 
-const CHAVE = "deskcomm:bolinhas-dispensadas";
+const CHAVE = "bolinhas-dispensadas";
 // Referência estável: o filtro vira parte da chave do react-query.
 const FILTROS = { unread: true, exclude_finished: true } as const;
 
@@ -108,7 +108,7 @@ export function DocaDeBolinhas() {
                   type="button"
                   onClick={() => dispensar(c.id, c.last_message_at)}
                   aria-label={`${t("Dispensar")} ${rotulo}`}
-                  className="absolute -bottom-1 -left-1 hidden size-5 items-center justify-center rounded-full bg-surface-elevated text-text-muted shadow ring-1 ring-border group-focus-within/bolinha:flex group-hover/bolinha:flex hover:text-foreground"
+                  className="absolute -bottom-1 -left-1 hidden size-5 items-center justify-center rounded-full bg-surface-elevated text-text-muted shadow-sm ring-1 ring-border group-focus-within/bolinha:flex group-hover/bolinha:flex hover:text-foreground"
                 >
                   <X size={10} aria-hidden />
                 </button>
@@ -116,7 +116,7 @@ export function DocaDeBolinhas() {
             );
           })}
           {resto > 0 && (
-            <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-xs font-medium text-text-muted shadow ring-1 ring-border">
+            <span className="rounded-full bg-surface-elevated px-2 py-0.5 text-xs font-medium text-text-muted shadow-sm ring-1 ring-border">
               +{resto}
             </span>
           )}

@@ -83,7 +83,8 @@ describe("quem desconta as faixas", () => {
     const inbox = readFileSync("components/inbox/InboxLayout.tsx", "utf8");
     // As DUAS caixas da casca: a de fora e a coluna do conteúdo.
     expect(casca.split("min-h-[calc(100dvh-var(--faixas-de-cima,0px))]").length - 1).toBe(2);
-    expect(inbox).toMatch(/h-\[calc\(100dvh-var\(--faixas-de-cima,0px\)-3\.5rem/);
+    // A altura da barra descontada depois muda com o layout; o que se prende é a variável.
+    expect(inbox).toMatch(/h-\[calc\(100dvh-var\(--faixas-de-cima,0px\)-/);
   });
 
   it("a barra de cima e a lateral grudam ABAIXO das faixas, sem passar por baixo delas", () => {

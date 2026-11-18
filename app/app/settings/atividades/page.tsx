@@ -80,7 +80,7 @@ export default async function AtividadesPage({ searchParams }: { searchParams: P
   const [nomes, negociacoes] = await Promise.all([
     nomesDosAtendentes(linhas.map((l) => l.actor_user_id)),
     semNumero.length
-      ? supabase.from("negociacoes_de_veiculo").select("id, numero").in("id", semNumero)
+      ? supabase.from("negociacoes_de_veiculo").select("id, numero").eq("organization_id", activeOrg.orgId).in("id", semNumero)
       : Promise.resolve({ data: [] as { id: string; numero: number }[] }),
   ]);
   const numeros = new Map((negociacoes.data ?? []).map((n) => [n.id, n.numero]));

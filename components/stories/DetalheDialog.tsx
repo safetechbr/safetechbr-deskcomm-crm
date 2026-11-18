@@ -48,9 +48,9 @@ export function DetalheDialog({ estado, story, onFechar }: { estado: EstadoDosSt
         <div className="flex flex-col gap-3 text-sm">
           {story.midias[0]?.type === "image" ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={story.midias[0].url} alt="" className="mx-auto max-h-64 rounded" />
+            <img src={story.midias[0].url} alt="" className="mx-auto max-h-64 rounded-md" />
           ) : story.midias[0] ? (
-            <video src={story.midias[0].url} controls className="mx-auto max-h-64 rounded" />
+            <video src={story.midias[0].url} controls className="mx-auto max-h-64 rounded-md" />
           ) : null}
           <p className="text-muted-foreground">{nomes}</p>
           {story.aguardando_motivo && <p className="text-warning">{story.aguardando_motivo}</p>}

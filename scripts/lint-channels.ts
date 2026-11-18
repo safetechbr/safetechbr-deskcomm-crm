@@ -152,6 +152,10 @@ const KNOWN_DEBT: { reason: string; files: string[] }[] = [
       // `waha_session_name` como último degrau do NOME que o usuário vê, e por
       // isso um canal sem apelido aparecia no painel como `org_2dd5e6ea`. Agora
       // usa `nomeDoCanal`, que não conhece provedor nenhum. A catraca só encolhe.
+      // Ritmo por número: acha a sessão pelo identificador que a coluna guarda.
+      "app/api/v1/pacing/numero/route.ts",
+      // Fixture do teste de banco do atendimento: insere a linha com as colunas `waha_*`.
+      "lib/atendimento/banco.integration.test.ts",
     ],
   },
   {

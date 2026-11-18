@@ -2,7 +2,7 @@
  * POST /api/v1/pacing/numero — um sistema externo (o PostPlan) coordena o ritmo de
  * envio de um número com o CRM, usando o MESMO `pacing_ledger`.
  *
- * Duas ações, sempre sobre uma sessão WAHA (`session_name`, única por organização):
+ * Duas ações, sempre sobre uma sessão de WhatsApp não oficial (`session_name`, única por organização):
  *  - `pedir`: devolve se dá para enviar agora (`liberado`) ou quando dá (`libera_em`).
  *  - `registrar`: grava um envio efetivado no ledger.
  *
