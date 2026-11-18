@@ -117,3 +117,13 @@ describe("ack (sem Info)", () => {
     expect(wahaPayloadSchema.safeParse(ack).success).toBe(true);
   });
 });
+
+describe("engineSuportado", () => {
+  it("aceita NOWEB e GOWS, recusa o resto", async () => {
+    const { engineSuportado } = await import("@/lib/waha/client");
+    expect(engineSuportado("GOWS")).toBe(true);
+    expect(engineSuportado("NOWEB")).toBe(true);
+    expect(engineSuportado("WEBJS")).toBe(false);
+    expect(engineSuportado(undefined)).toBe(false);
+  });
+});
