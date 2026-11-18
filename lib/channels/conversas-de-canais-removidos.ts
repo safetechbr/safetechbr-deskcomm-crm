@@ -74,9 +74,10 @@ export async function apagarSobrasDeCanaisRemovidos(
   orgId: string,
 ): Promise<SobrasApagadas> {
   const sobras = await listarSobrasDeCanaisRemovidos(admin, orgId);
-  const total: HistoricoApagado = { mensagens: 0, chamadas_de_voz: 0, conversas: 0 };
+  const total: HistoricoApagado = { negocios: 0, mensagens: 0, chamadas_de_voz: 0, conversas: 0 };
   for (const canal of sobras) {
     const feito = await apagarHistoricoDoCanal(admin, orgId, canal.id);
+    total.negocios += feito.negocios;
     total.mensagens += feito.mensagens;
     total.chamadas_de_voz += feito.chamadas_de_voz;
     total.conversas += feito.conversas;

@@ -615,14 +615,14 @@ export function RedesSociaisClient() {
               {conversasDoCanal > 0 && (
                 <fieldset className="space-y-1 rounded-md border border-destructive/40 p-3 text-sm">
                   <legend className="px-1 font-medium">
-                    {t("Também excluir as conversas deste canal?")}
+                    {t("Também excluir as conversas e os cards do funil deste canal?")}
                   </legend>
                   <p className="text-xs text-muted-foreground">
                     {`${conversasDoCanal} ${t(conversasDoCanal === 1 ? "conversa" : "conversas")}${
                       mensagensDoCanal > 0
                         ? ` ${t("e")} ${mensagensDoCanal} ${t(mensagensDoCanal === 1 ? "mensagem" : "mensagens")}`
                         : ""
-                    }. ${t("Isso não pode ser desfeito.")}`}
+                    }. ${t("Os cards e leads que nasceram dessas conversas saem de todos os funis.")} ${t("Isso não pode ser desfeito.")}`}
                   </p>
                   <div className="flex gap-4 pt-1">
                     <label className="flex items-center gap-1.5">
