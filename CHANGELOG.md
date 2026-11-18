@@ -8,6 +8,10 @@ Se você roda o DeskcommCRM numa VPS, **leia a seção da versão para a qual es
 
 ## [Não lançado]
 
+### Corrigido
+
+- **O CRM passa a funcionar com o motor GOWS do WAHA** Em algumas instalações o motor NOWEB ficava conectado e enviava mensagens, mas deixava de receber as mensagens dos clientes. O CRM agora aceita também o motor GOWS, que recebe as mensagens na hora, e lê o telefone, o nome, as respostas citadas e a origem de anúncio da mesma forma que no NOWEB. O instalador continua subindo o NOWEB. Quem quiser trocar precisa mudar `WHATSAPP_DEFAULT_ENGINE` e a imagem do WAHA para GOWS e escanear o QR de cada número de novo, porque a sessão não é migrada.
+
 ## [1.94.0] — 2026-10-27
 
 ### Adicionado
