@@ -10,6 +10,8 @@
 FROM ubuntu:24.04
 
 ARG RUNNER_VERSION=2.337.0
+# Repo que a guarda aceita (o padrão dela vale quando não se passa nada).
+ARG REPO_ESPERADO=melgarafael/DeskcommCRM
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
@@ -18,11 +20,11 @@ RUN apt-get update \
       python3 openssl procps iptables build-essential lsb-release \
  && install -m 0755 -d /etc/apt/keyrings \
  && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
- && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list \
  && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/keyrings/pgdg.gpg \
  && echo "deb [signed-by=/etc/apt/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
  && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli.gpg \
- && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/githubcli.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
       docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
@@ -35,8 +37,9 @@ RUN useradd -m -s /bin/bash runner \
  && chmod 0440 /etc/sudoers.d/runner
 
 WORKDIR /home/runner/actions-runner
-RUN curl -fsSL -o /tmp/runner.tgz \
-      "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz" \
+RUN case "$(dpkg --print-architecture)" in amd64) R=x64;; arm64) R=arm64;; *) exit 1;; esac \
+ && curl -fsSL -o /tmp/runner.tgz \
+      "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-${R}-${RUNNER_VERSION}.tar.gz" \
  && tar xzf /tmp/runner.tgz \
  && rm /tmp/runner.tgz \
  && ./bin/installdependencies.sh \
@@ -48,6 +51,7 @@ RUN chmod 0755 /opt/deskcomm/*.sh \
  # documentado). Arquivo do root: o job só roda DEPOIS da guarda, e o contêiner
  # morre ao fim do job, então nada o reescreve para o próximo.
  && echo "ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/deskcomm/so-o-que-e-nosso.sh" > /home/runner/actions-runner/.env \
+ && echo "DESKCOMM_REPO_ESPERADO=${REPO_ESPERADO}" >> /home/runner/actions-runner/.env \
  && chown root:root /home/runner/actions-runner/.env \
  && chmod 0644 /home/runner/actions-runner/.env
 
