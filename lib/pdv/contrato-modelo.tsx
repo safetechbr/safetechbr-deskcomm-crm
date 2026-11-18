@@ -57,6 +57,23 @@ const txt = (v?: string | number | null) =>
 function data(v?: string | null): string {
   return v ? v.slice(0, 10).split("-").reverse().join("/") : vazio;
 }
+/** 01001000 → 01001-000; outro formato sai como veio. */
+export function formatarCep(v?: string | null): string | null {
+  if (!v) return null;
+  const d = v.replace(/\D/g, "");
+  return d.length === 8 ? `${d.slice(0, 5)}-${d.slice(5)}` : v;
+}
+/** +5511987654321 → (11) 98765-4321; número estrangeiro sai como veio. */
+export function formatarTelefone(v?: string | null): string | null {
+  if (!v) return null;
+  let d = v.replace(/\D/g, "");
+  if (v.trim().startsWith("+") && !d.startsWith("55")) return v;
+  if (d.length >= 12 && d.startsWith("55")) d = d.slice(2);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return v;
+}
+const FORMAS_A_VISTA = new Set<string>(["pix", "dinheiro", "cartao_debito", "transferencia"]);
 function endereco(e: Partial<Record<keyof EmpresaContrato, string | null>>): string {
   return (
     [
@@ -65,7 +82,7 @@ function endereco(e: Partial<Record<keyof EmpresaContrato, string | null>>): str
       e.complemento,
       e.bairro,
       [e.cidade, e.uf].filter(Boolean).join("/"),
-      e.cep,
+      formatarCep(e.cep),
     ]
       .filter(Boolean)
       .join(", ") || vazio
@@ -82,7 +99,7 @@ function Rodape() {
 }
 function Veiculo({ v, titulo, valor }: { v: VeiculoDaNegociacao; titulo: string; valor: string }) {
   const celulas = [
-    ["Ano fabricação / modelo", `${v.ano_fabricacao ?? "___"}/${v.ano_modelo ?? "___"}`],
+    ["Ano fab./modelo", `${v.ano_fabricacao ?? "___"}/${v.ano_modelo ?? "___"}`],
     ["Cor", v.cor],
     ["Combustível", v.combustivel],
     ["Placa", v.placa],
@@ -172,8 +189,8 @@ export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: Decisa
   const extenso = (v: number) =>
     (n.moeda || "BRL") === "BRL" ? `${preco(v)} (${reaisPorExtenso(v)})` : preco(v);
   const resumo = resumoDaNegociacao(n);
-  const loja = `${txt(e.razao_social)}${e.nome_fantasia && e.nome_fantasia !== e.razao_social ? ` (${e.nome_fantasia})` : ""}, com sede em ${endereco(e)}, CNPJ ${txt(formatarDocumento(e.cnpj))}, telefone ${txt(e.telefone)}, e-mail ${txt(e.email)}`;
-  const contato = `telefone ${txt(c.telefone)}, e-mail ${txt(c.email)}`;
+  const loja = `${txt(e.razao_social)}${e.nome_fantasia && e.nome_fantasia !== e.razao_social ? ` (${e.nome_fantasia})` : ""}, com sede em ${endereco(e)}, CNPJ ${txt(formatarDocumento(e.cnpj))}, telefone ${txt(formatarTelefone(e.telefone))}, e-mail ${txt(e.email)}`;
+  const contato = `telefone ${txt(formatarTelefone(c.telefone))}, e-mail ${txt(c.email)}`;
   const cliente =
     comprador === "pessoa_juridica"
       ? `${txt(c.nome)}, com sede em ${endereco(c)}, CNPJ ${txt(formatarDocumento(c.documento))}, ${contato}`
@@ -243,35 +260,33 @@ export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: Decisa
             ))}
           </View>
           {debitos.flatMap(({ v, nome }, j) =>
-            (v.regularizacao?.length
-              ? v.regularizacao
+            v.regularizacao?.length
+              ? v.regularizacao.map((r, i) => (
+                  <View key={`${j}-${i}`} style={s.linha} wrap={false}>
+                    <Text style={s.celula}>
+                      {nome}: {r.descricao}
+                    </Text>
+                    <Text style={s.celula}>
+                      {
+                        {
+                          cliente: "Cliente paga",
+                          loja: "Loja paga",
+                          quitado: "Quitado / sem débito",
+                          a_definir: "A definir",
+                        }[r.responsavel]
+                      }
+                    </Text>
+                    <Text style={s.celula}>{txt(r.observacao)}</Text>
+                    <Text style={s.celula}>{preco(r.valor_cents)}</Text>
+                  </View>
+                ))
               : [
-                  {
-                    descricao: "Não informado",
-                    responsavel: "a_definir" as const,
-                    observacao: "",
-                    valor_cents: 0,
-                  },
-                ]
-            ).map((r, i) => (
-              <View key={`${j}-${i}`} style={s.linha} wrap={false}>
-                <Text style={s.celula}>
-                  {nome}: {r.descricao}
-                </Text>
-                <Text style={s.celula}>
-                  {
-                    {
-                      cliente: "Cliente paga",
-                      loja: "Loja paga",
-                      quitado: "Quitado / sem débito",
-                      a_definir: "A definir",
-                    }[r.responsavel]
-                  }
-                </Text>
-                <Text style={s.celula}>{txt(r.observacao)}</Text>
-                <Text style={s.celula}>{preco(r.valor_cents)}</Text>
-              </View>
-            )),
+                  <View key={`${j}-vazio`} style={s.linha} wrap={false}>
+                    <Text style={{ width: "100%" }}>
+                      {nome}: situação de débitos não informada
+                    </Text>
+                  </View>,
+                ],
           )}
         </View>
         <Text style={s.secao}>Cláusula 2ª: Do pagamento</Text>
@@ -300,7 +315,9 @@ export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: Decisa
           {n.pagamentos.map((p, i) => (
             <View key={i} style={s.linha} wrap={false}>
               <Text style={s.celula}>{ROTULO_DA_FORMA[p.forma]}</Text>
-              <Text style={s.celula}>{txt(p.situacao)}</Text>
+              <Text style={s.celula}>
+                {txt(p.situacao || (FORMAS_A_VISTA.has(p.forma) ? "À vista" : null))}
+              </Text>
               <Text style={s.celula}>
                 {[
                   p.banco,

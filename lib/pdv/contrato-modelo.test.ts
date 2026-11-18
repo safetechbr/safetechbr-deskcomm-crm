@@ -46,6 +46,16 @@ describe("versão do contrato", () => {
     expect(d.bloqueios.map((p) => p.campo)).toEqual(["rg"]);
   });
 
+  it("concluída com dado que sairia em branco também é minuta", () => {
+    const n = concluida(vendaCompleta());
+    n.cliente = { ...n.cliente, telefone: "" };
+    const d = decidirVersaoDoContrato(n);
+    expect(d.versao).toBe("minuta");
+    expect(d.bloqueios).toEqual([]);
+    expect(d.motivos).toEqual(["Há dados que sairiam em branco no contrato."]);
+    expect(d.avisos.map((p) => p.campo)).toEqual(["telefone"]);
+  });
+
   it("compra pela loja é sempre minuta: falta o contrato de aquisição", () => {
     const n: Negociacao = { ...concluida(vendaCompleta()), tipo: "compra", veiculo_id: null };
     expect(decidirVersaoDoContrato(n).versao).toBe("minuta");

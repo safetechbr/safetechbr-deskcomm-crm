@@ -6,7 +6,8 @@
  * Regras (ficha 01 de output/documentos-veiculares; análise funcional, não
  * validação jurídica):
  *  - durante a negociação (rascunho) o documento é minuta;
- *  - negociação concluída sai para assinatura só sem pendência que bloqueia;
+ *  - negociação concluída sai para assinatura só sem pendência nenhuma: um
+ *    aviso (dado que sairia em branco no contrato) também faz a minuta;
  *  - compra pela loja ainda não tem contrato de aquisição: sempre minuta;
  *  - anexos sem gerador não impedem a assinatura do contrato, mas aparecem
  *    como pendência explícita na minuta e no cabeçalho da resposta, e o
@@ -46,6 +47,7 @@ export function decidirVersaoDoContrato(n: Negociacao): DecisaoDoContrato {
   if (n.status === "rascunho") motivos.push("Negociação em aberto.");
   if (n.status === "cancelada") motivos.push("Negociação cancelada.");
   if (bloqueios.length) motivos.push("Há dados obrigatórios a completar.");
+  if (avisos.length) motivos.push("Há dados que sairiam em branco no contrato.");
   return {
     versao: motivos.length ? "minuta" : "assinatura",
     motivos,
