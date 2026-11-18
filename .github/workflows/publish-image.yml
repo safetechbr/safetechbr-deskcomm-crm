@@ -91,7 +91,7 @@ jobs:
   # (output `imagem`). Mora aqui, e não num job próprio, porque job novo disputa
   # vaga numa fila que já é o gargalo — e este job já roda em todo evento.
   a-tag-veio-da-main:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.EXECUTOR_PROPRIO == 'ligado' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && 'deskcomm-proprio' || 'ubuntu-latest' }}
     # Sem o bloco, o token herda o default do REPOSITÓRIO — configuração que vive
     # fora do repo. Mesma razão do `permissions: {}` de `imagens-ok`.
     # `pull-requests: read` é para listar os arquivos do PR.
@@ -907,7 +907,7 @@ jobs:
   # (`deskcomm-voice-agent`, #677) chegou em 20/09/2026 e o gate não se mexeu.
   imagens-ok:
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.EXECUTOR_PROPRIO == 'ligado' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && 'deskcomm-proprio' || 'ubuntu-latest' }}
     # Nenhuma permissão: este job só lê o resultado de `needs` e sai. Sem o bloco,
     # o GITHUB_TOKEN herdaria o default do REPOSITÓRIO — configuração que vive fora
     # do repo, muda num clique e não passa por PR.

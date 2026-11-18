@@ -513,7 +513,7 @@ jobs:
   verify:
     if: always()
     needs: [verify-parte]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.EXECUTOR_PROPRIO == 'ligado' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && 'deskcomm-proprio' || 'ubuntu-latest' }}
     # Nenhuma permissão: este job só lê o resultado de `needs`.
     permissions: {}
     steps:
@@ -559,9 +559,11 @@ jobs:
   # as duas majors rodam sempre. Então toda mudança de schema é medida no piso no
   # PR dela E de novo na árvore integrada — e o agregador EXIGE isso fora de PR.
   #
-  # Roda nas máquinas do GitHub sempre: é de segundos e decide a matriz.
+  # É de segundos e decide a matriz. Com EXECUTOR_PROPRIO=ligado vai para a máquina
+  # própria como os outros: com o billing do GitHub barrado, job em ubuntu-latest
+  # nem começa e reprova o PR. Com a máquina fora do ar, o PR espera na fila.
   invariants-alcance:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.EXECUTOR_PROPRIO == 'ligado' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && 'deskcomm-proprio' || 'ubuntu-latest' }}
     permissions:
       contents: read
       pull-requests: read
@@ -669,7 +671,7 @@ jobs:
   invariants:
     if: always()
     needs: [invariants-alcance, invariants-majors]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.EXECUTOR_PROPRIO == 'ligado' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && 'deskcomm-proprio' || 'ubuntu-latest' }}
     # Nenhuma permissão: este job só lê o resultado de `needs`.
     permissions: {}
     steps:

@@ -81,10 +81,22 @@ const TODOS =
 const SO_PR =
   "${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || (vars.EXECUTOR_PROPRIO == 'ligado' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && 'deskcomm-proprio' || 'ubuntu-latest') }}";
 
+// `vigia-de-colisao.yml` só dispara por schedule e workflow_dispatch, que a
+// guarda aceita; TODOS cairia em ubuntu-latest nesses eventos.
+const SEM_PR = "${{ vars.EXECUTOR_PROPRIO == 'ligado' && 'deskcomm-proprio' || 'ubuntu-latest' }}";
+
 const ESPERADO: Record<string, string> = {
   "ci.yml::verify-parte": TODOS,
+  "ci.yml::verify": TODOS,
+  "ci.yml::invariants-alcance": TODOS,
   "ci.yml::invariants-majors": TODOS,
+  "ci.yml::invariants": TODOS,
+  "e2e.yml::e2e-alcance": TODOS,
   "e2e.yml::e2e-parte": TODOS,
+  "e2e.yml::e2e": TODOS,
+  "publish-image.yml::a-tag-veio-da-main": TODOS,
+  "publish-image.yml::imagens-ok": TODOS,
+  "vigia-de-colisao.yml::vigia": SEM_PR,
   "perf.yml::build-and-size": TODOS,
   "publish-image.yml::imagem-do-app-sobe": SO_PR,
   "publish-image.yml::imagens-de-fundo-sobem": SO_PR,
@@ -116,7 +128,7 @@ describe("o roteamento dos workflows", () => {
     expect([...mapa.values()]).toContain("ubuntu-latest");
   });
 
-  it("exatamente os jobs pesados podem ir para a máquina, cada um com a expressão declarada", () => {
+  it("exatamente os jobs declarados podem ir para a máquina, cada um com a expressão declarada", () => {
     const naMaquina = Object.fromEntries([...mapa].filter(([, v]) => v.includes("deskcomm-proprio")));
     expect(naMaquina).toEqual(ESPERADO);
   });

@@ -73,10 +73,11 @@ jobs:
   # `e2e` só aceita parte pulada quando ESTE job terminou `success` com `nao`:
   # job que falhou aqui reprova, em vez de passar por falta de medida.
   #
-  # Roda nas máquinas do GitHub sempre: é de segundos, e não pode depender do
-  # executor próprio estar de pé para decidir nada.
+  # É de segundos. Com EXECUTOR_PROPRIO=ligado vai para a máquina
+  # própria como os outros: com o billing do GitHub barrado, job em ubuntu-latest
+  # nem começa e reprova o PR. Com a máquina fora do ar, o PR espera na fila.
   e2e-alcance:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.EXECUTOR_PROPRIO == 'ligado' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && 'deskcomm-proprio' || 'ubuntu-latest' }}
     permissions:
       contents: read
       pull-requests: read
@@ -2753,7 +2754,7 @@ jobs:
   e2e:
     if: always()
     needs: [e2e-alcance, e2e-parte]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.EXECUTOR_PROPRIO == 'ligado' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && 'deskcomm-proprio' || 'ubuntu-latest' }}
     # Nenhuma permissão: este job só lê o resultado de `needs` e escreve o
     # summary. Sem o bloco, o token herdaria o default do REPOSITÓRIO, que vive
     # fora do repo e muda num clique.
