@@ -58,6 +58,7 @@ additional_redirect_urls = [
   "http://localhost:3000/auth/callback",
   "http://localhost:3000/auth/confirm",
   "http://localhost:3001/auth/confirm",
+  "http://localhost:3000/login/email-confirmado",
 ]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true

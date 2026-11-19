@@ -27,7 +27,6 @@ function renderForm(locale: "pt-BR" | "es", initialLocale: "pt-BR" | "es") {
   return render(
     <IdiomaProvider locale={locale}>
       <ProfileForm
-        email="dona@empresa.com"
         initialFullName="Dona da Empresa"
         initialAvatarUrl={null}
         initialLocale={initialLocale}

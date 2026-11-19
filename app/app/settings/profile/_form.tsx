@@ -28,7 +28,6 @@ import { FUSOS_OFERECIDOS } from "@/lib/tempo/fusos";
 const TIMEZONES = FUSOS_OFERECIDOS.map((f) => f.codigo);
 
 interface Props {
-  email: string;
   initialFullName: string | null;
   initialAvatarUrl: string | null;
   initialLocale: Locale | typeof SEM_PREFERENCIA_DE_IDIOMA;
@@ -36,7 +35,6 @@ interface Props {
 }
 
 export function ProfileForm({
-  email,
   initialFullName,
   initialAvatarUrl,
   initialLocale,
@@ -81,13 +79,6 @@ export function ProfileForm({
   return (
     <form onSubmit={handleSubmit} className="max-w-xl">
       <Card className="space-y-4 p-6">
-        <div className="space-y-2">
-          <Label htmlFor="email">{t("Email")}</Label>
-          <Input id="email" value={email} disabled />
-          <p className="text-xs text-muted-foreground">
-            {t("Trocar email — em breve.")}
-          </p>
-        </div>
         <div className="space-y-2">
           <Label htmlFor="full_name">{t("Nome completo")}</Label>
           <Input

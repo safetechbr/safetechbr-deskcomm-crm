@@ -126,7 +126,6 @@ describe("as telas de Configurações oferecem o que o registro deixa aparecer",
     render(
       <IdiomaProvider locale="pt-BR">
         <ProfileForm
-          email="dona@empresa.com"
           initialFullName="Dona da Empresa"
           initialAvatarUrl={null}
           initialLocale="pt-BR"

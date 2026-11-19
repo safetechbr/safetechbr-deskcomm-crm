@@ -1,16 +1,13 @@
 "use server";
 
 import { headers } from "next/headers";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import { audit } from "@/lib/audit";
 import { resetPasswordSchema } from "@/lib/auth/schemas";
+import { conferirSenhaAtual } from "@/lib/auth/conferir-senha-atual";
 import { sessionAal } from "@/lib/auth/server";
-import { env } from "@/lib/env";
 import { ipDoCliente } from "@/lib/http/ip-do-cliente";
 import { createClient } from "@/lib/supabase/server";
-import { fetchDoServidor } from "@/lib/supabase/fetch-do-servidor";
-import { urlDoSupabaseNoServidor } from "@/lib/supabase/url-do-servidor";
 
 export type ChangePasswordResult =
   | { ok: true }
@@ -71,24 +68,8 @@ export async function changePassword(input: {
   }
 
   // Confere a senha atual sem tocar na sessão do navegador.
-  const verificador = createSupabaseClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
-      global: {
-        fetch: fetchDoServidor(
-          urlDoSupabaseNoServidor(env.SUPABASE_SERVER_URL, env.NEXT_PUBLIC_SUPABASE_URL),
-          env.NEXT_PUBLIC_SUPABASE_URL,
-        ),
-      },
-    },
-  );
-  const { error: senhaErrada } = await verificador.auth.signInWithPassword({
-    email: user.email,
-    password: input.current_password,
-  });
-  if (senhaErrada) {
+  const senhaConfere = await conferirSenhaAtual(user.email, input.current_password);
+  if (!senhaConfere) {
     await audit({
       action: "auth.password_reset_failed",
       actorUserId: user.id,

@@ -4,6 +4,7 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
 import { SEM_PREFERENCIA_DE_IDIOMA } from "@/lib/schemas/settings";
 import { ProfileForm } from "./_form";
+import { TrocarEmail } from "./_trocar-email";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +37,12 @@ export default async function ProfilePage() {
         <div className="min-w-0 flex-1">
         <h1 className="text-2xl font-semibold tracking-tight">{traduzir("Perfil", idioma)}</h1>
         <p className="text-sm text-muted-foreground">
-          {traduzir("Informações pessoais. Email só pode ser trocado em breve.", idioma)}
+          {traduzir("Informações pessoais.", idioma)}
         </p>
       </div>
       </header>
+      <TrocarEmail email={user.email} />
       <ProfileForm
-        email={user.email}
         initialFullName={meta.full_name}
         initialAvatarUrl={meta.avatar_url}
         initialLocale={user.locale ? normalizarIdioma(user.locale) : SEM_PREFERENCIA_DE_IDIOMA}
