@@ -985,7 +985,7 @@ export const NAV_CATALOG = [
   {
     href: "/app/financeiro/relatorios",
     label: "Relatórios",
-    description: "Relatórios financeiros do período. Em breve.",
+    description: "Receitas e despesas do mês por categoria, realizado e previsto, com exportação.",
     icon: "ChartBar",
     group: "financeiro",
     sidebar: true,
