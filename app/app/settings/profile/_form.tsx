@@ -45,8 +45,36 @@ export function ProfileForm({
   const [fullName, setFullName] = useState(initialFullName ?? "");
   const [locale, setLocale] = useState<Locale | typeof SEM_PREFERENCIA_DE_IDIOMA>(initialLocale);
   const [timezone, setTimezone] = useState(initialTimezone);
-  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  // A foto vai à parte do "Salvar": `null` remove, um arquivo troca.
+  async function trocarFoto(arquivo: File | null) {
+    setEnviandoFoto(true);
+    try {
+      let corpo: FormData | undefined;
+      if (arquivo) {
+        corpo = new FormData();
+        corpo.append("file", arquivo);
+      }
+      const r = await fetch("/api/v1/me/avatar", { method: arquivo ? "POST" : "DELETE", body: corpo });
+      const json = (await r.json().catch(() => null)) as
+        | { data?: { avatar_url: string | null }; error?: { message?: string } }
+        | null;
+      if (!r.ok) {
+        toast.error(json?.error?.message ?? t("Erro ao subir a foto."));
+        return;
+      }
+      setAvatarUrl(json?.data?.avatar_url ?? null);
+      toast.success(arquivo ? t("Foto atualizada.") : t("Foto removida."));
+      router.refresh();
+    } catch {
+      toast.error(t("Erro ao subir a foto."));
+    } finally {
+      setEnviandoFoto(false);
+    }
+  }
 
   // `continuar`: depois de salvar com sucesso, abre o menu inicial.
   function salvar(continuar: boolean) {
@@ -54,7 +82,6 @@ export function ProfileForm({
       full_name: fullName || null,
       locale,
       timezone,
-      avatar_url: avatarUrl || null,
     });
     if (!parsed.success) {
       toast.error(t("Dados inválidos."));
@@ -128,17 +155,40 @@ export function ProfileForm({
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="avatar_url">{t("Avatar URL")}</Label>
-          <Input
-            id="avatar_url"
-            type="url"
-            placeholder="https://…"
-            value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">
-            {t("Upload de arquivo — em breve. Cole uma URL pública.")}
-          </p>
+          <Label htmlFor="avatar_file">{t("Foto do perfil")}</Label>
+          <div className="flex items-center gap-4">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- rota própria, autenticada; `next/image` não passa o cookie
+              <img src={avatarUrl} alt="" className="size-16 rounded-full object-cover" />
+            ) : (
+              <span className="size-16 rounded-full bg-muted" aria-hidden />
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Input
+                id="avatar_file"
+                type="file"
+                accept="image/png,image/jpeg"
+                disabled={enviandoFoto}
+                onChange={(e) => {
+                  const arquivo = e.target.files?.[0];
+                  e.target.value = "";
+                  if (arquivo) void trocarFoto(arquivo);
+                }}
+                className="max-w-60"
+              />
+              {avatarUrl ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={enviandoFoto}
+                  onClick={() => void trocarFoto(null)}
+                >
+                  {t("Remover foto")}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("PNG ou JPG, até 512 KB.")}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button

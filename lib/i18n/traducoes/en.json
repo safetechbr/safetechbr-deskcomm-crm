@@ -9429,5 +9429,15 @@
   "Etiquetas de ativação": "Activation tags",
   "Etiquetas que ativam (opcional)": "Tags that activate it (optional)",
   "odonto, clínica": "dental, clinic",
-  "Se a conversa ou o contato tiver uma destas etiquetas, a skill entra mesmo sem a palavra-chave.": "If the conversation or the contact has one of these tags, the skill is used even without the keyword."
+  "Se a conversa ou o contato tiver uma destas etiquetas, a skill entra mesmo sem a palavra-chave.": "If the conversation or the contact has one of these tags, the skill is used even without the keyword.",
+  "Foto do perfil": "Profile photo",
+  "Remover foto": "Remove photo",
+  "PNG ou JPG, até 512 KB.": "PNG or JPG, up to 512 KB.",
+  "Foto atualizada.": "Photo updated.",
+  "Foto removida.": "Photo removed.",
+  "Erro ao subir a foto.": "Error uploading the photo.",
+  "Sem foto de perfil.": "No profile photo.",
+  "Muitas trocas de foto seguidas. Tente em alguns minutos.": "Too many photo changes in a row. Try again in a few minutes.",
+  "A foto precisa ter até 512 KB.": "The photo must be at most 512 KB.",
+  "Erro ao remover a foto.": "Error removing the photo."
 }

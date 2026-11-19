@@ -24,6 +24,7 @@ import {
   type PapelMinimoDeMfa,
 } from "@/lib/auth/politica-mfa";
 import { normalizarIdioma } from "@/lib/i18n/idiomas";
+import { podeApagar } from "@/lib/branding/logo-arquivo";
 import { STATUS_OPERANTE, ehOperante } from "@/lib/organizacao/operante";
 import type { AuthUser, Role, UserOrgMembership, ActiveOrg } from "./types";
 
@@ -304,7 +305,7 @@ export const loadAuthUser = cache(async (): Promise<AuthUser | null> => {
   if (!leituraDoSuporte.ok) throw leituraDoSuporte.erro;
   const support = leituraDoSuporte.contexto;
   const fullName = (user.user_metadata?.full_name as string | undefined) ?? null;
-  const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
+  const avatarUrl = urlDaFotoDoPerfil(user.id, user.user_metadata);
   const locale = (user.user_metadata?.locale as string | undefined) ?? null;
   // A cadeia inteira num lugar só: pessoa → organização ativa → padrão. Quem
   // consome pede `idioma` e não precisa saber que existe uma ordem.
@@ -632,4 +633,21 @@ export async function exigirProvaDeMfa(regua: () => Promise<boolean> = mfaEmDivi
   // que existe ali chega aqui (tests/unit/proxy-encaminha-o-caminho.test.ts).
   const caminho = safeNext((await headers()).get("x-pathname"), "/app");
   redirect(`/login/mfa?next=${encodeURIComponent(caminho)}`);
+}
+
+/**
+ * Foto do perfil: a enviada (`avatar_path`, servida por `/api/v1/me/avatar`)
+ * vence a URL externa antiga (`avatar_url`). Só vale caminho dentro da pasta
+ * da própria pessoa — o metadata é escrevível por ela via `auth.updateUser`.
+ * `?v=<arquivo>` fura o cache quando a foto troca.
+ */
+export function urlDaFotoDoPerfil(
+  userId: string,
+  meta: Record<string, unknown> | null | undefined,
+): string | null {
+  const caminho = meta?.avatar_path;
+  if (typeof caminho === "string" && podeApagar(caminho, `${userId}/`)) {
+    return `/api/v1/me/avatar?v=${encodeURIComponent(caminho.slice(userId.length + 1))}`;
+  }
+  return typeof meta?.avatar_url === "string" ? meta.avatar_url : null;
 }

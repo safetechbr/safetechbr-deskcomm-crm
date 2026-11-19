@@ -12,7 +12,8 @@ export default async function ProfilePage() {
   const user = await requireAuth();
   // `locale` já vem tipado em AuthUser (loadAuthUser lê user_metadata.locale) —
   // o comentário antigo dizia que não vinha; estava desatualizado. `timezone`
-  // não está em AuthUser e segue pelo cast do meta, como full_name/avatar_url.
+  // não está em AuthUser e segue pelo cast do meta, como full_name/avatar_url
+  // (este já resolvido por `urlDaFotoDoPerfil`: foto enviada vence URL antiga).
   const meta = user as unknown as {
     full_name: string | null;
     avatar_url: string | null;

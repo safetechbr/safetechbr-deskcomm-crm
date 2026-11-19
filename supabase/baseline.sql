@@ -67211,6 +67211,19 @@ end $f$;
 revoke all on function public.fn_encerrar_minha_sessao(uuid) from public, anon;
 grant execute on function public.fn_encerrar_minha_sessao(uuid) to authenticated;
 
+-- ---- foto do perfil (migration 9047) ----
+-- manifest: Perfil ganha upload de foto: bucket PRIVADO `user-avatars` (512 KB, png/jpeg), escrito e lido só pelo service role na rota `/api/v1/me/avatar`.
+-- Privado, e não público como `brand-logos`: a foto é de rosto (dado pessoal) e
+-- só aparece para quem tem sessão; a rota serve a própria foto de quem pede.
+-- Caminho `<user_id>/<uuid v4>.<png|jpg>`, gerado no servidor. ZERO policy em
+-- `storage.objects` para este bucket: nada passa pelo PostgREST/Storage direto.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('user-avatars', 'user-avatars', false, 524288, array['image/png', 'image/jpeg'])
+on conflict (id) do update
+  set public             = excluded.public,
+      file_size_limit    = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria

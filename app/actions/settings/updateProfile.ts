@@ -39,7 +39,7 @@ export async function updateProfile(input: ProfileInput): Promise<UpdateProfileR
       // de idioma lê a preferência primeiro e só cai na empresa se ela faltar.
       locale: parsed.data.locale === SEM_PREFERENCIA_DE_IDIOMA ? null : parsed.data.locale,
       timezone: parsed.data.timezone,
-      avatar_url: parsed.data.avatar_url ?? null,
+      // A foto não passa por aqui: sobe e sai por `/api/v1/me/avatar`.
     },
   });
   if (error) {
