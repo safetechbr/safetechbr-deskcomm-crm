@@ -22,6 +22,8 @@ import { irAoDesafioDeMfa } from "@/lib/auth/ir-ao-desafio-de-mfa";
 import { signOutEverywhere } from "@/app/actions/settings/signOutEverywhere";
 import { esquecerDispositivosConfiaveis } from "@/app/actions/settings/esquecerDispositivosConfiaveis";
 import type { DispositivoConfiavel } from "@/lib/auth/dispositivo-confiavel";
+import type { SessaoAtiva } from "@/lib/auth/sessoes-ativas";
+import { encerrarSessao } from "@/app/actions/settings/encerrarSessao";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import {
   definirExigenciaDeMfa,
@@ -39,6 +41,7 @@ export function SecurityClient({
   papelMinimo,
   diasDeCarencia,
   dispositivos,
+  sessoes = [],
   semCodigos = false,
 }: {
   mfaEnrolled: boolean;
@@ -52,12 +55,16 @@ export function SecurityClient({
   diasDeCarencia: number;
   /** Navegadores dispensados do código até `expires_at`. */
   dispositivos: DispositivoConfiavel[];
+  /** Sessões abertas da pessoa; `atual` é este navegador. */
+  sessoes?: SessaoAtiva[];
   /** Verificação ligada e nenhum código de recuperação por usar. */
   semCodigos?: boolean;
 }) {
   const t = useT();
   const tagDeIdioma = useTagDeIdioma();
   const [esquecendo, startEsquecer] = useTransition();
+  const [encerrando, setEncerrando] = useState<string | null>(null);
+  const [, startEncerrar] = useTransition();
   const [codes, setCodes] = useState<string[] | null>(null);
   const [gerouAgora, setGerouAgora] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -108,6 +115,18 @@ export function SecurityClient({
               : t("Não consegui salvar essa mudança agora."),
         );
       }
+    });
+  }
+
+  function handleEncerrar(id: string) {
+    setEncerrando(id);
+    startEncerrar(async () => {
+      const r = await encerrarSessao(id);
+      setEncerrando(null);
+      if (r.ok) toast.success(t("Sessão encerrada. O aparelho sai na próxima renovação do acesso."));
+      else if (r.motivo === "sessao_atual") toast.error(t("Esta é a sessão atual. Use “Sair” para encerrá-la."));
+      else if (r.motivo === "nao_encontrada") toast.error(t("Essa sessão já tinha sido encerrada."));
+      else toast.error(t("Não consegui salvar essa mudança agora."));
     });
   }
 
@@ -315,8 +334,43 @@ export function SecurityClient({
       <Card className="space-y-3 p-6">
         <h2 className="text-sm font-semibold">{t("Sessões ativas")}</h2>
         <p className="text-xs text-muted-foreground">
-          {t("Listagem de sessões — em breve. Por enquanto, deslogue todos os dispositivos:")}
+          {t("Aparelhos e navegadores onde sua conta está aberta. Encerre os que você não reconhece.")}
         </p>
+        {sessoes.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t("Não consegui listar as sessões agora.")}</p>
+        ) : (
+          <ul className="divide-y rounded-md border text-xs">
+            {sessoes.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="truncate font-medium">
+                    {s.user_agent ?? t("Navegador desconhecido")}
+                    {s.atual ? (
+                      <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-700 dark:text-emerald-400">
+                        {t("Esta sessão")}
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {s.ip ? `${s.ip} · ` : ""}
+                    {t("Última atividade")}{" "}
+                    {new Date(s.ultima_atividade ?? s.criada_em).toLocaleString(tagDeIdioma)}
+                  </p>
+                </div>
+                {s.atual ? null : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={encerrando !== null}
+                    onClick={() => handleEncerrar(s.id)}
+                  >
+                    {encerrando === s.id ? t("Encerrando…") : t("Encerrar")}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
         <Button
           variant="outline"
           disabled={isSigningOut}

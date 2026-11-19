@@ -43,6 +43,8 @@ export const AUDIT_ACTIONS = [
   /** "Confiar neste dispositivo" marcado depois de um código provado. */
   "auth.mfa_device_trusted",
   "auth.mfa_trusted_devices_forgotten",
+  /** Uma sessão de outro aparelho encerrada em Segurança. */
+  "auth.session_revoked",
   "auth.recovery_code_used",
   "nuvemshop.connected",
   "nuvemshop.disconnected",

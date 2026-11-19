@@ -9,6 +9,8 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { empresaExigeMfa, politicaDaEmpresa, type PapelMinimoDeMfa } from "@/lib/auth/politica-mfa";
 import { listarDispositivosConfiaveis } from "@/lib/auth/dispositivo-confiavel";
+import { createClient } from "@/lib/supabase/server";
+import { listarSessoesAtivas } from "@/lib/auth/sessoes-ativas";
 import { SecurityClient } from "./_client";
 import { traduzir } from "@/lib/i18n/dicionario";
 
@@ -34,6 +36,8 @@ export default async function SecurityPage() {
   const org = await resolveActiveOrg(user);
   const enrolled = await isMfaEnrolled();
   const dispositivos = enrolled ? await listarDispositivosConfiaveis(user.id) : [];
+  // Client da SESSÃO: a função filtra por auth.uid() e marca a atual pelo JWT.
+  const sessoes = await listarSessoesAtivas(await createClient());
   // Quem tem a verificação ligada e nenhum código de recuperação por usar fica
   // sem saída se perder o celular — e é o estado de todo mundo depois da 0759,
   // que apagou os códigos da forma antiga. Só o servidor lê a tabela (0755).
@@ -101,6 +105,7 @@ export default async function SecurityPage() {
         papelMinimo={papelMinimo}
         diasDeCarencia={diasDeCarencia}
         dispositivos={dispositivos}
+        sessoes={sessoes}
         semCodigos={semCodigos}
       />
     </div>
