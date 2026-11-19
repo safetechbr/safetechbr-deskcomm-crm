@@ -4,7 +4,6 @@ import { useTenantDetail } from "@/hooks/useTenantDetail";
 import { TenantOverview } from "@/components/admin/tenants/TenantOverview";
 import { TenantActions } from "@/components/admin/tenants/TenantActions";
 import { SuspendedBanner } from "@/components/admin/tenants/SuspendedBanner";
-import { TenantMembers } from "@/components/admin/tenants/TenantMembers";
 import { useT } from "@/hooks/i18n/useT";
 
 interface TenantOverviewClientProps {
@@ -53,10 +52,6 @@ export function TenantOverviewClient({ id, cobrancaLigada = false }: TenantOverv
             counts={counts}
             integrations={integrations}
             cobrancaLigada={cobrancaLigada}
-          />
-          <TenantMembers
-            organizationId={organization.id}
-            readOnly={organization.status === "redacted"}
           />
         </div>
         <TenantActions organization={organization} counts={counts} />

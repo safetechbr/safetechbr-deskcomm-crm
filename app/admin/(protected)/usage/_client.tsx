@@ -19,11 +19,12 @@ const RANGE_OPTIONS: { value: UsageRange; label: string }[] = [
   { value: "90d", label: "Últimos 90 dias" },
 ];
 
-export function UsageClient() {
+/** Com `tenantId`, é a aba Uso do detalhe da empresa: mesmo painel, filtrado. */
+export function UsageClient({ tenantId }: { tenantId?: string } = {}) {
   const t = useT();
   const [range, setRange] = useState<UsageRange>("30d");
 
-  const { data, isLoading, isError } = useAdminUsage(range);
+  const { data, isLoading, isError } = useAdminUsage(range, tenantId);
 
   const usageData = data;
 
@@ -31,12 +32,14 @@ export function UsageClient() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
+        {!tenantId && (
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("Uso & Custo")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {t("Consumo de mensagens, conversas e IA por empresa")}
           </p>
         </div>
+        )}
 
         {/* Range selector */}
         <Select value={range} onValueChange={(v) => setRange(v as UsageRange)}>
