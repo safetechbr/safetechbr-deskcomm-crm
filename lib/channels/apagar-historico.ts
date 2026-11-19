@@ -10,7 +10,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * Qual negócio é "do canal": o que tem a atividade `lead_created` gravada pelo
  * nascimento automático (`lib/leads/nascimento-do-lead.ts`, `source_module`
  * `canal.ingest`; linhas antigas `waha.ingest`) com `source_id` = uma conversa
- * deste canal — mais as retomadas (`retomado_de_lead_id`) desses negócios.
+ * deste canal — mais as retomadas (`retomado_de_lead_id`) e as cópias por troca
+ * de funil (`source_metadata.clonado_de`) desses negócios.
  * Negócio criado à mão, por formulário ou por outro canal NÃO entra, mesmo que
  * seja do mesmo contato. Os ids são lidos ANTES de apagar as conversas; as
  * filhas de `crm_leads` são CASCADE (atividades, links, scores...) ou SET NULL
@@ -72,23 +73,28 @@ async function idsDosNegociosDoCanal(admin: SupabaseClient, orgId: string, conve
     if (error) throw new Error(`Não foi possível ler crm_lead_activities: ${error.message}`);
     for (const r of (data ?? []) as { lead_id: string }[]) negocios.add(r.lead_id);
   }
-  // Retomadas: o negócio novo aberto a partir de um perdido do canal é do canal.
+  // Descendentes também são do canal: a retomada de um perdido
+  // (`retomado_de_lead_id`) e a cópia de quando o card trocou de funil ainda
+  // aberto, que só guarda a origem em `source_metadata.clonado_de`
+  // (`lib/leads/clonar-para-funil.ts`).
+  const ligacoes = ["retomado_de_lead_id", "source_metadata->clonado_de->>lead_id"];
   let fronteira = [...negocios];
   while (fronteira.length) {
     const novos: string[] = [];
-    for (const lote of emLotes(fronteira)) {
-      const { data, error } = await admin
-        .from("crm_leads")
-        .select("id")
-        .eq("organization_id", orgId)
-        .in("retomado_de_lead_id", lote);
-      if (error) throw new Error(`Não foi possível ler crm_leads: ${error.message}`);
-      for (const r of (data ?? []) as { id: string }[])
-        if (!negocios.has(r.id)) {
-          negocios.add(r.id);
-          novos.push(r.id);
-        }
-    }
+    for (const lote of emLotes(fronteira))
+      for (const coluna of ligacoes) {
+        const { data, error } = await admin
+          .from("crm_leads")
+          .select("id")
+          .eq("organization_id", orgId)
+          .in(coluna, lote);
+        if (error) throw new Error(`Não foi possível ler crm_leads: ${error.message}`);
+        for (const r of (data ?? []) as { id: string }[])
+          if (!negocios.has(r.id)) {
+            negocios.add(r.id);
+            novos.push(r.id);
+          }
+      }
     fronteira = novos;
   }
   return [...negocios];

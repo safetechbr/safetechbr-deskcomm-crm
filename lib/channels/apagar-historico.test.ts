@@ -10,13 +10,15 @@ type Chamada = {
 
 /**
  * Banco de mentira: conv-1 é do canal; lead-1 nasceu dela; lead-2 é retomada
- * de lead-1. O filtro de `crm_lead_activities` imita o banco: só devolve
+ * de lead-1; lead-3 é a cópia de lead-1 num outro funil. O filtro de `crm_lead_activities` imita o banco: só devolve
  * negócio cujo `source_id` está entre as conversas pedidas.
  */
 function fakeAdmin(falharEm?: string) {
   const chamadas: Chamada[] = [];
   const nascimentos: Record<string, string> = { "conv-1": "lead-1", "conv-outra": "lead-outro" };
   const retomadas: Record<string, string> = { "lead-1": "lead-2" };
+  // Cópia por troca de funil com o card ainda aberto: só `source_metadata.clonado_de`.
+  const clones: Record<string, string> = { "lead-1": "lead-3" };
   const admin = {
     from(tabela: string) {
       const c: Chamada = { tabela, op: "select", eq: {}, in: {} };
@@ -46,8 +48,10 @@ function fakeAdmin(falharEm?: string) {
               data: (c.in.source_id as string[]).filter((s) => nascimentos[s]).map((s) => ({ lead_id: nascimentos[s] })),
               error: null,
             });
+          const [coluna, pedidos] = Object.entries(c.in)[0] as [string, string[]];
+          const filhos = coluna === "retomado_de_lead_id" ? retomadas : clones;
           return res({
-            data: (c.in.retomado_de_lead_id as string[]).filter((l) => retomadas[l]).map((l) => ({ id: retomadas[l] })),
+            data: pedidos.filter((l) => filhos[l]).map((l) => ({ id: filhos[l] })),
             error: null,
           });
         },
@@ -62,7 +66,7 @@ describe("apagarHistoricoDoCanal", () => {
   it("apaga os negócios do canal (com retomadas) antes de mensagens, chamadas e conversas", async () => {
     const { admin, chamadas } = fakeAdmin();
     const r = await apagarHistoricoDoCanal(admin, "org-1", "canal-1");
-    expect(r).toEqual({ negocios: 2, mensagens: 5, chamadas_de_voz: 2, conversas: 2 });
+    expect(r).toEqual({ negocios: 3, mensagens: 5, chamadas_de_voz: 2, conversas: 2 });
 
     const deletes = chamadas.filter((c) => c.op === "delete");
     expect(deletes.map((c) => c.tabela)).toEqual(["crm_leads", "messages", "voice_calls", "conversations"]);
@@ -76,7 +80,7 @@ describe("apagarHistoricoDoCanal", () => {
     const apagados = chamadas
       .filter((c) => c.tabela === "crm_leads" && c.op === "delete")
       .flatMap((c) => c.in.id);
-    expect(apagados.sort()).toEqual(["lead-1", "lead-2"]);
+    expect(apagados.sort()).toEqual(["lead-1", "lead-2", "lead-3"]);
   });
 
   it("não apaga negócio de outro canal nem criado fora do ingest", async () => {
