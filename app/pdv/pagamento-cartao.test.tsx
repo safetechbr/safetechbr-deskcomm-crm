@@ -95,7 +95,7 @@ it("seleciona o perfil pelo nome e aplica a taxa de cada parcela", async () => {
 it("mostra quanto falta após Pix e cartão e troca o rótulo quando sobra", async () => {
   abrirPdv();
   fireEvent.change(screen.getByTestId("pdv-valor"), { target: { value: "4590000" } });
-  fireEvent.change(screen.getByRole("textbox", { name: "PIX", exact: true }), {
+  fireEvent.change(screen.getByRole("textbox", { name: "PIX" }), {
     target: { value: "1000000" },
   });
   const resumo = within(screen.getByTestId("pdv-resumo"));
@@ -115,7 +115,7 @@ it("mostra quanto falta após Pix e cartão e troca o rótulo quando sobra", asy
   expect(resumo.getByTestId("pdv-pago")).toHaveTextContent(/29\.000,00/);
   expect(saldo).toHaveTextContent(/16\.900,00/);
 
-  const dinheiro = screen.getByRole("textbox", { name: "Dinheiro", exact: true });
+  const dinheiro = screen.getByRole("textbox", { name: "Dinheiro" });
   fireEvent.change(dinheiro, { target: { value: "1690000" } });
   expect(resumo.getByText("Falta")).toBeInTheDocument();
   expect(saldo).toHaveTextContent(/R\$\s*0,00/);
@@ -137,8 +137,8 @@ it("mantém pagamento por último ao separar o contrato e permite voltar com o r
   expect(colunaDoContrato).toContainElement(screen.getByTestId("pdv-dados-contrato"));
   expect(colunaDoContrato).toContainElement(screen.getByTestId("pdv-observacoes"));
   expect(secaoDoPagamento).not.toContainElement(screen.getByTestId("pdv-dados-contrato"));
-  expect(colunaDoContrato?.parentElement?.nextElementSibling).toContainElement(secaoDoPagamento);
-  expect(screen.getByRole("heading", { name: "Pagamento", exact: true })).not.toHaveClass("uppercase");
+  expect(colunaDoContrato?.parentElement?.nextElementSibling as HTMLElement | null).toContainElement(secaoDoPagamento as HTMLElement | null);
+  expect(screen.getByRole("heading", { name: "Pagamento" })).not.toHaveClass("uppercase");
 
   fireEvent.click(alternarLayout);
   expect(alternarLayout).toHaveAttribute("aria-pressed", "false");
@@ -159,7 +159,7 @@ it("no celular, coloca o contrato na terceira etapa e o pagamento na última", a
 
   const pagamento = navegacao.getByRole("button", { name: "Pagamento" });
   const contrato = navegacao.getByRole("button", { name: "Dados do contrato" });
-  const painelDoPagamento = screen.getByRole("heading", { name: "Pagamento", exact: true }).closest("section");
+  const painelDoPagamento = screen.getByRole("heading", { name: "Pagamento" }).closest("section");
   const painelDoContrato = screen.getByRole("heading", { name: "Dados do contrato", level: 2 }).closest("section");
   expect(painelDoPagamento).not.toContainElement(screen.getByTestId("pdv-dados-contrato"));
 
