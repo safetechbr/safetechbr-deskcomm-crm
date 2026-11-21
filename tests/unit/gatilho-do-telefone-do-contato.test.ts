@@ -67,7 +67,7 @@ function clienteFalso(): unknown {
       select: () => {
         const chain = {
           eq: () => chain,
-          maybeSingle: async () => ({ data: estadoAtual, error: null }),
+          in: () => chain, is: () => chain, limit: async () => ({ data: [], error: null }), maybeSingle: async () => ({ data: estadoAtual, error: null }),
         };
         return chain;
       },

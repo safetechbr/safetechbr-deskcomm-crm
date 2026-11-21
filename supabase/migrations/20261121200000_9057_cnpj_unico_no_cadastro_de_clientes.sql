@@ -61,8 +61,6 @@ begin
     create trigger contatos_cnpj_unico
       before insert or update of custom_fields, organization_id, is_merged_into on public.contacts
       for each row execute function public.fn_guardar_cnpj_unico_do_contato();
-  else
-    drop index if exists public.idx_contacts_org_cnpj;
   end if;
 end
 $$;

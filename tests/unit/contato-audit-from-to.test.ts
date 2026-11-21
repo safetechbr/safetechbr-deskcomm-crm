@@ -52,7 +52,7 @@ let estadoAtual: Record<string, unknown>;
 function clienteFalso(): unknown {
   return {
     from: () => ({
-      select: () => { const chain = { eq: () => chain, maybeSingle: async () => ({ data: estadoAtual, error: null }) }; return chain; },
+      select: () => { const chain = { eq: () => chain, in: () => chain, is: () => chain, limit: async () => ({ data: [], error: null }), maybeSingle: async () => ({ data: estadoAtual, error: null }) }; return chain; },
       update: (patch: Record<string, unknown>) => { const chain = { eq: () => chain, select: () => chain, maybeSingle: async () => ({ data: { ...estadoAtual, ...patch }, error: null }) }; return chain; },
     }),
     rpc: () => ({ then: (r: (v: unknown) => unknown) => r({ error: null }) }),

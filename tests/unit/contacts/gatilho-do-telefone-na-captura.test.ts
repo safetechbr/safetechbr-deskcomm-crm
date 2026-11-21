@@ -342,7 +342,7 @@ function clienteDoPatch(): unknown {
       select: () => {
         const cadeia = {
           eq: () => cadeia,
-          maybeSingle: async () => ({ data: estadoAtual, error: null }),
+          in: () => cadeia, is: () => cadeia, limit: async () => ({ data: [], error: null }), maybeSingle: async () => ({ data: estadoAtual, error: null }),
         };
         return cadeia;
       },
