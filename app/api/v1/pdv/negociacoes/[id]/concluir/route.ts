@@ -16,6 +16,8 @@ import { traduzir } from "@/lib/i18n/dicionario";
 import { requireSupportWrite } from "@/lib/impersonate/support";
 import { COLUNAS_DA_NEGOCIACAO, type Negociacao, pendenciasParaConcluir } from "@/lib/pdv/regras";
 import { faltandoParaConcluir } from "@/lib/pdv/retrato-da-operacao";
+import { criarRascunhosDaNegociacao } from "@/lib/fiscal/criar-rascunhos";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +67,9 @@ export async function POST(
     if (error.message.includes("veiculo_indisponivel")) {
       return fail("conflict", t("Esse veículo já foi vendido."), 409, { requestId });
     }
+    if (error.message.includes("veiculo_reservado")) {
+      return fail("conflict", t("Esse veículo está reservado em outra negociação."), 409, { requestId });
+    }
     if (error.message.includes("negociacao_ja_fechada")) {
       return fail("conflict", t("Essa negociação já foi fechada."), 409, { requestId });
     }
@@ -87,6 +92,17 @@ export async function POST(
     .eq("id", id)
     .maybeSingle();
 
+  // Rascunhos das notas fiscais. Falha aqui nunca desfaz o fechamento: o lojista
+  // ainda consegue criar a nota depois pela tela fiscal.
+  let rascunhosFiscais: Awaited<ReturnType<typeof criarRascunhosDaNegociacao>> = [];
+  try {
+    rascunhosFiscais = await criarRascunhosDaNegociacao(
+      createAdminClient(), authz.org.orgId, (fechada ?? n) as unknown as Negociacao, authz.user.id,
+    );
+  } catch (e) {
+    console.error("[fiscal] rascunhos da negociação falharam", { requestId, id, e });
+  }
+
   await audit({
     organizationId: authz.org.orgId,
     actorUserId: authz.user.id,
@@ -94,7 +110,7 @@ export async function POST(
     resourceType: "negociacoes_de_veiculo",
     resourceId: id,
     requestId,
-    metadata: { tipo: n.tipo, numero: n.numero, valor_cents: n.valor_cents },
+    metadata: { tipo: n.tipo, numero: n.numero, valor_cents: n.valor_cents, rascunhos_fiscais: rascunhosFiscais.length },
   });
   return ok(fechada, { requestId });
 }

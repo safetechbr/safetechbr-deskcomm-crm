@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CadastroClienteModal } from "./cadastro-cliente-modal";
 import { apiClient } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/types";
 import { salvarArquivoDoCliente } from "@/components/pdv/documentos-do-cliente";
 import { lerDocumentoCliente } from "@/lib/pdv/ler-documento-cliente";
 import type * as Leitor from "@/lib/pdv/ler-documento-cliente";
@@ -41,6 +42,21 @@ function abrir(props: Partial<React.ComponentProps<typeof CadastroClienteModal>>
 }
 describe("um cadastro de cliente no PDV", () => {
   beforeEach(() => vi.clearAllMocks());
+  it("mostra a duplicidade e mantém o formulário de cliente aberto", async () => {
+    const mensagem = "Já existe um contato com este telefone.";
+    vi.mocked(apiClient.post).mockRejectedValueOnce(
+      new ApiError(409, "contact_exists", undefined, "req", mensagem),
+    );
+    const salvo = abrir();
+    fireEvent.change(screen.getByTestId("pdv-novo-cliente-nome"), {
+      target: { value: "Cliente Exemplo" },
+    });
+    fireEvent.click(screen.getByTestId("pdv-novo-cliente-salvar"));
+    expect(await screen.findByText(mensagem)).toBeInTheDocument();
+    expect(screen.getByTestId("pdv-novo-cliente-nome")).toHaveValue("Cliente Exemplo");
+    expect(salvo).not.toHaveBeenCalled();
+    expect(apiClient.patch).not.toHaveBeenCalled();
+  });
   it("cadastro pessoal e endereço alimentam o contato e o contrato no mesmo salvamento", async () => {
     vi.mocked(apiClient.post).mockImplementation(async (_url, body) => {
       const b = body as { name: string; custom_fields: Record<string, unknown> };
@@ -66,11 +82,12 @@ describe("um cadastro de cliente no PDV", () => {
     );
     expect(apiClient.post).toHaveBeenCalledWith(
       "/api/v1/contacts",
-      expect.objectContaining({
+      {
+        name: "Cliente Exemplo",
         custom_fields: {
           cadastro_cliente: { nacionalidade: "Brasileira", endereco: "Rua Exemplo" },
         },
-      }),
+      },
     );
   });
   it("editar usa o mesmo contato e preserva campos do CRM", async () => {

@@ -233,11 +233,10 @@ function Formulario({
         const atual = await apiClient.get<{ data: ContatoDoCadastro }>(
           `/api/v1/contacts/${idExistente}`,
         );
-        const { reuse_existing_phone: _reutilizar, ...patch } = corpo;
         const res = await apiClient.patch<{ data: ContatoDoCadastro }>(
           `/api/v1/contacts/${idExistente}`,
           {
-            ...patch,
+            ...corpo,
             ...(corpo.custom_fields
               ? {
                   custom_fields: mesclarCadastroDoCliente(

@@ -34,13 +34,13 @@ export type DocumentoDaPasta = (typeof DOCUMENTOS_DA_PASTA)[number];
 
 export const TITULO_DO_DOCUMENTO: Record<DocumentoDaPasta, string> = {
   contrato: "Contrato de compra e venda",
-  laudo_vistoria: "Laudo de vistoria (Anexo I)",
-  termo_entrega: "Termo de entrega (Anexo II)",
-  termo_recebimento: "Termo de recebimento (Anexo III)",
+  laudo_vistoria: "Laudo de vistoria",
+  termo_entrega: "Termo de entrega",
+  termo_recebimento: "Termo de recebimento",
   recibo_quitacao: "Recibo e termo de quitação",
   nota_promissoria: "Nota promissória",
-  procuracao_condutor: "Procuração de condutor (Anexo IV)",
-  procuracao_transferencia_entrada: "Procuração de transferência do veículo recebido (Anexo V)",
+  procuracao_condutor: "Indicação de condutor",
+  procuracao_transferencia_entrada: "Procuração de transferência do veículo recebido",
   procuracao_transferencia_comprador: "Procuração para transferência em nome do comprador",
   declaracao_residencia: "Declaração de residência",
   garantia_contratual: "Garantia contratual",
@@ -85,6 +85,19 @@ function item(
   };
 }
 
+const NO_CONTRATO = "Gerado como anexo do contrato, impresso após as assinaturas.";
+/** Anexo que o PDF do contrato de venda já imprime (ver anexosDaVenda). */
+function anexo(documento: DocumentoDaPasta): ItemDaPasta {
+  return {
+    documento,
+    titulo: TITULO_DO_DOCUMENTO[documento],
+    aplicacao: "aplica",
+    situacao: "pronto",
+    motivo: NO_CONTRATO,
+    pendencias: [],
+  };
+}
+
 function contrato(r: RetratoDaOperacao): ItemDaPasta {
   const base = {
     documento: "contrato" as const,
@@ -115,25 +128,19 @@ export function manifestoDaPasta(r: RetratoDaOperacao): ManifestoDaPasta {
   const b = r.blocos;
   const itens: ItemDaPasta[] = [
     contrato(r),
-    item(
-      "laudo_vistoria",
-      venda ? "aplica" : "nao_aplica",
-      venda
-        ? "Toda venda tem vistoria de saída."
-        : "Entrada por compra usa vistoria de entrada própria.",
-    ),
-    item(
-      "termo_entrega",
-      venda ? "aplica" : "nao_aplica",
-      venda ? "Registra a entrega real do veículo vendido." : "Compra pela loja não tem entrega.",
-    ),
-    item(
-      "termo_recebimento",
-      b.troca || !venda ? "aplica" : "nao_aplica",
-      b.troca || !venda
-        ? "A loja recebe um veículo nesta operação."
-        : "Venda sem troca: a loja não recebe veículo.",
-    ),
+    venda
+      ? anexo("laudo_vistoria")
+      : item("laudo_vistoria", "nao_aplica", "Entrada por compra usa vistoria de entrada própria."),
+    venda ? anexo("termo_entrega") : item("termo_entrega", "nao_aplica", "Compra pela loja não tem entrega."),
+    venda && b.troca
+      ? anexo("termo_recebimento")
+      : item(
+          "termo_recebimento",
+          b.troca || !venda ? "aplica" : "nao_aplica",
+          b.troca || !venda
+            ? "A loja recebe um veículo nesta operação."
+            : "Venda sem troca: a loja não recebe veículo.",
+        ),
     item(
       "recibo_quitacao",
       r.valores.pagamentos_previstos_cents > 0 ? "aplica" : "nao_aplica",
@@ -148,13 +155,9 @@ export function manifestoDaPasta(r: RetratoDaOperacao): ManifestoDaPasta {
         ? "Há pagamento futuro à loja."
         : "Sem pagamento futuro à própria loja.",
     ),
-    item(
-      "procuracao_condutor",
-      venda ? "condicao_nao_registrada" : "nao_aplica",
-      venda
-        ? `Depende de o veículo estar registrado em nome da loja. ${CONDICAO}`
-        : "Não se aplica à compra pela loja.",
-    ),
+    venda
+      ? anexo("procuracao_condutor")
+      : item("procuracao_condutor", "nao_aplica", "Não se aplica à compra pela loja."),
     item(
       "procuracao_transferencia_entrada",
       b.troca || !venda ? "condicao_nao_registrada" : "nao_aplica",

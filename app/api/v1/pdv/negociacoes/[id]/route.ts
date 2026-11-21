@@ -114,6 +114,7 @@ export async function PATCH(
     .eq("status", "rascunho")
     .select(COLUNAS_DA_NEGOCIACAO)
     .maybeSingle();
+  if (error?.code === "PT409") return fail("conflict", t(error.message), 409, { requestId });
   if (error) return fail("internal_error", "Erro ao salvar a negociação.", 500, { requestId });
   if (!data)
     return fail("conflict", t("Negociação já fechada não pode ser alterada."), 409, { requestId });

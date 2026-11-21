@@ -996,8 +996,12 @@ export function InboxLayout({
               colunas.lista,
             )}
           >
-            <BotaoIniciarConversa />
-            <InboxFilters value={filterValue} onChange={setFilterValue} visao={visaoDasConversas} />
+            <InboxFilters
+              value={filterValue}
+              onChange={setFilterValue}
+              visao={visaoDasConversas}
+              acaoDeInicio={<BotaoIniciarConversa />}
+            />
             {podeAgirEmLote && (
               <BarraDeAcoesEmLote
                 quantidade={selecao.quantidade}

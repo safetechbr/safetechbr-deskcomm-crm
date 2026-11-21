@@ -12,6 +12,7 @@ export function vendaCompleta(): Negociacao {
       documento: "52998224725",
       bairro: "Centro",
       cep: "64000000",
+      cnh: "01234567890",
     },
     troca: null,
     desconto_cents: 0,
@@ -28,6 +29,14 @@ export function vendaCompleta(): Negociacao {
       ...base.contrato!,
       empresa: { ...base.contrato!.empresa!, cnpj: "11222333000181" },
       recebimento_troca_em: undefined,
+      entrega_chaves: 2,
+      estado_veiculo: {
+        lataria: "sem avarias",
+        interior: "bom estado",
+        pneus: "meia-vida",
+        itens: "manual, chave de roda, macaco e triângulo",
+        observacoes: "",
+      },
     },
   };
 }
@@ -43,6 +52,7 @@ export function comTroca(n: Negociacao, quitacao = 500_000): Negociacao {
       placa: "BBB0B00",
       chassi: "CHASSI-DA-TROCA",
       renavam: "11111111111",
+      km: 55000,
       valor_cents: 2_000_000,
       quitacao_cents: quitacao,
       gravame_credor: "Banco Credor Exemplo",
@@ -56,6 +66,6 @@ export function comTroca(n: Negociacao, quitacao = 500_000): Negociacao {
       { forma: "financiamento", banco: "Banco Exemplo", valor_cents: 6_000_000, parcelas: 36 },
       { forma: "pix", valor_cents: 500_000, parcelas: 1 },
     ],
-    contrato: { ...n.contrato!, recebimento_troca_em: "2026-11-12" },
+    contrato: { ...n.contrato!, recebimento_troca_em: "2026-11-12", recebimento_troca_chaves: 1 },
   };
 }

@@ -1,8 +1,10 @@
+import { lerTaxasDeCartao } from "@/lib/pdv/taxas-de-cartao";
 import { novoContrato } from "@/lib/pdv/modelo-contrato";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { requireAuth, resolveActiveOrg } from "@/lib/auth/server";
+import { podeAdministrarEmpresa } from "@/lib/auth/pode-administrar-empresa";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { traduzir } from "@/lib/i18n/dicionario";
 import { COLUNAS_DA_NEGOCIACAO, type Negociacao } from "@/lib/pdv/regras";
@@ -37,7 +39,7 @@ export default async function PdvPage() {
   const [empresa, estoque, negociacoes] = await Promise.all([
     supabase
       .from("organizations")
-      .select("legal_name, display_name, cnpj, dados_contrato")
+      .select("legal_name, display_name, cnpj, dados_contrato, settings")
       .eq("id", activeOrg.orgId)
       .single(),
     supabase
@@ -82,8 +84,10 @@ export default async function PdvPage() {
       urlsDasCapas={urlsDasCapas}
       negociacoesIniciais={(negociacoes.data ?? []) as unknown as Negociacao[]}
       podeNegociar={podeNegociar}
+      podeSalvarPadrao={podeAdministrarEmpresa(user, activeOrg)}
       titulo={t("PDV")}
       usuarioId={user.id}
+      taxasDeCartao={lerTaxasDeCartao(empresa.data?.settings)}
       contratoPadrao={{ ...novoContrato(empresa.data ?? {}), atendido_por: user.full_name ?? "" }}
     />
   );

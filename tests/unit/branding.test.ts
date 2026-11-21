@@ -865,6 +865,26 @@ type CategoriaDeHost =
 type EntradaDeHost = { categoria: CategoriaDeHost; motivo: string };
 
 const HOSTS_DECLARADOS: Record<string, EntradaDeHost> = {
+  "sistemas.sefaz.pi.gov.br": {
+    categoria: "CONSOLE",
+    motivo:
+      "portal da SEFAZ do Piauí, exibido como link em Configurações > Fiscal para a loja obter o credenciamento estadual. O produto não faz requests para este host; quem o abre é o navegador do usuário.",
+  },
+  "api.focusnfe.com.br": {
+    categoria: "FORNECEDOR",
+    motivo:
+      "API de produção do provedor fiscal (Focus NFe): `lib/fiscal/focus/client.ts` envia e consulta NF-e/NFC-e neste host quando a loja está em ambiente de produção.",
+  },
+  "homologacao.focusnfe.com.br": {
+    categoria: "FORNECEDOR",
+    motivo:
+      "API de homologação do provedor fiscal (Focus NFe): `lib/fiscal/focus/client.ts` usa este host quando a loja está em ambiente de testes, sem validade fiscal.",
+  },
+  "viacep.com.br": {
+    categoria: "FORNECEDOR",
+    motivo:
+      "consulta pública de CEP: `lib/fiscal/ibge.ts` resolve o código IBGE do município a partir do CEP do cliente para preencher o endereço da nota fiscal.",
+  },
   "media.zernio.com": {
     categoria: "FORNECEDOR",
     motivo:
@@ -1411,6 +1431,10 @@ describe("catraca de host de terceiro no código que embarca", () => {
       // protocolo manda. Entrou aqui porque a régua nova do #914 passou a
       // enxergá-lo, e não porque o produto ganhou host novo.
       "s.whatsapp.net",
+      // Decisão escrita (módulo fiscal): portal estadual da SEFAZ-PI, aberto como
+      // link na tela de dados fiscais para a pessoa obter o credenciamento da loja.
+      // O código não fala com ele; quem abre é o navegador do usuário.
+      "sistemas.sefaz.pi.gov.br",
       // Decisão escrita (spec 24, auditoria de site): assinatura de construtor
       // (Google Sites) — nunca chamada, nunca exibida.
       "sites.google.com",

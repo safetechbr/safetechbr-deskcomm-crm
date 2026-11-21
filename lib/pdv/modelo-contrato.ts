@@ -1,6 +1,10 @@
 import { CLAUSULAS_DO_MODELO } from "./clausulas-modelo";
 import { z } from "zod";
 const campo = z.string().trim().max(300).default("");
+/** Prazo da garantia com número e unidade ("3 meses"): é o que permite imprimir a data final. */
+export const PRAZO_DA_GARANTIA = /(\d+)\s*(mes|meses|m[eê]s|dia|dias|ano|anos)/i;
+const quilometragem = z.number().int().min(0).max(10_000_000).optional();
+const chaves = z.number().int().min(1).max(10).optional();
 export const camposDaEmpresa = {
   razao_social: "Razão social",
   nome_fantasia: "Nome fantasia",
@@ -45,6 +49,16 @@ export const contratoSchema = z.object({
   /** Hora prevista da entrega do vendido (HH:MM). */
   entrega_hora: campo.optional(),
   recebimento_troca_hora: campo.optional(),
+  /** Termos de entrega e de recebimento: km e chaves no ato. Sem km, vale a do cadastro do veículo. */
+  entrega_km: quilometragem,
+  entrega_chaves: chaves,
+  recebimento_troca_km: quilometragem,
+  recebimento_troca_chaves: chaves,
+  /** Anexo do estado do veículo, conferido na assinatura. */
+  estado_veiculo: z
+    .object({ lataria: campo, interior: campo, pneus: campo, itens: campo, observacoes: campo })
+    .partial()
+    .optional(),
   /** Quem assina pela loja. */
   representante_nome: campo.optional(),
   representante_cpf: campo.optional(),
@@ -79,8 +93,19 @@ export const contratoSchema = z.object({
   garantia_contratual: z
     .object({ prazo: campo, componentes: z.string().trim().max(1000).default("") })
     .optional(),
-  /** Cl. 8.2: venda fora do estabelecimento dá arrependimento de 7 dias. */
+  /** Legado: use canal_venda. */
   venda_fora_do_estabelecimento: z.boolean().optional(),
+  /** Cl. 7.4: venda fora do estabelecimento dá arrependimento de 7 dias (art. 49 CDC). */
+  canal_venda: z.enum(["presencial", "fora_do_estabelecimento"]).optional(),
+  /** A cláusula especial restringe direito do comprador: sai em destaque. */
+  clausula_especial_limitativa: z.boolean().optional(),
+  /** Cl. 5ª variante A: a loja registra a saída no RENAVE. */
+  usa_renave: z.boolean().optional(),
+  prazo_renave_dias: z.number().int().min(1).max(10).optional(),
+  prazo_atpve_dias: z.number().int().min(1).max(10).optional(),
+  /** Cl. 7.2: fruição mensal (% do valor do veículo). Sem padrão no código. */
+  taxa_fruicao: z.number().min(0).max(10).optional(),
+
   email_lgpd: campo.optional(),
   testemunhas: z
     .array(z.object({ nome: campo, cpf: campo }))
@@ -96,6 +121,12 @@ export const configuracaoContratoSchema = empresaContratoSchema
     representante_cpf: campo.optional(),
     representante_cargo: campo.optional(),
     email_lgpd: campo.optional(),
+    /** Cl. 5ª variante A: a loja registra a saída no RENAVE. */
+    usa_renave: z.boolean().optional(),
+    prazo_renave_dias: z.number().int().min(1).max(10).optional(),
+    prazo_atpve_dias: z.number().int().min(1).max(10).optional(),
+    /** Cl. 7.2: fruição mensal (% do valor do veículo). Sem padrão no código. */
+    taxa_fruicao: z.number().min(0).max(10).optional(),
   });
 export function empresaDoCadastro(org: {
   legal_name?: string;
@@ -128,8 +159,19 @@ export function novoContrato(
     ...(empresa.email ? { email_lgpd: empresa.email } : {}),
     ...(config.success
       ? Object.fromEntries(
-          (["representante_nome", "representante_cpf", "representante_cargo", "email_lgpd"] as const)
-            .filter((k) => config.data[k])
+          (
+            [
+              "representante_nome",
+              "representante_cpf",
+              "representante_cargo",
+              "email_lgpd",
+              "usa_renave",
+              "prazo_renave_dias",
+              "prazo_atpve_dias",
+              "taxa_fruicao",
+            ] as const
+          )
+            .filter((k) => config.data[k] !== undefined && config.data[k] !== "")
             .map((k) => [k, config.data[k]]),
         )
       : {}),

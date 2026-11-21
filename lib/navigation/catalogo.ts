@@ -1258,6 +1258,26 @@ export const NAV_CATALOG = [
     // 900px, medido pelo e2e `navegacao.spec.ts`.
   },
   {
+    href: "/app/fiscal",
+    label: "Notas fiscais emitidas",
+    description: "Veja, emita, cancele e baixe as notas fiscais da loja.",
+    icon: "Receipt",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "agent",
+    // SEM `sidebar`: só no hub, pelo mesmo motivo de Notas Fiscais (o menu já estoura a dobra).
+  },
+  {
+    href: "/app/settings/fiscal",
+    label: "Notas Fiscais",
+    description: "Ative a emissão de NF-e da loja: certificado, regras fiscais e nota de teste.",
+    icon: "Receipt",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
+    // SEM `sidebar`: só no hub, pelo mesmo motivo de Marca (o menu já estoura a dobra).
+  },
+  {
     href: "/app/settings/billing",
     // Spec da cobrança §9: as mensagens de limite e a Central mandam para
     // "Configurações › Plano e cobrança" — o item precisa ter esse nome.

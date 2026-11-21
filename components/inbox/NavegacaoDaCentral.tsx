@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useT } from "@/hooks/i18n/useT";
 import { useFunisDoMenu } from "@/hooks/pipelines/useFunisDoMenu";
-import { ChatCircle, ListChecks, Kanban, CaretDown } from "@/lib/ui/icons";
+import { ChatCircle, ListChecks, Kanban, CaretDown, DotsThree } from "@/lib/ui/icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,9 +31,16 @@ export function NavegacaoDaCentral({
   const [aberto, setAberto] = useState(false);
   const funis = useFunisDoMenu(aberto);
   return (
-    <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/60 px-3 py-2">
-      <Tabs value={visao} onValueChange={(valor) => onChange(valor as VisaoDaCentral)}>
-        <TabsList aria-label={t("Visões da central")} className="h-auto rounded-full">
+    <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border/60 px-3 py-2 max-md:flex-nowrap max-md:gap-1.5 max-md:px-2 max-md:py-1">
+      <Tabs
+        value={visao}
+        onValueChange={(valor) => onChange(valor as VisaoDaCentral)}
+        className="max-md:min-w-0 max-md:flex-1"
+      >
+        <TabsList
+          aria-label={t("Visões da central")}
+          className="h-auto rounded-full max-md:w-full max-md:justify-start max-md:p-0.5"
+        >
           {(
             [
               ["tarefas", "A fazer", ListChecks],
@@ -44,10 +51,18 @@ export function NavegacaoDaCentral({
             <TabsTrigger
               key={id}
               value={id}
-              className="gap-1.5 px-2.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground sm:gap-2 sm:px-4 sm:text-sm lg:min-h-9"
+              aria-label={t(label)}
+              className="gap-1.5 px-2.5 text-xs data-[state=active]:bg-accent data-[state=active]:text-accent-foreground sm:gap-2 sm:px-4 sm:text-sm max-md:flex-1 max-md:shrink-0 max-md:px-2 lg:min-h-9"
             >
-              <Icon size={16} aria-hidden />
-              {t(label)}
+              <Icon size={16} aria-hidden className="hidden md:block" />
+              {id === "funil" ? (
+                <>
+                  <span className="md:hidden">{t("Funil")}</span>
+                  <span className="hidden md:inline">{t(label)}</span>
+                </>
+              ) : (
+                t(label)
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -56,13 +71,15 @@ export function NavegacaoDaCentral({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="rounded-full"
+            className="shrink-0 rounded-full max-md:w-11 max-md:p-0 max-md:aria-pressed:border-accent"
             aria-label={t("Abrir outros funis")}
             aria-pressed={visao === "outro-funil"}
+            title={t("Outros funis")}
           >
-            <Kanban size={16} aria-hidden />
-            {t("Outros funis")}
-            <CaretDown size={12} aria-hidden />
+            <DotsThree size={16} weight="bold" aria-hidden className="md:hidden" />
+            <Kanban size={16} aria-hidden className="hidden md:block" />
+            <span className="hidden md:inline">{t("Outros funis")}</span>
+            <CaretDown size={12} aria-hidden className="hidden md:block" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-80 min-w-56 overflow-y-auto">

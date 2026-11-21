@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
+import { useState } from "react";
+
 import {
   camposDaEmpresa,
   type EmpresaContrato,
   type DadosDoContrato,
   type regularizacaoSchema,
 } from "@/lib/pdv/modelo-contrato";
-import type { PagamentoDaNegociacao } from "@/lib/pdv/regras";
+import { ROTULO_DA_FORMA, type PagamentoDaNegociacao } from "@/lib/pdv/regras";
 import type { BlocosDaOperacao } from "@/lib/pdv/retrato-da-operacao";
 import type { z } from "zod";
 
@@ -192,6 +195,63 @@ export function EditorDoRepresentante({
   );
 }
 
+/** RENAVE e fruição: padrões da loja, revisáveis em cada contrato. */
+export function EditorDosPrazos({
+  valor,
+  onChange,
+}: {
+  valor: Partial<
+    Pick<DadosDoContrato, "usa_renave" | "prazo_renave_dias" | "prazo_atpve_dias" | "taxa_fruicao">
+  >;
+  onChange: (v: typeof valor) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={!!valor.usa_renave}
+          onChange={(e) => onChange({ ...valor, usa_renave: e.target.checked })}
+        />
+        A loja registra a saída no RENAVE
+      </label>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {valor.usa_renave ? (
+          <Campo
+            nome="Prazo do registro no RENAVE (dias úteis)"
+            tipo="number"
+            min={1}
+            max={10}
+            valor={valor.prazo_renave_dias}
+            campo="contrato.prazo_renave_dias"
+            mudar={(v) => onChange({ ...valor, prazo_renave_dias: numero(v) })}
+          />
+        ) : (
+          <Campo
+            nome="Prazo de entrega do ATPV-e (dias úteis)"
+            tipo="number"
+            min={1}
+            max={10}
+            valor={valor.prazo_atpve_dias}
+            campo="contrato.prazo_atpve_dias"
+            mudar={(v) => onChange({ ...valor, prazo_atpve_dias: numero(v) })}
+          />
+        )}
+        <Campo
+          nome="Fruição por mês de uso, se desfeito (%)"
+          tipo="number"
+          min={0}
+          max={10}
+          step="0.1"
+          valor={valor.taxa_fruicao}
+          campo="contrato.taxa_fruicao"
+          mudar={(v) => onChange({ ...valor, taxa_fruicao: numero(v) })}
+        />
+      </div>
+    </div>
+  );
+}
+
 type Regularizacao = z.infer<typeof regularizacaoSchema>;
 export function EditorRegularizacao({
   valor,
@@ -294,7 +354,7 @@ function Setor({
   children: React.ReactNode;
 }) {
   return (
-    <details open className="space-y-3 rounded-lg border p-3" id={id} data-testid={id}>
+    <details className="space-y-3 rounded-lg border p-3" id={id} data-testid={id}>
       <summary className="cursor-pointer text-sm font-medium">{titulo}</summary>
       {descricao ? <p className="text-xs text-muted-foreground">{descricao}</p> : null}
       {children}
@@ -308,18 +368,29 @@ export function EditorDoContrato({
   onChange,
   requisitos,
   faltando,
+  onSalvarPadrao,
+  mostrarTitulo = true,
 }: {
   contrato?: DadosDoContrato | null;
+  mostrarTitulo?: boolean;
   pagamentos: PagamentoDaNegociacao[];
   onChange: (v: DadosDoContrato, p: PagamentoDaNegociacao[]) => void;
   /** Sem requisitos (ex.: compra), só os campos fixos levam asterisco. */
   requisitos?: RequisitosDoContrato;
   /** Campos pendentes agora, como `contrato.entrega_em` ou `empresa.cnpj`. */
   faltando?: ReadonlySet<string>;
+  /** Presente só para quem pode administrar a empresa: grava os dados da loja como padrão. */
+  onSalvarPadrao?: (c: DadosDoContrato) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const [editandoLoja, setEditandoLoja] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [avisoPadrao, setAvisoPadrao] = useState<string | null>(null);
+  const [condicaoAberta, setCondicaoAberta] = useState<boolean>();
   if (!contrato)
     return <p className="text-xs text-muted-foreground">Contrato no modelo anterior.</p>;
   const c = contrato;
+  const temCondicao = Boolean(c.clausula_especial?.trim());
+  const mostrarCondicao = condicaoAberta ?? temCondicao;
   const mudar = (v: Partial<DadosDoContrato>) => onChange({ ...c, ...v }, pagamentos);
   function pagamento(i: number, v: Partial<PagamentoDaNegociacao>) {
     onChange(
@@ -327,6 +398,20 @@ export function EditorDoContrato({
       pagamentos.map((p, j) => (i === j ? { ...p, ...v } : p)),
     );
   }
+  const detalhesDosPagamentos = pagamentos.flatMap((p, indice) => {
+    const temValor = p.valor_cents > 0;
+    const temTitulo = temValor && ["boleto", "cheque", "promissoria"].includes(p.forma);
+    const aPrazo = temTitulo || (temValor && ["financiamento", "consorcio"].includes(p.forma));
+    const campos = {
+      situacao: aPrazo || Boolean(p.situacao?.trim()),
+      emissao: temTitulo || Boolean(p.data_emissao),
+      previsao: aPrazo || Boolean(p.data_pagamento),
+      intervalo: (temTitulo && p.parcelas > 1) || Boolean(p.intervalo_dias),
+      chavePix: Boolean(p.chave_pix?.trim()),
+    };
+    return Object.values(campos).some(Boolean) ? [{ p, indice, campos }] : [];
+  });
+  const lojaCompleta = EMPRESA_OBRIGATORIA.every((k) => (c.empresa?.[k] ?? "").trim() !== "");
   const venda = requisitos?.venda ?? false;
   const blocos = requisitos?.blocos;
   const f = (campo: string) => faltando?.has(`contrato.${campo}`);
@@ -338,6 +423,9 @@ export function EditorDoContrato({
     const lista = testemunhas.map((t, j) => (i === j ? { ...t, ...v } : t));
     mudar({ testemunhas: lista.filter((t) => t.nome.trim() || t.cpf.trim()) });
   }
+  const estado = c.estado_veiculo ?? {};
+  const mudarEstado = (v: Partial<typeof estado>) =>
+    mudar({ estado_veiculo: { ...estado, ...v } });
   const garantia = c.garantia_contratual ?? { prazo: "", componentes: "" };
   function mudarGarantia(v: Partial<typeof garantia>) {
     const g = { ...garantia, ...v };
@@ -345,27 +433,86 @@ export function EditorDoContrato({
   }
   return (
     <section className="space-y-3" data-testid="pdv-dados-contrato">
-      <h3 className="text-sm font-normal text-muted-foreground">Dados do contrato</h3>
+      {mostrarTitulo && <h3 className="text-sm font-normal text-muted-foreground">Dados do contrato</h3>}
       <p className="text-xs text-muted-foreground">
         Campos com <span className="text-destructive">*</span> são obrigatórios para concluir. Os
         demais saem em branco no contrato, para preenchimento à mão.
       </p>
 
       <Setor id="pdv-setor-loja" titulo="Loja (vendedora)">
-        <EditorDaEmpresa
-          comObrigatorios
-          faltando={faltando}
-          valor={c.empresa ?? {}}
-          onChange={(empresa) =>
-            mudar({ empresa: { ...c.empresa, ...empresa } as EmpresaContrato })
-          }
-        />
-        <EditorDoRepresentante valor={c} onChange={(v) => mudar(v)} />
-        <Campo
-          nome="Atendido por"
-          valor={c.atendido_por}
-          mudar={(atendido_por) => mudar({ atendido_por })}
-        />
+        {lojaCompleta && !editandoLoja ? (
+          <div className="flex items-start justify-between gap-3" data-testid="pdv-loja-resumo">
+            <div className="text-sm">
+              <p className="font-medium">{c.empresa?.razao_social}</p>
+              <p className="text-xs text-muted-foreground">
+                CNPJ {c.empresa?.cnpj} · {c.empresa?.cidade}/{c.empresa?.uf}
+                {c.atendido_por ? ` · Atendido por ${c.atendido_por}` : ""}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="rounded-lg border px-3 py-1 text-xs"
+              onClick={() => setEditandoLoja(true)}
+            >
+              Editar
+            </button>
+          </div>
+        ) : (
+          <>
+            {!lojaCompleta ? (
+              <p
+                role="alert"
+                className="rounded-lg border border-destructive/40 p-2 text-xs"
+                data-testid="pdv-loja-alerta"
+              >
+                Faltam dados da loja. Preencha uma vez em{" "}
+                <Link href="/app/settings/tenant" className="underline">
+                  Configurações › Empresa
+                </Link>{" "}
+                e eles virão prontos em toda venda.
+              </p>
+            ) : null}
+            <EditorDaEmpresa
+              comObrigatorios
+              faltando={faltando}
+              valor={c.empresa ?? {}}
+              onChange={(empresa) =>
+                mudar({ empresa: { ...c.empresa, ...empresa } as EmpresaContrato })
+              }
+            />
+            <EditorDoRepresentante valor={c} onChange={(v) => mudar(v)} />
+            <Campo
+              nome="Atendido por"
+              valor={c.atendido_por}
+              mudar={(atendido_por) => mudar({ atendido_por })}
+            />
+            {onSalvarPadrao ? (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border px-3 py-1 text-xs disabled:opacity-50"
+                  disabled={salvando}
+                  onClick={async () => {
+                    setSalvando(true);
+                    setAvisoPadrao(null);
+                    const r = await onSalvarPadrao(c);
+                    setSalvando(false);
+                    setAvisoPadrao(
+                      r.ok ? "Salvo como padrão da loja." : (r.error ?? "Não foi possível salvar."),
+                    );
+                  }}
+                >
+                  Salvar como padrão da loja
+                </button>
+                {avisoPadrao ? (
+                  <span className="text-xs text-muted-foreground" role="status">
+                    {avisoPadrao}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        )}
       </Setor>
 
       <Setor id="pdv-setor-entrega" titulo="Entrega e transferência">
@@ -385,6 +532,28 @@ export function EditorDoContrato({
             valor={c.entrega_hora}
             mudar={(entrega_hora) => mudar({ entrega_hora })}
           />
+          <Campo
+            nome="Quilometragem na entrega"
+            tipo="number"
+            min={0}
+            max={10_000_000}
+            falta={f("entrega_km")}
+            campo="contrato.entrega_km"
+            placeholder="vazio = a do cadastro do veículo"
+            valor={c.entrega_km}
+            mudar={(v) => mudar({ entrega_km: numero(v) })}
+          />
+          <Campo
+            nome="Chaves entregues"
+            tipo="number"
+            min={1}
+            max={10}
+            obrigatorio
+            falta={f("entrega_chaves")}
+            campo="contrato.entrega_chaves"
+            valor={c.entrega_chaves}
+            mudar={(v) => mudar({ entrega_chaves: numero(v) })}
+          />
           {!requisitos || blocos?.troca ? (
             <>
               <Campo
@@ -402,6 +571,29 @@ export function EditorDoContrato({
                 valor={c.recebimento_troca_hora}
                 mudar={(recebimento_troca_hora) => mudar({ recebimento_troca_hora })}
               />
+              <Campo
+                nome="Quilometragem da troca no recebimento"
+                tipo="number"
+                min={0}
+                max={10_000_000}
+                obrigatorio={!!blocos?.troca}
+                falta={f("recebimento_troca_km")}
+                campo="contrato.recebimento_troca_km"
+                placeholder="km no ato do recebimento"
+                valor={c.recebimento_troca_km}
+                mudar={(v) => mudar({ recebimento_troca_km: numero(v) })}
+              />
+              <Campo
+                nome="Chaves recebidas com a troca"
+                tipo="number"
+                min={1}
+                max={10}
+                obrigatorio={!!blocos?.troca}
+                falta={f("recebimento_troca_chaves")}
+                campo="contrato.recebimento_troca_chaves"
+                valor={c.recebimento_troca_chaves}
+                mudar={(v) => mudar({ recebimento_troca_chaves: numero(v) })}
+              />
             </>
           ) : null}
           <Escolha
@@ -415,17 +607,6 @@ export function EditorDoContrato({
               ["vendedora", "Loja (vendedora)"],
             ]}
             mudar={(transferencia_taxas_por) => mudar({ transferencia_taxas_por })}
-          />
-          <Campo
-            nome="Prazo da transferência (dias)"
-            tipo="number"
-            min={1}
-            max={90}
-            obrigatorio={venda}
-            falta={f("transferencia_prazo_dias")}
-            campo="contrato.transferencia_prazo_dias"
-            valor={c.transferencia_prazo_dias}
-            mudar={(v) => mudar({ transferencia_prazo_dias: numero(v) })}
           />
           <Escolha
             nome="Prazo contado a partir da"
@@ -512,27 +693,22 @@ export function EditorDoContrato({
               mudar={(v) => mudar({ financiamento_prazo_dias: numero(v) })}
             />
           ) : null}
-          {venda ? (
-            <Campo
-              nome="Retenção por mês de uso, se desfeito (%)"
-              tipo="number"
-              min={0}
-              max={10}
-              step="0.1"
-              valor={c.retencao_percentual_mes}
-              campo="contrato.retencao_percentual_mes"
-              mudar={(v) => mudar({ retencao_percentual_mes: numero(v) })}
-            />
-          ) : null}
         </div>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={!!c.venda_fora_do_estabelecimento}
-            onChange={(e) => mudar({ venda_fora_do_estabelecimento: e.target.checked })}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Escolha
+            nome="Canal da venda"
+            valor={
+              c.canal_venda ??
+              (c.venda_fora_do_estabelecimento ? "fora_do_estabelecimento" : "presencial")
+            }
+            opcoes={[
+              ["presencial", "Presencial, na loja"],
+              ["fora_do_estabelecimento", "Fora da loja (7 dias de arrependimento)"],
+            ]}
+            mudar={(canal_venda) => mudar({ canal_venda })}
           />
-          Venda fora do estabelecimento (dá ao comprador 7 dias de arrependimento)
-        </label>
+        </div>
+        {venda ? <EditorDosPrazos valor={c} onChange={(v) => mudar(v)} /> : null}
 
         <details className="space-y-3">
           <summary className="cursor-pointer text-sm">Consulta de débitos do veículo</summary>
@@ -581,18 +757,71 @@ export function EditorDoContrato({
           </div>
         </details>
 
+        <div className="space-y-3" data-testid="pdv-estado-veiculo">
+          <p className="text-sm">Estado do veículo na assinatura (anexo do contrato)</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Campo
+              nome="Lataria e pintura"
+              placeholder="ex.: sem amassados, risco no para-choque"
+              obrigatorio
+              falta={f("estado_veiculo.lataria")}
+              campo="contrato.estado_veiculo.lataria"
+              valor={estado.lataria}
+              mudar={(lataria) => mudarEstado({ lataria })}
+            />
+            <Campo
+              nome="Interior"
+              placeholder="ex.: bancos sem rasgos, painel íntegro"
+              obrigatorio
+              falta={f("estado_veiculo.interior")}
+              campo="contrato.estado_veiculo.interior"
+              valor={estado.interior}
+              mudar={(interior) => mudarEstado({ interior })}
+            />
+            <Campo
+              nome="Pneus"
+              placeholder="ex.: 4 pneus meia-vida, estepe novo"
+              obrigatorio
+              falta={f("estado_veiculo.pneus")}
+              campo="contrato.estado_veiculo.pneus"
+              valor={estado.pneus}
+              mudar={(pneus) => mudarEstado({ pneus })}
+            />
+            <Campo
+              nome="Itens e acessórios"
+              placeholder="ex.: manual, chave de roda, macaco, triângulo"
+              obrigatorio
+              falta={f("estado_veiculo.itens")}
+              campo="contrato.estado_veiculo.itens"
+              valor={estado.itens}
+              mudar={(itens) => mudarEstado({ itens })}
+            />
+            <Campo
+              nome="Observações"
+              valor={estado.observacoes}
+              mudar={(observacoes) => mudarEstado({ observacoes })}
+            />
+          </div>
+        </div>
+
         <details className="space-y-3">
           <summary className="cursor-pointer text-sm">Garantia contratual (opcional)</summary>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Campo
               nome="Prazo da garantia"
               placeholder="ex.: 3 meses"
+              obrigatorio={!!c.garantia_contratual}
+              falta={f("garantia_contratual.prazo")}
+              campo="contrato.garantia_contratual.prazo"
               valor={garantia.prazo}
               mudar={(prazo) => mudarGarantia({ prazo })}
             />
             <Campo
               nome="Componentes cobertos"
               placeholder="ex.: motor e câmbio"
+              obrigatorio={!!c.garantia_contratual}
+              falta={f("garantia_contratual.componentes")}
+              campo="contrato.garantia_contratual.componentes"
               valor={garantia.componentes}
               mudar={(componentes) => mudarGarantia({ componentes })}
             />
@@ -617,59 +846,87 @@ export function EditorDoContrato({
           ))}
         </details>
 
-        <details className="space-y-3">
-          <summary className="cursor-pointer text-sm">Detalhes contratuais dos pagamentos</summary>
-          {pagamentos.map((p, i) => (
-            <div key={i} className="space-y-2 rounded-lg border p-3">
-              <p className="text-xs font-medium">
-                Pagamento {i + 1} · {p.forma}
-              </p>
-              <Campo
-                nome="Situação / responsável pelo pagamento"
-                valor={p.situacao}
-                mudar={(situacao) => pagamento(i, { situacao })}
-              />
-              <Campo
-                nome="Data de emissão"
-                tipo="date"
-                valor={p.data_emissao}
-                mudar={(data_emissao) => pagamento(i, { data_emissao: data_emissao || null })}
-              />
-              <Campo
-                nome="Data de pagamento / previsão"
-                tipo="date"
-                valor={p.data_pagamento}
-                mudar={(data_pagamento) => pagamento(i, { data_pagamento: data_pagamento || null })}
-              />
-              <Campo
-                nome="Intervalo entre parcelas (dias)"
-                tipo="number"
-                valor={p.intervalo_dias}
-                mudar={(v) => pagamento(i, { intervalo_dias: numero(v) })}
-              />
-              <Campo
-                nome="Tipo e chave PIX"
-                valor={p.chave_pix}
-                mudar={(chave_pix) => pagamento(i, { chave_pix })}
-              />
-            </div>
-          ))}
-        </details>
+        {detalhesDosPagamentos.length > 0 && (
+          <details className="space-y-3">
+            <summary className="cursor-pointer text-sm">Detalhes contratuais dos pagamentos</summary>
+            {detalhesDosPagamentos.map(({ p, indice, campos }) => (
+              <div key={indice} className="space-y-2 rounded-lg border p-3">
+                <p className="text-xs font-medium">
+                  Pagamento {indice + 1} · {ROTULO_DA_FORMA[p.forma]}
+                </p>
+                {campos.situacao && (
+                  <Campo
+                    nome="Situação / responsável pelo pagamento"
+                    valor={p.situacao}
+                    mudar={(situacao) => pagamento(indice, { situacao })}
+                  />
+                )}
+                {campos.emissao && (
+                  <Campo
+                    nome="Data de emissão"
+                    tipo="date"
+                    valor={p.data_emissao}
+                    mudar={(data_emissao) => pagamento(indice, { data_emissao: data_emissao || null })}
+                  />
+                )}
+                {campos.previsao && (
+                  <Campo
+                    nome="Data de pagamento / previsão"
+                    tipo="date"
+                    valor={p.data_pagamento}
+                    mudar={(data_pagamento) => pagamento(indice, { data_pagamento: data_pagamento || null })}
+                  />
+                )}
+                {campos.intervalo && (
+                  <Campo
+                    nome="Intervalo entre parcelas (dias)"
+                    tipo="number"
+                    valor={p.intervalo_dias}
+                    mudar={(v) => pagamento(indice, { intervalo_dias: numero(v) })}
+                  />
+                )}
+                {campos.chavePix && (
+                  <Campo
+                    nome="Tipo e chave PIX"
+                    valor={p.chave_pix}
+                    mudar={(chave_pix) => pagamento(indice, { chave_pix })}
+                  />
+                )}
+              </div>
+            ))}
+          </details>
+        )}
 
-        <p className="text-xs text-muted-foreground">
-          As cláusulas do contrato são as do modelo da loja e não se editam aqui. Condições
-          específicas desta operação entram na cláusula especial.
-        </p>
-        <label className="block text-xs text-muted-foreground">
-          Cláusula especial
-          <textarea
-            className={estilo}
-            rows={4}
-            maxLength={6000}
-            value={c.clausula_especial ?? ""}
-            onChange={(e) => mudar({ clausula_especial: e.target.value })}
-          />
-        </label>
+        <button
+          type="button"
+          aria-expanded={mostrarCondicao}
+          className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-hidden disabled:opacity-60"
+          onClick={() => setCondicaoAberta(!mostrarCondicao)}
+        >
+          {temCondicao ? "Condição especial" : "Adicionar condição especial"}
+        </button>
+        {mostrarCondicao && (
+          <>
+            <label className="block text-xs text-muted-foreground">
+              Cláusula especial
+              <textarea
+                className={estilo}
+                rows={4}
+                maxLength={6000}
+                value={c.clausula_especial ?? ""}
+                onChange={(e) => mudar({ clausula_especial: e.target.value })}
+              />
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={!!c.clausula_especial_limitativa}
+                onChange={(e) => mudar({ clausula_especial_limitativa: e.target.checked })}
+              />
+              Restringe direito do comprador (sai em destaque no contrato)
+            </label>
+          </>
+        )}
       </Setor>
     </section>
   );

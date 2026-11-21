@@ -107,7 +107,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (entrada.tipo === "compra") entrada.troca = null;
 
   let data: unknown = null;
-  let error: { code?: string } | null = null;
+  let error: { code?: string; message?: string } | null = null;
   // Número sequencial por organização; dois vendedores ao mesmo tempo podem
   // pegar o mesmo — o índice único recusa e tentamos o próximo.
   for (let tentativa = 0; tentativa < 5; tentativa++) {
@@ -134,6 +134,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     error = r.error;
     if (!error || error.code !== "23505") break;
   }
+  if (error?.code === "PT409")
+    return fail("conflict", t(error.message ?? "Esse veículo não está disponível para reserva."), 409, { requestId });
   if (error) return fail("internal_error", "Erro ao salvar a negociação.", 500, { requestId });
 
   const criada = data as { id: string; tipo: string; numero: number };

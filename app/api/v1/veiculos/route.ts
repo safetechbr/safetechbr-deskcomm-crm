@@ -34,6 +34,8 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const params = req.nextUrl.searchParams;
   const supabase = await createClient();
+  // Reserva do PDV vencida devolve o carro antes de listar (sem cron). Falha aqui não bloqueia a lista.
+  await supabase.rpc("fn_pdv_liberar_reservas_vencidas", { p_org: authz.org.orgId });
   let q = supabase
     .from("veiculos")
     .select(COLUNAS_DO_VEICULO)

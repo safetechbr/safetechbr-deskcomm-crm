@@ -71,6 +71,29 @@ const VALUE: InboxFiltersValue = { tab: "ai", search: "", onlyUnread: false };
 
 afterEach(cleanup);
 
+it("recolhe os filtros no celular e identifica quando há um filtro ativo", () => {
+  const onChange = vi.fn();
+  const { rerender } = render(<InboxFilters value={VALUE} onChange={onChange} />);
+  const botao = screen.getByRole("button", { name: "Filtros" });
+  expect(botao).toHaveAttribute("aria-expanded", "false");
+  const filtros = document.getElementById(botao.getAttribute("aria-controls") ?? "");
+  expect(filtros).toHaveClass("max-md:hidden");
+
+  fireEvent.click(botao);
+  expect(botao).toHaveAttribute("aria-expanded", "true");
+  expect(filtros).not.toHaveClass("max-md:hidden");
+  fireEvent.click(screen.getByRole("button", { name: "Não lidos" }));
+  const filtrado = { ...VALUE, onlyUnread: true };
+  expect(onChange).toHaveBeenCalledWith(filtrado);
+
+  rerender(<InboxFilters value={filtrado} onChange={onChange} />);
+  fireEvent.click(botao);
+  expect(botao).toHaveAttribute("aria-expanded", "false");
+  expect(botao).toHaveAccessibleName("Filtros ativos");
+  fireEvent.click(botao);
+  expect(screen.getByRole("button", { name: "Não lidos" })).toHaveAttribute("aria-pressed", "true");
+});
+
 function faixa(): HTMLElement {
   const list = screen.getByRole("tablist");
   expect(list, "a faixa de abas não renderizou").toBeTruthy();

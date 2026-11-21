@@ -20,8 +20,11 @@ import { roleAtLeast } from "@/lib/auth/types";
 import { canonicalPhoneBR, phoneLookupVariants } from "@/lib/channels/phone-variants";
 import { encontrarContatoPorTelefone } from "@/lib/channels/contato-por-telefone";
 import {
+  INDICE_CNPJ,
   INDICE_CPF,
   INDICE_EMAIL,
+  cnpjDoCadastro,
+  encontrarContatoPorCnpj,
   encontrarContatoPorCpfHash,
   encontrarContatoPorEmail,
   nomeDoIndiceUnico,
@@ -521,18 +524,13 @@ async function erroDeConflitoUnico(
   //    telefone: o PATCH da tela reenvia o telefone do PRÓPRIO contato, e a
   //    releitura por telefone o acharia — 409 de telefone apontando para si mesmo.
   const indice = nomeDoIndiceUnico(erro);
+  if (indice === INDICE_CNPJ) return conflitoDeCadastro(ctx, "CNPJ");
   if (indice === INDICE_CPF) {
     const hash = typeof campos.cpf_hash === "string" ? campos.cpf_hash : null;
     if (hash) {
       const existente = await encontrarContatoPorCpfHash(supabase, ctx.organization_id, hash);
       if (existente) {
-        return new ApiError(
-          409,
-          "contact_exists",
-          { contact_id: existente.id },
-          ctx.requestId,
-          traduzir("Já existe um contato com este CPF.", idioma),
-        );
+        return conflitoDeCadastro(ctx, "CPF", existente.id);
       }
     }
   }
@@ -561,17 +559,26 @@ async function erroDeConflitoUnico(
   if (telefone) {
     const existente = await encontrarContatoPorTelefone(supabase, ctx.organization_id, telefone);
     if (existente && existente.id !== excluirId) {
-      return new ApiError(
-        409,
-        "contact_exists",
-        { contact_id: existente.id },
-        ctx.requestId,
-        traduzir("Já existe um contato com este telefone.", idioma),
-      );
+      return conflitoDeCadastro(ctx, "telefone", existente.id);
     }
   }
 
   return null;
+}
+
+function conflitoDeCadastro(ctx: HandlerCtx, campo: "CPF" | "CNPJ" | "telefone", id?: string) {
+  const mensagens = {
+    CPF: "Já existe um contato com este CPF.",
+    CNPJ: "Já existe um contato com este CNPJ.",
+    telefone: "Já existe um contato com este telefone.",
+  } as const;
+  return new ApiError(
+    409,
+    "contact_exists",
+    id ? { contact_id: id } : undefined,
+    ctx.requestId,
+    traduzir(mensagens[campo], ctx.idioma ?? "pt-BR"),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -590,6 +597,16 @@ export async function createContactHandler(
 ): Promise<CreateContactResult> {
   const reaproveitado = await atualizarCadastroManual(supabase, ctx, input, patchContactHandler);
   if (reaproveitado) return { contact: reaproveitado, action: "updated" };
+
+  if (input.source === "manual" && input.phone_number && !input.reuse_existing_phone) {
+    const existente = await encontrarContatoPorTelefone(supabase, ctx.organization_id, input.phone_number);
+    if (existente) throw conflitoDeCadastro(ctx, "telefone", existente.id);
+  }
+  const cnpj = cnpjDoCadastro(input.custom_fields);
+  if (cnpj) {
+    const existente = await encontrarContatoPorCnpj(supabase, ctx.organization_id, cnpj);
+    if (existente) throw conflitoDeCadastro(ctx, "CNPJ", existente.id);
+  }
 
   // ── O PADRÃO (#2730) — a MESMA régua do formulário, aqui no SERVIDOR ──────
   //
@@ -635,7 +652,12 @@ export async function createContactHandler(
     // #2522: os DOIS campos ou NENHUM — o CHECK `contacts_cpf_consistency`
     // recusa a linha inteira se só o hash for gravado. Sem cifra disponível
     // (RPC ausente ou chave não semeada) o contato nasce SEM CPF.
-    Object.assign(insertRow, await camposCpfParaGravar(supabase, input.cpf));
+    const campos = await camposCpfParaGravar(supabase, input.cpf);
+    if (!campos.cpf_hash) {
+      const existente = await encontrarContatoPorCpfHash(supabase, ctx.organization_id, hashCpf(input.cpf));
+      if (existente) throw conflitoDeCadastro(ctx, "CPF", existente.id);
+    }
+    Object.assign(insertRow, campos);
   }
 
   const { data: created, error: insErr } = await supabase
@@ -752,6 +774,16 @@ export async function patchContactHandler(
       ctx.requestId,
       traduzir("Contato anonimizado — edição bloqueada (LGPD).", ctx.idioma ?? "pt-BR"),
     );
+  }
+
+  if (input.phone_number && canonicalPhoneBR(input.phone_number) !== existing.phone_number) {
+    const outro = await encontrarContatoPorTelefone(supabase, ctx.organization_id, input.phone_number);
+    if (outro && outro.id !== contactId) throw conflitoDeCadastro(ctx, "telefone", outro.id);
+  }
+  const cnpj = cnpjDoCadastro(input.custom_fields);
+  if (cnpj && cnpj !== cnpjDoCadastro(existing.custom_fields)) {
+    const outro = await encontrarContatoPorCnpj(supabase, ctx.organization_id, cnpj, contactId);
+    if (outro) throw conflitoDeCadastro(ctx, "CNPJ", outro.id);
   }
 
   // ── O PADRÃO (#2730) — DEPOIS do select, e só sobre o que MUDOU ──────────

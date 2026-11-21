@@ -7785,6 +7785,8 @@ export const DICIONARIO: Traducoes = {
   "De qualquer um": { es: "De cualquiera" },
   "Da equipe (nós não falamos)": { es: "Del equipo (no hablamos)" },
   Filtro: { es: "Filtro" },
+  Filtros: { es: "Filtros" },
+  "Filtros ativos": { es: "Filtros activos" },
   "As condições ficam numa caixa só, e ela já está no desenho.": {
     es: "Las condiciones van en una sola caja, y ya está en el diseño.",
   },

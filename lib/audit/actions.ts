@@ -1414,6 +1414,21 @@ export const AUDIT_ACTIONS = [
   "ai.knowledge_source_updated",
   "ai.knowledge_source_archived",
   "ai.knowledge_source_reindexed",
+  // Módulo fiscal (NF-e). Nunca carregam certificado, senha nem token.
+  "fiscal.config_salva",
+  "fiscal.certificado_enviado",
+  "fiscal.regra_editada",
+  "fiscal.regras_revisadas",
+  "fiscal.nota_teste_emitida",
+  "fiscal.documento_atualizado",
+  "fiscal.documento_editado",
+  "fiscal.documento_emitido",
+  "fiscal.documento_cancelado",
+  "fiscal.carta_correcao",
+  "fiscal.numeracao_inutilizada",
+  "fiscal.pacote_mensal",
+  "fiscal.arquivo_guardado",
+  "fiscal.entrega_comprador",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

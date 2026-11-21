@@ -1,5 +1,5 @@
 "use client";
-import { EditorDaEmpresa, EditorDoRepresentante } from "@/components/pdv/dados-do-contrato";
+import { EditorDaEmpresa, EditorDosPrazos, EditorDoRepresentante } from "@/components/pdv/dados-do-contrato";
 import { configuracaoContratoSchema } from "@/lib/pdv/modelo-contrato";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -266,6 +266,8 @@ export function TenantForm({ initial, onSave, onSaved }: Props) {
           <EditorDaEmpresa valor={configuracaoContratoSchema.parse(form.dados_contrato ?? {})}
             onChange={(v) => set("dados_contrato", { ...configuracaoContratoSchema.parse(form.dados_contrato ?? {}), ...v })} somenteComplemento />
           <EditorDoRepresentante valor={configuracaoContratoSchema.parse(form.dados_contrato ?? {})}
+            onChange={(v) => set("dados_contrato", { ...configuracaoContratoSchema.parse(form.dados_contrato ?? {}), ...v })} />
+          <EditorDosPrazos valor={configuracaoContratoSchema.parse(form.dados_contrato ?? {})}
             onChange={(v) => set("dados_contrato", { ...configuracaoContratoSchema.parse(form.dados_contrato ?? {}), ...v })} />
           <p className="text-sm text-muted-foreground">As cláusulas do contrato são fixas, do modelo do produto. Condições de uma operação específica entram na cláusula especial, no PDV.</p>
         </details>

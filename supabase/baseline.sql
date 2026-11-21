@@ -67224,6 +67224,646 @@ on conflict (id) do update
       file_size_limit    = excluded.file_size_limit,
       allowed_mime_types = excluded.allowed_mime_types;
 
+-- ---- módulo fiscal: config, regras, documentos e eventos (migration 9049) ----
+-- ============================================================================
+-- 9049 — MÓDULO FISCAL
+--
+-- Decisões:
+--  * Sem SEFAZ direto: provedor externo (Focus NFe) atrás de `FiscalProvider`.
+--  * O .pfx e a senha NUNCA vão ao banco: passam pela memória da requisição até
+--    o provedor. Guardamos só o token do provedor (AES-256-GCM) e a validade.
+--  * Escrita só via service role: as rotas validam papel e filtram por
+--    organization_id vindo da sessão. O token cifrado não é legível pelo
+--    `authenticated` (privilégio por coluna).
+--  * Vocabulários abertos sem CHECK (ambiente, status, operação...); a
+--    aplicação valida. Só limites numéricos ficam no banco.
+--  * IBS/CBS (cst_ibscbs, cclasstrib) já existem e podem ficar vazios: Simples
+--    passa a precisar deles a partir de jan/2027.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- config_fiscal_loja
+-- ---------------------------------------------------------------------------
+create table if not exists public.config_fiscal_loja (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+
+  cnpj text,
+  razao_social text,
+  nome_fantasia text,
+  inscricao_estadual text,
+  inscricao_municipal text,
+  -- 1=Simples, 2=Simples excesso de sublimite, 3=Normal, 4=MEI
+  crt int,
+  cnae text,
+  -- Endereço do emitente (obrigatório na NF-e e no cadastro no provedor).
+  logradouro text,
+  numero text,
+  complemento text,
+  bairro text,
+  municipio text,
+  uf text not null default 'PI',
+  cep text,
+  telefone text,
+
+  ambiente text not null default 'homologacao',
+  serie_nfe int not null default 1,
+  proximo_numero_nfe bigint not null default 1,
+
+  provider text not null default 'focus',
+  provider_empresa_id text,
+  -- AES-256-GCM (lib/crypto/aes_gcm.ts): texto cifrado, iv e tag.
+  provider_token_cifrado bytea,
+  provider_token_iv bytea,
+  provider_token_tag bytea,
+  -- Segredo do webhook (aleatório, por loja) para validar o chamador.
+  webhook_segredo text,
+
+  certificado_validade date,
+  certificado_enviado_em timestamptz,
+  email_contador text,
+  credenciado_sefaz boolean not null default false,
+  regras_revisadas_em timestamptz,
+  nota_teste_ok_em timestamptz,
+  ativo boolean not null default false,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint config_fiscal_serie_valida check (serie_nfe between 0 and 999),
+  constraint config_fiscal_numero_valido check (proximo_numero_nfe >= 1),
+  constraint config_fiscal_crt_valido check (crt is null or crt between 1 and 4),
+  constraint config_fiscal_cnpj_14 check (cnpj is null or cnpj ~ '^[0-9]{14}$')
+);
+
+create unique index if not exists config_fiscal_loja_org_cnpj_key
+  on public.config_fiscal_loja (organization_id, cnpj)
+  where cnpj is not null;
+create index if not exists config_fiscal_loja_org_idx
+  on public.config_fiscal_loja (organization_id);
+
+-- ---------------------------------------------------------------------------
+-- regras_fiscais
+-- ---------------------------------------------------------------------------
+create table if not exists public.regras_fiscais (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+
+  -- ENT_COMPRA_PF | ENT_TROCA | SAI_VENDA | ...
+  operacao text not null,
+  -- interna | interestadual
+  destino text not null default 'interna',
+  -- PF | PJ_contrib | PJ_nao_contrib
+  tipo_pessoa text not null default 'PF',
+  presencial boolean not null default true,
+
+  cfop text not null,
+  natureza_operacao text not null,
+  -- CSOSN (Simples) ou CST (Normal), conforme o CRT da loja.
+  csosn_ou_cst text,
+  aliq_icms numeric(7,4),
+  reducao_bc_pct numeric(7,4),
+  cst_ibscbs text,
+  cclasstrib text,
+  texto_inf_adic text,
+
+  validado_contador boolean not null default false,
+  ativo boolean not null default true,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint regras_fiscais_cfop_4 check (cfop ~ '^[0-9]{4}$'),
+  constraint regras_fiscais_aliq_faixa check (aliq_icms is null or (aliq_icms >= 0 and aliq_icms <= 100)),
+  constraint regras_fiscais_reducao_faixa check (reducao_bc_pct is null or (reducao_bc_pct >= 0 and reducao_bc_pct <= 100))
+);
+
+create unique index if not exists regras_fiscais_org_chave_key
+  on public.regras_fiscais (organization_id, operacao, destino, tipo_pessoa, presencial);
+
+-- ---------------------------------------------------------------------------
+-- documentos_fiscais
+-- ---------------------------------------------------------------------------
+create table if not exists public.documentos_fiscais (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+
+  -- 55 | 65 | NFSE (hoje só 55)
+  modelo text not null default '55',
+  operacao text not null,
+  -- entrada | saida
+  tipo text not null,
+  -- normal | complementar | ajuste | devolucao | credito | debito
+  finalidade text not null default 'normal',
+  -- rascunho | processando | autorizada | rejeitada | denegada | cancelada | inutilizada
+  status text not null default 'rascunho',
+
+  numero bigint,
+  serie int,
+  chave text,
+  protocolo text,
+  -- Referência enviada ao provedor; única por documento.
+  ref_provider text,
+  ambiente text not null default 'homologacao',
+  data_emissao timestamptz,
+  valor_total_cents bigint not null default 0,
+  cfop text,
+
+  veiculo_id uuid references public.veiculos(id) on delete set null,
+  negociacao_id uuid references public.negociacoes_de_veiculo(id) on delete set null,
+  contrato_id uuid,
+  pessoa_id uuid references public.contacts(id) on delete set null,
+  doc_referenciado_id uuid references public.documentos_fiscais(id) on delete set null,
+
+  -- Rascunho montado pelo sistema (editável até emitir) e o que foi enviado.
+  rascunho jsonb not null default '{}'::jsonb,
+  json_enviado jsonb,
+  retorno_provider jsonb,
+  motivo_rejeicao text,
+  xml_url text,
+  pdf_url text,
+
+  renave_enviado_em timestamptz,
+  renave_status text,
+
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint documentos_fiscais_valor_nao_negativo check (valor_total_cents >= 0),
+  constraint documentos_fiscais_chave_44 check (chave is null or chave ~ '^[0-9]{44}$')
+);
+
+create unique index if not exists documentos_fiscais_ref_provider_key
+  on public.documentos_fiscais (ref_provider)
+  where ref_provider is not null;
+-- Número é único por emitente/série/ambiente; só vale para notas já numeradas.
+create unique index if not exists documentos_fiscais_org_numero_key
+  on public.documentos_fiscais (organization_id, modelo, serie, ambiente, numero)
+  where numero is not null;
+create index if not exists documentos_fiscais_org_status_idx
+  on public.documentos_fiscais (organization_id, status, created_at desc);
+create index if not exists documentos_fiscais_veiculo_idx
+  on public.documentos_fiscais (veiculo_id) where veiculo_id is not null;
+
+-- ---------------------------------------------------------------------------
+-- documento_fiscal_eventos
+-- ---------------------------------------------------------------------------
+create table if not exists public.documento_fiscal_eventos (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  documento_id uuid references public.documentos_fiscais(id) on delete cascade,
+
+  -- cancelamento | cce | inutilizacao
+  tipo text not null,
+  sequencia int not null default 1,
+  texto text,
+  protocolo text,
+  status text not null default 'pendente',
+  -- Inutilização não tem documento: guarda a faixa aqui.
+  serie int,
+  numero_inicial bigint,
+  numero_final bigint,
+  retorno_provider jsonb,
+  data timestamptz not null default now(),
+  created_by uuid,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists documento_fiscal_eventos_doc_idx
+  on public.documento_fiscal_eventos (documento_id, tipo, sequencia);
+create index if not exists documento_fiscal_eventos_org_idx
+  on public.documento_fiscal_eventos (organization_id, data desc);
+
+-- ---------------------------------------------------------------------------
+-- RLS: leitura para a organização; escrita só service role.
+-- ---------------------------------------------------------------------------
+do $$
+declare t text;
+begin
+  foreach t in array array['config_fiscal_loja','regras_fiscais','documentos_fiscais','documento_fiscal_eventos']
+  loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists %I on public.%I', t || '_select', t);
+    execute format(
+      'create policy %I on public.%I for select using ((organization_id in (select public.fn_user_org_ids())) or (select public.fn_is_platform_admin()))',
+      t || '_select', t);
+    execute format('revoke all on public.%I from anon', t);
+    execute format('revoke all on public.%I from authenticated', t);
+    execute format('grant all on public.%I to service_role', t);
+  end loop;
+end $$;
+
+grant select on public.regras_fiscais to authenticated;
+grant select on public.documentos_fiscais to authenticated;
+grant select on public.documento_fiscal_eventos to authenticated;
+-- Config: tudo, exceto token cifrado, iv, tag e segredo do webhook.
+grant select (
+  id, organization_id, cnpj, razao_social, nome_fantasia, inscricao_estadual,
+  inscricao_municipal, crt, cnae, logradouro, numero, complemento, bairro,
+  municipio, uf, cep, telefone, ambiente, serie_nfe, proximo_numero_nfe,
+  provider, provider_empresa_id, certificado_validade, certificado_enviado_em,
+  email_contador, credenciado_sefaz, regras_revisadas_em, nota_teste_ok_em,
+  ativo, created_at, updated_at
+) on public.config_fiscal_loja to authenticated;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['config_fiscal_loja','regras_fiscais','documentos_fiscais']
+  loop
+    execute format('drop trigger if exists %I on public.%I', 'trg_' || t || '_updated_at', t);
+    execute format(
+      'create trigger %I before update on public.%I for each row execute function public.fn_set_updated_at()',
+      'trg_' || t || '_updated_at', t);
+  end loop;
+end $$;
+
+comment on table public.config_fiscal_loja is
+  'Config fiscal por loja (CNPJ). Token do provedor cifrado (AES-GCM); certificado A1 nunca é gravado, só a validade. Escrita só por app/api/v1/fiscal.';
+comment on table public.regras_fiscais is
+  'CFOP/CST/alíquotas/IBS-CBS por operação, por loja. Seed pela função fn_semear_regras_fiscais (9051). validado_contador=false bloqueia produção no regime normal.';
+comment on table public.documentos_fiscais is
+  'Notas fiscais. Toda nota nasce rascunho; o usuário revisa e emite. Dados do veículo usado vão em infAdProd (sem grupo veicProd).';
+comment on table public.documento_fiscal_eventos is
+  'Eventos fiscais: cancelamento, carta de correção (CC-e) e inutilização.';
+
+-- ---- veículos: campos fiscais (migration 9050) ----
+-- ============================================================================
+-- 9050 — VEÍCULOS: CAMPOS FISCAIS
+--
+-- NCM completo (8 dígitos) fica no veículo; o padrão por categoria (8703
+-- automóvel, 8704 utilitário de carga, 8711 moto) é sugestão da aplicação.
+-- origem: compra_pf | troca | consignacao | compra_pj (vocabulário aberto).
+-- ============================================================================
+
+alter table public.veiculos add column if not exists ncm text;
+alter table public.veiculos add column if not exists custo_aquisicao bigint;
+alter table public.veiculos add column if not exists origem text;
+alter table public.veiculos add column if not exists nfe_entrada_id uuid references public.documentos_fiscais(id) on delete set null;
+alter table public.veiculos add column if not exists nfe_saida_id uuid references public.documentos_fiscais(id) on delete set null;
+
+alter table public.veiculos drop constraint if exists veiculos_ncm_8;
+alter table public.veiculos add constraint veiculos_ncm_8
+  check (ncm is null or ncm ~ '^[0-9]{8}$');
+alter table public.veiculos drop constraint if exists veiculos_custo_aquisicao_nao_negativo;
+alter table public.veiculos add constraint veiculos_custo_aquisicao_nao_negativo
+  check (custo_aquisicao is null or custo_aquisicao >= 0);
+
+create index if not exists veiculos_nfe_entrada_idx
+  on public.veiculos (nfe_entrada_id) where nfe_entrada_id is not null;
+create index if not exists veiculos_nfe_saida_idx
+  on public.veiculos (nfe_saida_id) where nfe_saida_id is not null;
+
+comment on column public.veiculos.custo_aquisicao is 'Custo de aquisição em centavos (valor da NF-e de entrada).';
+
+-- ---- seed das regras fiscais padrão (migration 9051) ----
+-- ============================================================================
+-- 9051 — SEED DAS REGRAS FISCAIS PADRÃO
+--
+-- Só sugestão: toda linha nasce validado_contador=false. No regime normal
+-- (CRT 3) CST/alíquota/redução ficam vazios até o contador validar, e a
+-- emissão em produção é bloqueada pela aplicação enquanto não validar.
+-- Simples (CRT 1/2/4): CSOSN 102 na saída; entrada sem destaque (CSOSN 900,
+-- editável conforme o contador).
+-- Venda presencial a consumidor de outra UF é tratada como interna
+-- (CFOP 5.102, idDest=1).
+-- ============================================================================
+
+create or replace function public.fn_semear_regras_fiscais(p_org uuid, p_crt int default 1)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_simples boolean := coalesce(p_crt, 1) in (1, 2, 4);
+  v_ent text := 'Compra para comercialização – veículo usado de pessoa física';
+  v_sai text := 'Venda de mercadoria adquirida ou recebida de terceiros – veículo usado';
+  v_n int;
+begin
+  insert into public.regras_fiscais
+    (organization_id, operacao, destino, tipo_pessoa, presencial, cfop,
+     natureza_operacao, csosn_ou_cst, validado_contador, ativo)
+  select p_org, r.operacao, r.destino, r.tipo_pessoa, r.presencial, r.cfop,
+         r.natureza,
+         case when v_simples then r.csosn_simples else null end,
+         false, true
+  from (values
+    ('ENT_COMPRA_PF', 'interna',      'PF', true, '1102', v_ent, '900'),
+    ('ENT_COMPRA_PF', 'interestadual','PF', true, '2102', v_ent, '900'),
+    ('ENT_TROCA',     'interna',      'PF', true, '1102', v_ent, '900'),
+    ('ENT_TROCA',     'interestadual','PF', true, '2102', v_ent, '900'),
+    ('SAI_VENDA', 'interna',      'PF',            true,  '5102', v_sai, '102'),
+    ('SAI_VENDA', 'interna',      'PJ_contrib',    true,  '5102', v_sai, '102'),
+    ('SAI_VENDA', 'interna',      'PJ_nao_contrib',true,  '5102', v_sai, '102'),
+    ('SAI_VENDA', 'interestadual','PJ_contrib',    true,  '6102', v_sai, '102'),
+    ('SAI_VENDA', 'interestadual','PJ_contrib',    false, '6102', v_sai, '102'),
+    ('SAI_VENDA', 'interestadual','PF',            false, '6108', v_sai, '102'),
+    ('SAI_VENDA', 'interestadual','PJ_nao_contrib',false, '6108', v_sai, '102'),
+    ('SAI_VENDA', 'interestadual','PF',            true,  '5102', v_sai, '102'),
+    ('SAI_VENDA', 'interestadual','PJ_nao_contrib',true,  '5102', v_sai, '102')
+  ) as r(operacao, destino, tipo_pessoa, presencial, cfop, natureza, csosn_simples)
+  on conflict (organization_id, operacao, destino, tipo_pessoa, presencial) do nothing;
+
+  get diagnostics v_n = row_count;
+  return v_n;
+end;
+$$;
+
+revoke execute on function public.fn_semear_regras_fiscais(uuid, int) from public, anon, authenticated;
+grant execute on function public.fn_semear_regras_fiscais(uuid, int) to service_role;
+
+comment on function public.fn_semear_regras_fiscais(uuid, int) is
+  'Semeia regras fiscais padrão da loja (validado_contador=false). Idempotente. Chamada só pelo servidor.';
+
+-- ---- reserva do PDV trava o carro (migration 9048) ----
+alter table public.negociacoes_de_veiculo add column if not exists reserva_expira_em timestamptz;
+
+create index if not exists negociacoes_reserva_ativa
+  on public.negociacoes_de_veiculo(organization_id, veiculo_id, reserva_expira_em)
+  where tipo = 'venda' and status = 'rascunho' and modalidade = 'reserva';
+
+-- Prazo vencido não é evento: quem lê o estoque chama isto antes, e o carro volta.
+create or replace function public.fn_pdv_liberar_reservas_vencidas(p_org uuid)
+returns integer language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  if auth.uid() is not null and not (p_org in (select public.fn_user_org_ids())) then
+    raise exception 'Sem permissão.' using errcode = '42501';
+  end if;
+  update public.veiculos v set status = 'disponivel'
+   where v.organization_id = p_org and v.status = 'reservado'
+     and exists (select 1 from public.negociacoes_de_veiculo r
+                  where r.organization_id = p_org and r.veiculo_id = v.id and r.tipo = 'venda'
+                    and r.status = 'rascunho' and r.modalidade = 'reserva' and r.reserva_expira_em <= now())
+     and not exists (select 1 from public.negociacoes_de_veiculo r
+                  where r.organization_id = p_org and r.veiculo_id = v.id and r.tipo = 'venda'
+                    and r.status = 'rascunho' and r.modalidade = 'reserva' and r.reserva_expira_em > now());
+  get diagnostics n = row_count;
+  return n;
+end; $$;
+revoke execute on function public.fn_pdv_liberar_reservas_vencidas(uuid) from public, anon;
+grant execute on function public.fn_pdv_liberar_reservas_vencidas(uuid) to authenticated, service_role;
+
+create or replace function public.fn_pdv_reserva_trava_veiculo()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  ativa_nova boolean;
+  ativa_velha boolean := false;
+  v_status text;
+begin
+  ativa_nova := coalesce(new.tipo = 'venda' and new.status = 'rascunho' and new.modalidade = 'reserva'
+    and new.veiculo_id is not null and new.reserva_expira_em > now(), false);
+  if tg_op = 'UPDATE' then
+    ativa_velha := coalesce(old.tipo = 'venda' and old.status = 'rascunho' and old.modalidade = 'reserva'
+      and old.veiculo_id is not null and old.reserva_expira_em > now(), false);
+  end if;
+
+  -- Concluir um carro que outra negociação tem reservado.
+  if tg_op = 'UPDATE' and new.status = 'concluida' and old.status <> 'concluida'
+     and new.tipo = 'venda' and new.veiculo_id is not null
+     and exists (select 1 from public.negociacoes_de_veiculo r
+                  where r.organization_id = new.organization_id and r.veiculo_id = new.veiculo_id and r.id <> new.id
+                    and r.tipo = 'venda' and r.status = 'rascunho' and r.modalidade = 'reserva'
+                    and r.reserva_expira_em > now()) then
+    raise exception 'veiculo_reservado' using errcode = 'PT409';
+  end if;
+
+  -- Soltar: a reserva deixou de valer ou mudou de carro.
+  if ativa_velha and (not ativa_nova or new.veiculo_id is distinct from old.veiculo_id) then
+    update public.veiculos v set status = 'disponivel'
+     where v.organization_id = old.organization_id and v.id = old.veiculo_id and v.status = 'reservado'
+       and not exists (select 1 from public.negociacoes_de_veiculo r
+                        where r.organization_id = old.organization_id and r.veiculo_id = old.veiculo_id and r.id <> new.id
+                          and r.tipo = 'venda' and r.status = 'rascunho' and r.modalidade = 'reserva'
+                          and r.reserva_expira_em > now());
+  end if;
+
+  -- Travar: reserva nova, ou passou a valer de novo, ou mudou de carro.
+  if ativa_nova and (not ativa_velha or new.veiculo_id is distinct from old.veiculo_id) then
+    perform public.fn_pdv_liberar_reservas_vencidas(new.organization_id);
+    select status into v_status from public.veiculos
+     where organization_id = new.organization_id and id = new.veiculo_id for update;
+    if not found then
+      raise exception 'Veículo não encontrado no estoque.' using errcode = 'PT409';
+    end if;
+    if exists (select 1 from public.negociacoes_de_veiculo r
+                where r.organization_id = new.organization_id and r.veiculo_id = new.veiculo_id and r.id <> new.id
+                  and r.tipo = 'venda' and r.status = 'rascunho' and r.modalidade = 'reserva'
+                  and r.reserva_expira_em > now()) then
+      raise exception 'Esse veículo já está reservado em outra negociação.' using errcode = 'PT409';
+    end if;
+    -- Renovar o prazo de uma reserva vencida desta negociação: o carro ainda está reservado por ela.
+    if v_status <> 'disponivel' and not (v_status = 'reservado' and tg_op = 'UPDATE'
+        and old.modalidade = 'reserva' and old.veiculo_id = new.veiculo_id) then
+      raise exception 'Esse veículo não está disponível para reserva.' using errcode = 'PT409';
+    end if;
+    update public.veiculos set status = 'reservado'
+     where organization_id = new.organization_id and id = new.veiculo_id and status <> 'reservado';
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.fn_pdv_reserva_trava_veiculo() from public, anon, authenticated;
+drop trigger if exists trg_pdv_reserva_trava_veiculo on public.negociacoes_de_veiculo;
+create trigger trg_pdv_reserva_trava_veiculo
+  after insert or update on public.negociacoes_de_veiculo
+  for each row execute function public.fn_pdv_reserva_trava_veiculo();
+
+-- ---- rascunho único por operação (migration 9052) ----
+-- manifest: Fiscal etapa 2: um rascunho vivo por negociação e operação (evita nota duplicada se o concluir rodar duas vezes) e `autorizada_em` em `documentos_fiscais`, que marca o efeito de autorização como já aplicado. Aditiva e idempotente.
+alter table public.documentos_fiscais add column if not exists autorizada_em timestamptz;
+
+create unique index if not exists documentos_fiscais_negociacao_operacao_key
+  on public.documentos_fiscais (negociacao_id, operacao)
+  where negociacao_id is not null and status not in ('cancelada', 'inutilizada');
+
+-- ---- fn_nfe_autorizada (migration 9053) ----
+-- manifest: Função `fn_nfe_autorizada(doc)`: ao autorizar uma NF-e preenche no veículo custo_aquisicao/origem/nfe_entrada_id (entradas) ou nfe_saida_id (venda) e grava o evento `nfe.autorizada` no event_log, numa só transação e uma única vez por nota. Só service_role executa. Aditiva e idempotente.
+create or replace function public.fn_nfe_autorizada(p_doc uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  d public.documentos_fiscais;
+begin
+  -- Trava a linha e marca antes: a segunda chamada (webhook + cron) não repete o efeito.
+  select * into d from public.documentos_fiscais where id = p_doc for update;
+  if not found or d.status <> 'autorizada' or d.autorizada_em is not null then
+    return false;
+  end if;
+
+  update public.documentos_fiscais set autorizada_em = now() where id = d.id;
+
+  if d.veiculo_id is not null then
+    if d.operacao in ('ENT_COMPRA_PF', 'ENT_TROCA') then
+      update public.veiculos
+         set custo_aquisicao = d.valor_total_cents,
+             origem = case d.operacao when 'ENT_TROCA' then 'troca' else 'compra_pf' end,
+             nfe_entrada_id = d.id
+       where id = d.veiculo_id and organization_id = d.organization_id;
+    elsif d.operacao = 'SAI_VENDA' then
+      update public.veiculos
+         set nfe_saida_id = d.id
+       where id = d.veiculo_id and organization_id = d.organization_id;
+    end if;
+  end if;
+
+  insert into public.event_log (organization_id, event_type, entity_kind, entity_id, payload)
+  values (d.organization_id, 'nfe.autorizada', 'documento_fiscal', d.id,
+          jsonb_build_object('operacao', d.operacao, 'veiculo_id', d.veiculo_id,
+                             'negociacao_id', d.negociacao_id, 'chave', d.chave,
+                             'valor_total_cents', d.valor_total_cents));
+  return true;
+end;
+$$;
+revoke all on function public.fn_nfe_autorizada(uuid) from public, anon, authenticated;
+grant execute on function public.fn_nfe_autorizada(uuid) to service_role;
+
+-- ---- fiscal etapa 3 (migration 9054) ----
+-- manifest: Fiscal etapa 3: fila de envio ao RENAVE (`renave_fila`), bucket privado `fiscal-arquivos` para XML/DANFE (guarda de 5 anos, sem delete pelo usuário), entrega ao comprador (`entrega_enviada_em`, opção `config_fiscal_loja.entrega_automatica` desligada por padrão), `renave_ativo` desligado por padrão e pacote mensal do contador (`fiscal_pacotes_mensais`). Leitura para a organização; escrita só pelo servidor. Aditiva e idempotente.
+-- ============================================================================
+-- 9054 — FISCAL ETAPA 3
+--
+--  * RENAVE: fila própria com retentativa (a nota autorizada enfileira; o cron
+--    envia). Um item por documento fiscal.
+--  * Arquivos: XML e DANFE ficam num bucket PRIVADO, só service role. O usuário
+--    recebe link assinado de curta duração.
+--  * Retenção: nota autorizada não pode ser apagada por 5 anos. A exceção é a
+--    exclusão da própria organização (cascade), que já é decisão de plataforma.
+--  * `entrega_automatica` e `renave_ativo` nascem FALSE: ligar é decisão da loja.
+-- ============================================================================
+
+alter table public.config_fiscal_loja add column if not exists entrega_automatica boolean not null default false;
+alter table public.config_fiscal_loja add column if not exists renave_ativo boolean not null default false;
+
+alter table public.documentos_fiscais add column if not exists xml_storage_path text;
+alter table public.documentos_fiscais add column if not exists pdf_storage_path text;
+alter table public.documentos_fiscais add column if not exists entrega_enviada_em timestamptz;
+
+-- A config já tem grant por coluna: as novas precisam entrar nele.
+grant select (entrega_automatica, renave_ativo) on public.config_fiscal_loja to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Bucket privado (sem policies em storage.objects: só service role acessa)
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('fiscal-arquivos', 'fiscal-arquivos', false, 52428800)
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit;
+
+-- ---------------------------------------------------------------------------
+-- renave_fila
+-- ---------------------------------------------------------------------------
+create table if not exists public.renave_fila (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  documento_id uuid not null references public.documentos_fiscais(id) on delete cascade,
+  operacao text not null,
+  status text not null default 'pendente',
+  attempts integer not null default 0 check (attempts >= 0),
+  next_attempt_at timestamptz not null default now(),
+  last_error text,
+  enviado_em timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint renave_fila_documento_key unique (documento_id)
+);
+create index if not exists renave_fila_pendentes_idx
+  on public.renave_fila (next_attempt_at) where status = 'pendente';
+create index if not exists renave_fila_org_idx on public.renave_fila (organization_id);
+
+-- ---------------------------------------------------------------------------
+-- fiscal_pacotes_mensais
+-- ---------------------------------------------------------------------------
+create table if not exists public.fiscal_pacotes_mensais (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  competencia date not null,
+  storage_path text not null,
+  qtd_notas integer not null default 0,
+  enviado_para text,
+  enviado_em timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint fiscal_pacotes_mensais_mes_key unique (organization_id, competencia),
+  constraint fiscal_pacotes_mensais_dia1 check (extract(day from competencia) = 1)
+);
+
+-- ---------------------------------------------------------------------------
+-- RLS + grants + updated_at
+-- ---------------------------------------------------------------------------
+do $$
+declare t text;
+begin
+  foreach t in array array['renave_fila','fiscal_pacotes_mensais']
+  loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists %I on public.%I', t || '_read', t);
+    execute format(
+      'create policy %I on public.%I for select to authenticated using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin())',
+      t || '_read', t);
+    execute format('revoke all on public.%I from anon, authenticated', t);
+    execute format('grant all on public.%I to service_role', t);
+    execute format('grant select on public.%I to authenticated', t);
+    execute format('drop trigger if exists %I on public.%I', 'trg_' || t || '_updated_at', t);
+    execute format(
+      'create trigger %I before update on public.%I for each row execute function public.fn_set_updated_at()',
+      'trg_' || t || '_updated_at', t);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Retenção: nota autorizada não é apagada por 5 anos
+-- ---------------------------------------------------------------------------
+create or replace function public.fn_fiscal_bloqueia_delete()
+returns trigger
+language plpgsql
+as $$
+begin
+  if old.autorizada_em is not null
+     and old.autorizada_em > now() - interval '5 years'
+     and exists (select 1 from public.organizations o where o.id = old.organization_id) then
+    raise exception 'documento fiscal autorizado não pode ser apagado antes de 5 anos'
+      using errcode = 'P0001';
+  end if;
+  return old;
+end $$;
+
+drop trigger if exists trg_documentos_fiscais_retencao on public.documentos_fiscais;
+create trigger trg_documentos_fiscais_retencao
+  before delete on public.documentos_fiscais
+  for each row execute function public.fn_fiscal_bloqueia_delete();
+
+-- ---- renave_log (migration 9055) ----
+-- manifest: Log append-only de cada chamada ao Renave (endpoint, método, status, duração; sem payload nem dados pessoais) para auditar a integração. Aditiva e idempotente.
+create table if not exists public.renave_log (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references public.organizations(id) on delete cascade,
+  documento_id uuid references public.documentos_fiscais(id) on delete set null,
+  endpoint text not null,
+  metodo text not null,
+  status_http integer,
+  duracao_ms integer,
+  erro text,
+  created_at timestamptz not null default now()
+);
+create index if not exists renave_log_org_doc_idx on public.renave_log (organization_id, documento_id, created_at desc);
+
+alter table public.renave_log enable row level security;
+drop policy if exists renave_log_read on public.renave_log;
+create policy renave_log_read on public.renave_log for select to authenticated
+  using (organization_id in (select public.fn_user_org_ids()) or public.fn_is_platform_admin());
+revoke all on public.renave_log from anon, authenticated;
+grant all on public.renave_log to service_role;
+grant select on public.renave_log to authenticated;
+
+-- ---- PIS/COFINS na regra fiscal (migration 9056) ----
+-- manifest: PIS/COFINS passam a vir da regra fiscal (`cst_pis`/`cst_cofins`, default '07'), antes fixos em "07" no código. Aditiva e idempotente.
+alter table public.regras_fiscais add column if not exists cst_pis text not null default '07';
+alter table public.regras_fiscais add column if not exists cst_cofins text not null default '07';
+
 -- ---- VARREDURA anon: função nova nasce exposta em quem ATUALIZA (migration 0116) ----
 --
 -- ⚠️ DE PROPÓSITO, NENHUMA FUNÇÃO É CRIADA DEPOIS DESTE BLOCO. Apêndice que cria
@@ -67299,3 +67939,72 @@ grant execute on function public.fn_decrypt_oauth(bytea) to service_role;
 grant execute on function public.fn_encrypt_oauth(text) to service_role;
 grant execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) to service_role;
 grant execute on function public.fn_update_budget_consumption() to service_role;
+
+-- ---- CNPJ único no cadastro de clientes (migration 9057) ----
+
+do $$
+begin
+  create unique index if not exists uniq_contacts_org_cnpj
+    on public.contacts (organization_id, (regexp_replace(custom_fields #>> '{cadastro_cliente,cnpj}', '[^0-9]', '', 'g')))
+    where is_merged_into is null
+      and length(regexp_replace(custom_fields #>> '{cadastro_cliente,cnpj}', '[^0-9]', '', 'g')) = 14;
+exception when unique_violation then
+  -- Preserva fichas antigas duplicadas e instala a proteção para novas gravações.
+  create index if not exists idx_contacts_org_cnpj
+    on public.contacts (organization_id, (regexp_replace(custom_fields #>> '{cadastro_cliente,cnpj}', '[^0-9]', '', 'g')))
+    where is_merged_into is null
+      and length(regexp_replace(custom_fields #>> '{cadastro_cliente,cnpj}', '[^0-9]', '', 'g')) = 14;
+end
+$$;
+
+create or replace function public.fn_guardar_cnpj_unico_do_contato()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  cnpj text := regexp_replace(new.custom_fields #>> '{cadastro_cliente,cnpj}', '[^0-9]', '', 'g');
+begin
+  if new.is_merged_into is not null or coalesce(length(cnpj), 0) <> 14 then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' then
+    if old.is_merged_into is null and old.organization_id = new.organization_id
+       and regexp_replace(old.custom_fields #>> '{cadastro_cliente,cnpj}', '[^0-9]', '', 'g') = cnpj then
+      return new;
+    end if;
+  end if;
+  -- A consulta depois do lock precisa enxergar o commit da outra gravação.
+  if current_setting('transaction_isolation') = 'repeatable read' then
+    raise serialization_failure using message = 'Grave o CNPJ com isolamento READ COMMITTED ou SERIALIZABLE.';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(new.organization_id::text || ':' || cnpj, 0));
+  if exists (
+    select 1 from public.contacts c
+    where c.organization_id = new.organization_id and c.is_merged_into is null
+      and c.id <> new.id
+      and length(regexp_replace(c.custom_fields #>> '{cadastro_cliente,cnpj}', '[^0-9]', '', 'g')) = 14
+      and regexp_replace(c.custom_fields #>> '{cadastro_cliente,cnpj}', '[^0-9]', '', 'g') = cnpj
+  ) then
+    raise unique_violation using constraint = 'uniq_contacts_org_cnpj',
+      message = 'duplicate key value violates unique constraint "uniq_contacts_org_cnpj"';
+  end if;
+  return new;
+end
+$$;
+
+revoke execute on function public.fn_guardar_cnpj_unico_do_contato() from public, anon, authenticated;
+
+drop trigger if exists contatos_cnpj_unico on public.contacts;
+do $$
+begin
+  if to_regclass('public.uniq_contacts_org_cnpj') is null then
+    create trigger contatos_cnpj_unico
+      before insert or update of custom_fields, organization_id, is_merged_into on public.contacts
+      for each row execute function public.fn_guardar_cnpj_unico_do_contato();
+  else
+    drop index if exists public.idx_contacts_org_cnpj;
+  end if;
+end
+$$;

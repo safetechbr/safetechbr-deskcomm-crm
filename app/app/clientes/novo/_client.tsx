@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useCreateContact } from "@/hooks/contacts/useCreateContact";
 import { useT } from "@/hooks/i18n/useT";
+import { ApiError } from "@/lib/api/types";
+import { normalizeCnpj } from "@/lib/crm-b2b/normalize";
 import { CaretLeft, IdentificationCard, Phone } from "@/lib/ui/icons";
 import { PAIS_PADRAO, perfilDoPais } from "@/lib/legal/perfil-do-pais";
 import { contactCreateSchemaDoPais, type ContactCreate } from "@/lib/schemas/contacts";
@@ -28,6 +30,7 @@ export function NovoClienteClient() {
   const router = useRouter();
   const org = useActiveOrg();
   const perfil = perfilDoPais(org?.country);
+  const cadastroBrasileiro = perfil.codigo === PAIS_PADRAO;
   const criar = useCreateContact();
   const [v, setV] = React.useState({
     name: "",
@@ -48,14 +51,20 @@ export function NovoClienteClient() {
       return setErro(t("Informe o telefone ou o e-mail."));
 
     const payload: Record<string, unknown> = {
-      reuse_existing_phone: true,
       source: "manual",
       contact_type: "cliente",
       name: v.name.trim(),
     };
     if (v.email.trim()) payload.email = v.email.trim();
     if (v.phone_number.trim()) payload.phone_number = v.phone_number.trim();
-    if (v.cpf.trim()) payload.cpf = v.cpf.trim();
+    const documento = v.cpf.trim();
+    if (cadastroBrasileiro && documento.replace(/\D/g, "").length === 14) {
+      const cnpj = normalizeCnpj(documento);
+      if (!cnpj) return setErro(t("CNPJ inválido."));
+      payload.custom_fields = { cadastro_cliente: { cnpj } };
+    } else if (documento) {
+      payload.cpf = documento;
+    }
     if (v.birthdate) payload.birthdate = v.birthdate;
 
     const parsed = contactCreateSchemaDoPais(perfil).safeParse(payload);
@@ -63,8 +72,9 @@ export function NovoClienteClient() {
 
     try {
       await criar.mutateAsync(parsed.data as ContactCreate);
-    } catch {
-      return; // o toast de erro já saiu pelo hook
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "contact_exists") setErro(e.message);
+      return;
     }
     toast.success(t("Cadastro do cliente salvo"));
     router.push("/app/clientes");
@@ -104,7 +114,9 @@ export function NovoClienteClient() {
             <Input id="c-nome" className={CAMPO} value={v.name} onChange={campo("name")} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="c-cpf">{perfil.documento.rotulo}</Label>
+            <Label htmlFor="c-cpf">
+              {cadastroBrasileiro ? t("CPF ou CNPJ") : perfil.documento.rotulo}
+            </Label>
             <Input
               id="c-cpf"
               className={CAMPO}

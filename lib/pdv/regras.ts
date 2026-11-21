@@ -17,6 +17,8 @@
 import { contratoSchema, regularizacaoSchema, type DadosDoContrato } from "./modelo-contrato";
 import { z } from "zod";
 
+import { idDoPerfilDeCartaoSchema, repasseDeCartaoSchema, taxaDeCartaoSchema } from "./taxas-de-cartao";
+
 export const TIPOS_DE_NEGOCIACAO = ["venda", "compra"] as const;
 export type TipoDeNegociacao = (typeof TIPOS_DE_NEGOCIACAO)[number];
 
@@ -216,6 +218,9 @@ export const pagamentoSchema = z.object({
   chave_pix: textoOpcional(200),
   /** Bandeira do cartão, quando a forma é cartão. */
   bandeira: textoOpcional(40),
+  perfil_cartao_id: idDoPerfilDeCartaoSchema.optional(),
+  taxa_cartao_bps: taxaDeCartaoSchema.optional(),
+  repasse_cartao: repasseDeCartaoSchema.optional(),
 });
 export type PagamentoDaNegociacao = z.infer<typeof pagamentoSchema>;
 
@@ -235,6 +240,8 @@ export const negociacaoSchema = z.object({
   /** Quem vendeu. Vazio = quem abriu a negociação. A rota confere que é membro da organização. */
   vendedor_user_id: z.string().uuid().optional().nullable(),
   observacoes: textoOpcional(4000),
+  /** Reserva: até quando o carro fica travado. Vencido, ele volta a disponível. */
+  reserva_expira_em: z.string().datetime({ offset: true }).optional().nullable(),
 });
 export type NegociacaoInput = z.infer<typeof negociacaoSchema>;
 
@@ -251,6 +258,7 @@ export interface Negociacao {
   id: string;
   numero: number;
   modalidade?: "normal" | "crediario" | "reserva";
+  reserva_expira_em?: string | null;
   tipo: TipoDeNegociacao;
   status: StatusDaNegociacao;
   contact_id: string | null;

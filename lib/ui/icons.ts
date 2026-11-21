@@ -119,6 +119,7 @@ export {
   Lock,
   LockOpen,
   Receipt,
+  CurrencyDollar,
   Wallet,
   CreditCard,
   Bank,

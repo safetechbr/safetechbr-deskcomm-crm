@@ -179,6 +179,9 @@ const schema = z.object({
    */
   AI_CRED_AES_KEY: required("AI_CRED_AES_KEY"),
 
+  /** Token de revenda da Focus NFe (cadastro de empresa/certificado). Vazio = módulo fiscal sem cadastro. */
+  FOCUS_TOKEN_REVENDA: z.string().optional().default(""),
+
   // Postgres direto do Supabase (Settings → Database) — só as rotas de skills
   // instaláveis (import/install) usam `pg` cru (mesmo pool do agent-engine).
   SUPABASE_DB_URL: required("SUPABASE_DB_URL"),

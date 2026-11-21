@@ -6,11 +6,11 @@ import { novoContrato, type DadosDoContrato } from "@/lib/pdv/modelo-contrato";
 import {
   faltandoParaConcluir,
   retratoDaOperacao,
-  type BlocosDaOperacao,
   type FaltaParaConcluir,
   type SetorDoPdv,
 } from "@/lib/pdv/retrato-da-operacao";
 import { toast } from "sonner";
+import { salvarPadraoDaLoja } from "@/app/actions/pdv/salvarPadraoDaLoja";
 import {
   guardarRascunho,
   lerRascunho,
@@ -23,6 +23,7 @@ import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { Button } from "@/components/ui/button";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
+import { calcularCartao, lerTaxasDeCartao, perfilDoCartao, type TaxasDeCartao } from "@/lib/pdv/taxas-de-cartao";
 import { apiClient } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/types";
 import {
@@ -54,6 +55,7 @@ import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import {
   CaretLeft,
   CheckCircle,
+  CurrencyDollar,
   FileText,
   MagnifyingGlass,
   Plus,
@@ -132,7 +134,26 @@ function rascunhoDe(n: Negociacao, padrao: DadosDoContrato): Rascunho {
     vendedor_user_id: n.vendedor_user_id ?? null,
     comissao_cents: n.comissao_cents,
     observacoes: n.observacoes,
+    reserva_expira_em: n.reserva_expira_em ?? null,
   };
+}
+
+/** Prazo da reserva: fim do dia escolhido, no fuso de quem vende. */
+function prazoDaReserva(dia: string): string | null {
+  return dia ? new Date(`${dia}T23:59:59`).toISOString() : null;
+}
+
+/** ISO para o valor do input de data (dia local). */
+function diaDoPrazo(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function prazoPadraoDaReserva(): string | null {
+  const d = new Date();
+  d.setDate(d.getDate() + 3);
+  return prazoDaReserva(diaDoPrazo(d.toISOString()));
 }
 
 /** Vazio vira null — o schema aceita null e o contrato mostra a linha em branco. */
@@ -151,6 +172,8 @@ function corpoDoRascunho(r: Rascunho) {
     troca: r.troca ? { ...limpo(r.troca), modelo: r.troca.modelo.trim() } : null,
     pagamentos: r.pagamentos.map((p) => limpo(p)),
     observacoes: r.observacoes?.trim() || null,
+    // Só a reserva manda prazo: o trigger ignora o campo nas outras modalidades.
+    reserva_expira_em: r.modalidade === "reserva" ? (r.reserva_expira_em ?? null) : undefined,
   };
 }
 
@@ -222,7 +245,8 @@ function CampoDinheiro({
       <span className="text-muted-foreground">{rotulo}</span>
       <div
         data-campo={campo}
-        className="mt-1 flex h-9 items-center rounded-full border border-border/80 bg-surface px-3.5 text-sm shadow-xs transition-colors focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/20">
+        className="mt-1 flex h-9 items-center rounded-full border border-border/80 bg-surface px-3.5 text-sm shadow-xs transition-colors focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/20"
+      >
         <span className="mr-1 text-muted-foreground">R$</span>
         <input
           inputMode="decimal"
@@ -249,14 +273,15 @@ function numeroOuNull(v: string): number | null {
 }
 
 /** Abaixo de `lg` as colunas empilham e rolam juntas: o rodapé sai da coluna e ancora embaixo da tela. */
-function useTelaLarga(): boolean {
+function useTelaLarga(largura = 1024): boolean {
+  const consulta = `(min-width: ${largura}px)`;
   return React.useSyncExternalStore(
     (aviso) => {
-      const mq = window.matchMedia("(min-width: 1024px)");
+      const mq = window.matchMedia(consulta);
       mq.addEventListener("change", aviso);
       return () => mq.removeEventListener("change", aviso);
     },
-    () => window.matchMedia("(min-width: 1024px)").matches,
+    () => window.matchMedia(consulta).matches,
     () => true,
   );
 }
@@ -292,9 +317,7 @@ function Coluna({
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
             <Icone className="size-4" weight="duotone" aria-hidden />
           </span>
-          <h2
-            className={`truncate text-sm font-semibold ${indice === 2 ? "tracking-wider text-accent uppercase" : "tracking-tight"}`}
-          >
+          <h2 className="truncate text-sm font-semibold tracking-tight">
             {titulo}
           </h2>
         </div>
@@ -329,49 +352,93 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
   const c = (campo: keyof VeiculoDaNegociacao) => `${onde}.${campo}`;
   return (
     <div className="grid grid-cols-2 gap-2">
-      <Campo rotulo={t("Marca")} valor={v.marca} onChange={(x) => set("marca", x)} campo={c("marca")} />
+      <Campo
+        rotulo={t("Marca")}
+        valor={v.marca}
+        onChange={(x) => set("marca", x)}
+        campo={c("marca")}
+      />
       <Campo
         rotulo={t("Modelo")}
         valor={v.modelo}
-        onChange={(x) => set("modelo", x)} campo={c("modelo")}
+        onChange={(x) => set("modelo", x)}
+        campo={c("modelo")}
         testid={`${prefixo}-modelo`}
       />
       <Campo
         rotulo={t("Versão")}
         valor={v.versao}
-        onChange={(x) => set("versao", x)} campo={c("versao")}
+        onChange={(x) => set("versao", x)}
+        campo={c("versao")}
         extra="col-span-2"
       />
       <Campo
         rotulo={t("Ano fab.")}
         valor={v.ano_fabricacao}
-        onChange={(x) => set("ano_fabricacao", numeroOuNull(x))} campo={c("ano_fabricacao")}
+        onChange={(x) => set("ano_fabricacao", numeroOuNull(x))}
+        campo={c("ano_fabricacao")}
       />
       <Campo
         rotulo={t("Ano modelo")}
         valor={v.ano_modelo}
-        onChange={(x) => set("ano_modelo", numeroOuNull(x))} campo={c("ano_modelo")}
+        onChange={(x) => set("ano_modelo", numeroOuNull(x))}
+        campo={c("ano_modelo")}
       />
-      <Campo rotulo={t("Km")} valor={v.km} onChange={(x) => set("km", numeroOuNull(x))} campo={c("km")} />
+      <Campo
+        rotulo={t("Km")}
+        valor={v.km}
+        onChange={(x) => set("km", numeroOuNull(x))}
+        campo={c("km")}
+      />
       <Campo rotulo={t("Cor")} valor={v.cor} onChange={(x) => set("cor", x)} campo={c("cor")} />
       <Campo
         rotulo={t("Combustível")}
         valor={v.combustivel}
-        onChange={(x) => set("combustivel", x)} campo={c("combustivel")}
+        onChange={(x) => set("combustivel", x)}
+        campo={c("combustivel")}
       />
-      <label className="text-xs">Condição
-        <select data-campo={c("condicao")} className={CAMPO} value={v.condicao ?? ""} onChange={(e) => set("condicao", e.target.value || null)}>
-          <option value="">Selecione</option><option value="novo">Novo</option><option value="usado">Usado</option>
+      <label className="text-xs">
+        Condição
+        <select
+          data-campo={c("condicao")}
+          className={CAMPO}
+          value={v.condicao ?? ""}
+          onChange={(e) => set("condicao", e.target.value || null)}
+        >
+          <option value="">Selecione</option>
+          <option value="novo">Novo</option>
+          <option value="usado">Usado</option>
         </select>
       </label>
-      <div className="col-span-2" data-campo={c("regularizacao")}><EditorRegularizacao valor={v.regularizacao ?? []} onChange={(valor) => set("regularizacao", valor)} /></div>
-      <Campo rotulo={t("Câmbio")} valor={v.cambio} onChange={(x) => set("cambio", x)} campo={c("cambio")} />
-      <Campo rotulo={t("Placa")} valor={v.placa} onChange={(x) => set("placa", x.toUpperCase())} campo={c("placa")} />
-      <Campo rotulo={t("Renavam")} valor={v.renavam} onChange={(x) => set("renavam", x)} campo={c("renavam")} />
+      <div className="col-span-2" data-campo={c("regularizacao")}>
+        <EditorRegularizacao
+          valor={v.regularizacao ?? []}
+          onChange={(valor) => set("regularizacao", valor)}
+        />
+      </div>
+      <Campo
+        rotulo={t("Câmbio")}
+        valor={v.cambio}
+        onChange={(x) => set("cambio", x)}
+        campo={c("cambio")}
+      />
+      <Campo
+        rotulo={t("Placa")}
+        valor={v.placa}
+        onChange={(x) => set("placa", x.toUpperCase())}
+        campo={c("placa")}
+      />
+      <Campo
+        rotulo={t("Renavam")}
+        valor={v.renavam}
+        onChange={(x) => set("renavam", x)}
+        campo={c("renavam")}
+      />
       <Campo
         rotulo={t("Chassi")}
         valor={v.chassi}
-        onChange={(x) => set("chassi", x.toUpperCase())} campo={c("chassi")}
+        onChange={(x) => set("chassi", x.toUpperCase())}
+        campo={c("chassi")}
         extra="col-span-2"
       />
     </div>
@@ -445,14 +512,19 @@ function ColunaCliente({
     setCarregandoCliente(true);
     try {
       const res = await apiClient.get<{ data: ContatoDoCadastro }>(`/api/v1/contacts/${ct.id}`, {
-        headers: { "X-Decrypt-Purpose": "Preencher o cadastro do cliente na negociação de veículo" },
+        headers: {
+          "X-Decrypt-Purpose": "Preencher o cadastro do cliente na negociação de veículo",
+        },
       });
       if (escolha !== escolhaAtual.current) return;
       setR((x) => ({ ...x, contact_id: ct.id, cliente: clienteDoContato(res.data) }));
       setBusca("");
       setAchados([]);
-    } catch (erro) { showApiError(erro); }
-    finally { if (escolha === escolhaAtual.current) setCarregandoCliente(false); }
+    } catch (erro) {
+      showApiError(erro);
+    } finally {
+      if (escolha === escolhaAtual.current) setCarregandoCliente(false);
+    }
   }
 
   return (
@@ -501,7 +573,10 @@ function ColunaCliente({
           <button
             ref={botaoMais}
             type="button"
-            onClick={() => { setEditandoCadastro(false); setCadastroAberto(true); }}
+            onClick={() => {
+              setEditandoCadastro(false);
+              setCadastroAberto(true);
+            }}
             aria-label={t("Cadastrar cliente")}
             title={t("Cadastrar cliente")}
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xs transition-colors hover:bg-accent/90 focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-hidden disabled:opacity-60"
@@ -517,7 +592,7 @@ function ColunaCliente({
             data-testid="pdv-cliente-resumo"
           >
             <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1.5">
-              <div className="min-w-0 max-w-full flex-1 basis-40">
+              <div className="max-w-full min-w-0 flex-1 basis-40">
                 <div className="flex items-center gap-1.5 font-medium">
                   <CheckCircle
                     className="size-4 shrink-0 text-accent"
@@ -534,8 +609,16 @@ function ColunaCliente({
                 </div>
               </div>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
-                <button type="button" ref={botaoEditar} className="text-accent underline-offset-2 hover:underline"
-                  onClick={() => { setEditandoCadastro(true); setCadastroAberto(true); }} data-testid="pdv-editar-cliente">
+                <button
+                  type="button"
+                  ref={botaoEditar}
+                  className="text-accent underline-offset-2 hover:underline"
+                  onClick={() => {
+                    setEditandoCadastro(true);
+                    setCadastroAberto(true);
+                  }}
+                  data-testid="pdv-editar-cliente"
+                >
                   {t("Editar cadastro")}
                 </button>
                 <button
@@ -557,7 +640,9 @@ function ColunaCliente({
               </div>
             </div>
             {!docPreenchido || !documentoValido(c.documento) ? (
-              <p className="text-xs text-muted-foreground">{t("Complete o CPF ou CNPJ em Editar cadastro para concluir a negociação.")}</p>
+              <p className="text-xs text-muted-foreground">
+                {t("Complete o CPF ou CNPJ em Editar cadastro para concluir a negociação.")}
+              </p>
             ) : null}
           </div>
         ) : (
@@ -652,7 +737,12 @@ function ColunaVeiculo({
 
   if (r.tipo === "compra") {
     return (
-      <Coluna ancora="pdv-setor-veiculo" icone={Storefront} indice={1} titulo={t("Veículo comprado")}>
+      <Coluna
+        ancora="pdv-setor-veiculo"
+        icone={Storefront}
+        indice={1}
+        titulo={t("Veículo comprado")}
+      >
         <fieldset disabled={travado} className="space-y-3">
           <FichaDoVeiculo
             v={r.veiculo}
@@ -702,7 +792,13 @@ function ColunaVeiculo({
   };
 
   return (
-    <Coluna ancora="pdv-setor-veiculo" atalho="F3" icone={Storefront} indice={1} titulo={t("Veículos")}>
+    <Coluna
+      ancora="pdv-setor-veiculo"
+      atalho="F3"
+      icone={Storefront}
+      indice={1}
+      titulo={t("Veículos")}
+    >
       <fieldset disabled={travado} className="space-y-3">
         {escolhido ? (
           <div
@@ -808,11 +904,20 @@ function ColunaVeiculo({
           </>
         )}
 
-        {r.veiculo_id ? <details className="space-y-3 rounded-xl border p-3">
-          <summary className="cursor-pointer text-sm">Revisar veículo no contrato</summary>
-          <p className="text-xs text-muted-foreground">Estas alterações valem para esta negociação.</p>
-          <FichaDoVeiculo v={r.veiculo} onChange={(v) => setR((x) => ({ ...x, veiculo: v }))} prefixo="pdv-venda" onde="veiculo" />
-        </details> : null}
+        {r.veiculo_id ? (
+          <details className="space-y-3 rounded-xl border p-3">
+            <summary className="cursor-pointer text-sm">Revisar veículo no contrato</summary>
+            <p className="text-xs text-muted-foreground">
+              Estas alterações valem para esta negociação.
+            </p>
+            <FichaDoVeiculo
+              v={r.veiculo}
+              onChange={(v) => setR((x) => ({ ...x, veiculo: v }))}
+              prefixo="pdv-venda"
+              onde="veiculo"
+            />
+          </details>
+        ) : null}
         <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-3">
           <CampoDinheiro
             rotulo={t("Preço de venda")}
@@ -966,11 +1071,7 @@ function TelaDoContrato({
             <FileText className="size-3.5" aria-hidden />
             {t("Abrir para imprimir")}
           </a>
-          <a
-            href={url}
-            download
-            className={`${botao} text-accent hover:bg-accent-soft`}
-          >
+          <a href={url} download className={`${botao} text-accent hover:bg-accent-soft`}>
             {t("Baixar PDF")}
           </a>
           {concluida ? (
@@ -1040,7 +1141,7 @@ const ORDEM_DOS_SETORES: SetorDoPdv[] = [
 
 const ANCORA_DO_SETOR: Record<SetorDoPdv, string> = {
   Comprador: "pdv-setor-comprador",
-  "Veículo": "pdv-setor-veiculo",
+  Veículo: "pdv-setor-veiculo",
   Troca: "pdv-setor-troca",
   Pagamento: "pdv-setor-pagamento",
   Loja: "pdv-setor-loja",
@@ -1048,13 +1149,32 @@ const ANCORA_DO_SETOR: Record<SetorDoPdv, string> = {
   Contrato: "pdv-setor-contrato",
 };
 
+/** Etapa do celular em que cada setor aparece. */
+const COLUNA_DO_SETOR: Record<SetorDoPdv, number> = {
+  Comprador: 0,
+  Veículo: 1,
+  Troca: 1,
+  Pagamento: 3,
+  Loja: 2,
+  "Entrega e transferência": 2,
+  Contrato: 2,
+};
+const EVENTO_ABRIR_COLUNA = "pdv:abrir-coluna";
+
 function irParaOSetor(setor: SetorDoPdv) {
-  const el = document.getElementById(ANCORA_DO_SETOR[setor]);
-  if (!el) return;
-  if (el instanceof HTMLDetailsElement) el.open = true;
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
-  const campo = el.querySelector<HTMLElement>('[aria-invalid="true"]');
-  campo?.focus({ preventScroll: true });
+  // No celular a coluna do setor pode estar recolhida: abre antes de rolar.
+  window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_COLUNA, { detail: COLUNA_DO_SETOR[setor] }));
+  // Timeout (não rAF): o React precisa renderizar a coluna recém-aberta antes de medir a âncora,
+  // e rAF não roda com a aba em segundo plano.
+  window.setTimeout(() => {
+    const el = document.getElementById(ANCORA_DO_SETOR[setor]);
+    if (!el) return;
+    if (el instanceof HTMLDetailsElement) el.open = true;
+    // Instantâneo: o scroll suave é cancelado pelo reflow da coluna/details recém-abertos.
+    el.scrollIntoView({ block: "start" });
+    const campo = el.querySelector<HTMLElement>('[aria-invalid="true"]');
+    campo?.focus({ preventScroll: true });
+  }, 50);
 }
 
 /** Leva ao campo da pendência e o deixa vermelho; sem campo achado, fica no setor. */
@@ -1099,7 +1219,10 @@ function OQueFalta({
       </p>
       <ul className="space-y-2">
         {grupos.map((g) => (
-          <li key={g.setor} data-testid={`pdv-falta-${ANCORA_DO_SETOR[g.setor].replace("pdv-setor-", "")}`}>
+          <li
+            key={g.setor}
+            data-testid={`pdv-falta-${ANCORA_DO_SETOR[g.setor].replace("pdv-setor-", "")}`}
+          >
             <button
               type="button"
               onClick={() => ir(g.itens[0]!)}
@@ -1132,19 +1255,23 @@ function ColunaPagamento({
   setR,
   travado,
   faltando,
-  blocos,
   rodape,
   usuarioId,
+  taxasDeCartao,
+  dadosDoContrato,
+  indice,
 }: {
+  dadosDoContrato?: React.ReactNode;
+  indice: number;
   r: Rascunho;
   setR: (f: (r: Rascunho) => Rascunho) => void;
   travado: boolean;
   /** Tudo que impede concluir, por setor (caixa + contrato). */
   faltando: FaltaParaConcluir[];
-  blocos: BlocosDaOperacao;
   /** Nulo em tela pequena: lá o rodapé fica fora da coluna, preso embaixo da tela. */
   rodape: React.ReactNode;
   usuarioId: string;
+  taxasDeCartao: TaxasDeCartao;
   podeTrocarTipo: boolean;
   onTrocarTipo: (tipo: TipoDeNegociacao) => void;
 }) {
@@ -1181,12 +1308,28 @@ function ColunaPagamento({
     };
   }, []);
 
+  const perfilPadrao = taxasDeCartao.perfis[taxasDeCartao.padrao ?? 0];
+
+  function aplicarPerfil(p: PagamentoDaNegociacao, perfil: ReturnType<typeof perfilDoCartao>): PagamentoDaNegociacao {
+    const debito = p.forma === "cartao_debito";
+    const parcelas = debito || (perfil && p.parcelas > perfil.credito.length) ? 1 : p.parcelas;
+    const taxa = debito ? perfil?.debito : perfil?.credito[parcelas - 1];
+    return {
+      ...p,
+      parcelas,
+      bandeira: perfil?.bandeira || undefined,
+      taxa_cartao_bps: taxa,
+      repasse_cartao: p.repasse_cartao ?? (taxa === undefined ? undefined : "repassar"),
+    };
+  }
+
   function adicionar(forma: FormaDePagamento) {
     const valor = Math.max(0, resumo.saldo_cents);
-    setR((x) => ({
-      ...x,
-      pagamentos: [...x.pagamentos, { forma, valor_cents: valor, parcelas: 1 }],
-    }));
+    const pagamento: PagamentoDaNegociacao = { forma, valor_cents: valor, parcelas: 1 };
+    const novo = forma === "cartao_credito" || forma === "cartao_debito"
+      ? aplicarPerfil({ ...pagamento, perfil_cartao_id: perfilPadrao?.id }, perfilPadrao)
+      : pagamento;
+    setR((x) => ({ ...x, pagamentos: [...x.pagamentos, novo] }));
   }
   function mudar(i: number, p: Partial<PagamentoDaNegociacao>) {
     setR((x) => ({
@@ -1194,6 +1337,26 @@ function ColunaPagamento({
       pagamentos: x.pagamentos.map((atual, j) => {
         if (j !== i) return atual;
         const novo = { ...atual, ...p };
+        if (novo.forma === "cartao_credito" || novo.forma === "cartao_debito") {
+          if (atual.forma !== "cartao_credito" && atual.forma !== "cartao_debito") {
+            novo.perfil_cartao_id = perfilPadrao?.id;
+            novo.primeiro_vencimento = null;
+          }
+          const perfil = perfilDoCartao(taxasDeCartao, novo.perfil_cartao_id);
+          if (
+            novo.forma !== atual.forma ||
+            novo.perfil_cartao_id !== atual.perfil_cartao_id ||
+            (perfil && novo.parcelas !== atual.parcelas)
+          ) {
+            return aplicarPerfil(novo, perfil);
+          }
+          return novo;
+        }
+        novo.perfil_cartao_id = undefined;
+        if (atual.repasse_cartao || atual.taxa_cartao_bps !== undefined) {
+          novo.repasse_cartao = undefined;
+          novo.taxa_cartao_bps = undefined;
+        }
         // Valor da parcela acompanha valor/parcelas, até o vendedor digitar outro (juros).
         if (
           ("valor_cents" in p || "parcelas" in p) &&
@@ -1210,6 +1373,22 @@ function ColunaPagamento({
   function cartaoDoPagamento(p: PagamentoDaNegociacao, i: number) {
     const parcelada = FORMAS_PARCELADAS.includes(p.forma);
     const comBanco = FORMAS_COM_BANCO.includes(p.forma);
+    const cartao = p.forma === "cartao_credito" || p.forma === "cartao_debito";
+    const formasDisponiveis: readonly FormaDePagamento[] = cartao
+      ? ["cartao_debito", "cartao_credito"]
+      : formas;
+    const perfil = perfilDoCartao(taxasDeCartao, p.perfil_cartao_id);
+    const modo = p.repasse_cartao ?? "repassar";
+    const valores = p.taxa_cartao_bps !== undefined && cartao
+      ? calcularCartao(p.valor_cents, p.taxa_cartao_bps, modo, p.parcelas)
+      : null;
+    const rotuloDaConta = t("Conta do pagamento");
+    const conta = seletorConta(
+      p.conta_id ?? "",
+      (v) => mudar(i, { conta_id: v }),
+      rotuloDaConta,
+      cartao ? `mt-1 ${CAMPO}` : undefined,
+    );
     return (
       <li
         key={i}
@@ -1223,7 +1402,7 @@ function ColunaPagamento({
             aria-label={t("Forma de pagamento")}
             className="h-8 min-w-0 flex-1 rounded-full border border-border/80 bg-surface px-3 text-sm font-medium shadow-xs focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:outline-hidden"
           >
-            {formas.map((f) => (
+            {formasDisponiveis.map((f) => (
               <option key={f} value={f}>
                 {t(ROTULO_DA_FORMA[f])}
               </option>
@@ -1248,10 +1427,27 @@ function ColunaPagamento({
             rotulo={p.forma === "financiamento" ? t("Valor financiado") : t("Valor")}
             cents={p.valor_cents}
             onChange={(c) => mudar(i, { valor_cents: c })}
-            extra={parcelada ? "" : "col-span-2"}
+            extra={parcelada && !(cartao && perfil) ? "" : "col-span-2"}
             testid={`pdv-pagamento-${i}-valor`}
           />
-          {parcelada ? (
+          {p.forma === "cartao_credito" && perfil ? (
+            <label className="col-span-2 block text-xs">
+              <span className="text-muted-foreground">{t("Parcelas")}</span>
+              <select className={`mt-1 ${CAMPO}`} value={p.parcelas}
+                onChange={(e) => mudar(i, { parcelas: Number(e.target.value) })}>
+                {p.parcelas > perfil.credito.length && <option value={p.parcelas}>{p.parcelas}x</option>}
+                {perfil.credito.map((taxaDoPerfil, j) => {
+                  const parcelas = j + 1;
+                  const taxa = parcelas === p.parcelas ? p.taxa_cartao_bps ?? taxaDoPerfil : taxaDoPerfil;
+                  const percentual = (taxa / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+                  const valor = p.valor_cents > 0
+                    ? ` ${formatarPreco(calcularCartao(p.valor_cents, taxa, modo, parcelas).parcela)}`
+                    : "";
+                  return <option key={parcelas} value={parcelas}>{`${parcelas}x${valor} (${percentual}%)`}</option>;
+                })}
+              </select>
+            </label>
+          ) : parcelada ? (
             <Campo
               rotulo={t("Parcelas")}
               tipo="number"
@@ -1259,14 +1455,14 @@ function ColunaPagamento({
               onChange={(x) => mudar(i, { parcelas: Math.min(120, Math.max(1, Number(x) || 1)) })}
             />
           ) : null}
-          {parcelada && p.parcelas > 1 ? (
+          {parcelada && (!cartao || !p.repasse_cartao) && p.parcelas > 1 ? (
             <CampoDinheiro
               rotulo={t("Valor da parcela")}
               cents={p.valor_parcela_cents}
               onChange={(c) => mudar(i, { valor_parcela_cents: c })}
             />
           ) : null}
-          {parcelada ? (
+          {parcelada && !cartao ? (
             <Campo
               rotulo={t("1º vencimento")}
               tipo="date"
@@ -1284,17 +1480,95 @@ function ColunaPagamento({
               campo="pagamentos.banco"
             />
           ) : null}
-          {seletorConta(p.conta_id ?? "", (v) => mudar(i, { conta_id: v }), "Conta do pagamento")}
-          {p.forma === "cartao_credito" || p.forma === "cartao_debito" ? (
-            <Campo
-              rotulo={t("Bandeira do cartão")}
-              valor={p.bandeira}
-              onChange={(x) => mudar(i, { bandeira: x })}
-              placeholder="Visa, Mastercard, Elo…"
-              testid={`pdv-pagamento-${i}-bandeira`}
-              campo="pagamentos.bandeira"
-            />
-          ) : null}
+          {cartao ? (
+            <>
+              <div className="col-span-2 grid grid-cols-2 items-end gap-2">
+                <label className="block min-w-0 text-xs">
+                  <span className="text-muted-foreground">{rotuloDaConta}</span>
+                  {conta}
+                </label>
+                <label className="block min-w-0 text-xs">
+                  <span className="text-muted-foreground">{t("Perfil do cartão")}</span>
+                  <select
+                    className={`mt-1 ${CAMPO}`}
+                    value={p.perfil_cartao_id ?? ""}
+                    onChange={(e) => mudar(i, { perfil_cartao_id: e.target.value || undefined })}
+                    data-campo="pagamentos.bandeira"
+                  >
+                    <option value="">{t("Sem perfil")}</option>
+                    {p.perfil_cartao_id && !perfil && (
+                      <option value={p.perfil_cartao_id}>{t("Perfil indisponível")}</option>
+                    )}
+                    {taxasDeCartao.perfis.map((item) => (
+                      <option key={item.id} value={item.id}>{item.nome}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="col-span-2 grid gap-2 rounded-xl border border-border/80 bg-muted/20 p-3 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                  <span className="font-medium">
+                    {p.taxa_cartao_bps === undefined ? "Taxa da máquina a definir" : `Taxa da máquina: ${p.taxa_cartao_bps / 100}%`}
+                  </span>
+                  <div className="inline-flex rounded-full border border-border/80 bg-surface p-0.5" role="group" aria-label="Tratamento da taxa">
+                    {(["repassar", "absorver"] as const).map((opcao) => (
+                      <button
+                        key={opcao}
+                        type="button"
+                        aria-pressed={modo === opcao}
+                        className={`rounded-full px-2.5 py-1 focus-visible:outline-2 focus-visible:outline-accent ${modo === opcao ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}
+                        onClick={() => mudar(i, { repasse_cartao: opcao })}
+                      >
+                        {opcao === "repassar" ? "Repassar" : "Absorver"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {!travado && (
+                  <details>
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                      Ajustar taxa
+                    </summary>
+                    <label className="mt-2 block">
+                      Taxa deste cartão (%)
+                      <input
+                        type="number"
+                        min="0"
+                        max="99.99"
+                        step="0.01"
+                        className={`mt-1 ${CAMPO}`}
+                        value={p.taxa_cartao_bps === undefined ? "" : p.taxa_cartao_bps / 100}
+                        onChange={(e) => {
+                          const taxa = e.target.valueAsNumber;
+                          if (Number.isFinite(taxa) && taxa >= 0 && taxa <= 99.99) {
+                            mudar(i, { taxa_cartao_bps: Math.round(taxa * 100), repasse_cartao: modo });
+                          }
+                        }}
+                      />
+                    </label>
+                  </details>
+                )}
+                {valores && (
+                  <dl className="grid grid-cols-2 gap-x-2 gap-y-3 border-t border-border/70 pt-2 [&_dd]:mt-0.5 [&_dd]:text-sm [&_dd]:font-semibold [&_dd]:tabular-nums [&_dt]:text-muted-foreground">
+                    <div>
+                      <dt>Valor na maquininha</dt>
+                      <dd>{formatarPreco(valores.cobrado)}</dd>
+                    </div>
+                    <div>
+                      <dt>Líquido previsto</dt>
+                      <dd>{formatarPreco(valores.liquido)}</dd>
+                    </div>
+                    {p.parcelas > 1 && (
+                      <div>
+                        <dt>Parcela média ({p.parcelas}x)</dt>
+                        <dd>{formatarPreco(valores.parcela)}</dd>
+                      </div>
+                    )}
+                  </dl>
+                )}
+              </div>
+            </>
+          ) : conta}
           <Campo
             rotulo={t("Observação")}
             valor={p.observacao}
@@ -1306,7 +1580,15 @@ function ColunaPagamento({
     );
   }
 
-  const troco = Math.max(0, -resumo.saldo_cents);
+  const taxasAbsorvidas = r.pagamentos.reduce((total, p) => {
+    if (!venda || p.taxa_cartao_bps === undefined ||
+        (p.forma !== "cartao_credito" && p.forma !== "cartao_debito")) {
+      return total;
+    }
+    const { liquido } = calcularCartao(p.valor_cents, p.taxa_cartao_bps, p.repasse_cartao ?? "repassar", p.parcelas);
+    return total + (p.valor_cents - liquido);
+  }, 0);
+  const saldoPrevisto = resumo.saldo_cents + taxasAbsorvidas;
 
   // Mensagem do estado REAL da negociação: itens, pendências do cadastro e saldo.
   const situacao =
@@ -1324,7 +1606,7 @@ function ColunaPagamento({
             }
           : resumo.saldo_cents < 0
             ? {
-                texto: `${t("Passou do total")} · ${t("Troco")} ${formatarPreco(troco)}`,
+                texto: `${t("Passou do total")} · ${t("Troco")} ${formatarPreco(-resumo.saldo_cents)}`,
                 cor: "bg-success-bg text-success-fg",
               }
             : { texto: t("Pronto para finalizar"), cor: "bg-success-bg text-success-fg" };
@@ -1339,13 +1621,18 @@ function ColunaPagamento({
     });
   }
 
-  function seletorConta(valor: string, mudarConta: (v: string) => void, label: string) {
+  function seletorConta(
+    valor: string,
+    mudarConta: (v: string) => void,
+    label: string,
+    className = "h-10 min-w-0 rounded-full border bg-muted px-3 text-xs",
+  ) {
     return (
       <select
         aria-label={label}
         value={valor}
         onChange={(e) => mudarConta(e.target.value)}
-        className="h-10 min-w-0 rounded-full border bg-muted px-3 text-xs"
+        className={className}
       >
         <option value="">Selecione a conta</option>
         {contas.map((c) => (
@@ -1411,7 +1698,7 @@ function ColunaPagamento({
     <Coluna
       ancora="pdv-setor-pagamento"
       icone={Receipt}
-      indice={2}
+      indice={indice}
       className="min-h-[32rem] lg:min-h-0"
       titulo={venda ? t("Pagamento") : t("Como a loja paga")}
       rodape={rodape}
@@ -1451,6 +1738,8 @@ function ColunaPagamento({
                     setR((x) => ({
                       ...x,
                       modalidade: id,
+                      reserva_expira_em:
+                        id === "reserva" ? (x.reserva_expira_em ?? prazoPadraoDaReserva()) : null,
                       pagamentos:
                         id === "crediario"
                           ? x.pagamentos
@@ -1464,9 +1753,20 @@ function ColunaPagamento({
               ))}
             </div>
             {r.modalidade === "reserva" && (
-              <p className="text-xs text-muted-foreground">
-                Reserva salva como negociação em aberto, sem concluir a venda.
-              </p>
+              <>
+                <Campo
+                  rotulo={t("Reservado até")}
+                  tipo="date"
+                  valor={diaDoPrazo(r.reserva_expira_em)}
+                  onChange={(v) => setR((x) => ({ ...x, reserva_expira_em: prazoDaReserva(v) }))}
+                  testid="pdv-reserva-prazo"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "O carro fica reservado até o fim desse dia e sai da venda para outros clientes. Os pagamentos lançados abaixo ficam como sinal. Vencido o prazo, o carro volta a ficar disponível.",
+                  )}
+                </p>
+              </>
             )}
           </Secao>
         )}
@@ -1625,16 +1925,16 @@ function ColunaPagamento({
                 {formatarPreco(
                   r.pagamentos
                     .filter((p) => p.forma !== "crediario")
-                    .reduce((a, p) => a + p.valor_cents, 0),
+                    .reduce((a, p) => a + p.valor_cents, 0) - taxasAbsorvidas,
                 )}
               </div>
             </div>
-            <div className="p-2">
+            <div className="p-2" aria-live="polite" aria-atomic="true">
               <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
-                {t("Troco")}
+                {saldoPrevisto < 0 ? t("Troco") : t("Falta")}
               </div>
               <div className="text-sm font-semibold tabular-nums" data-testid="pdv-troco">
-                {formatarPreco(troco)}
+                {formatarPreco(Math.abs(saldoPrevisto))}
               </div>
             </div>
           </div>
@@ -1650,26 +1950,7 @@ function ColunaPagamento({
           </div>
         </Secao>
 
-        <EditorDoContrato
-          contrato={r.contrato}
-          pagamentos={r.pagamentos}
-          onChange={(contrato, pagamentos) => setR((x) => ({ ...x, contrato, pagamentos }))}
-          requisitos={{ venda, blocos }}
-          faltando={chavesDoQueFalta(faltando)}
-        />
-        <label className="block">
-          <span className="text-sm font-normal text-muted-foreground">
-            {venda ? t("Observações da Venda") : t("Observações da Compra")}
-          </span>
-          <textarea
-            value={r.observacoes ?? ""}
-            onChange={(e) => setR((x) => ({ ...x, observacoes: e.target.value }))}
-            placeholder="Observações adicionais sobre a venda..."
-            rows={3}
-            className="mt-2 w-full rounded-3xl border border-border/80 bg-surface px-3.5 py-2 text-sm shadow-xs transition-colors focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:outline-hidden"
-            data-testid="pdv-observacoes"
-          />
-        </label>
+        {dadosDoContrato}
       </fieldset>
     </Coluna>
   );
@@ -1794,17 +2075,21 @@ export function PdvClient({
   urlsDasCapas,
   negociacoesIniciais,
   podeNegociar,
+  podeSalvarPadrao = false,
   titulo,
   usuarioId,
   contratoPadrao = novoContrato({}),
+  taxasDeCartao = lerTaxasDeCartao(undefined),
 }: {
   estoque: VeiculoDoPdv[];
   urlsDasCapas: Record<string, string>;
   negociacoesIniciais: Negociacao[];
   podeNegociar: boolean;
+  podeSalvarPadrao?: boolean;
   titulo: string;
   usuarioId: string;
   contratoPadrao?: DadosDoContrato;
+  taxasDeCartao?: TaxasDeCartao;
 }) {
   const t = useT();
   const tagDeIdioma = useTagDeIdioma();
@@ -1829,28 +2114,25 @@ export function PdvClient({
       ativo = false;
     };
   }, [usuarioId]);
-  const setR = React.useCallback(
-    (f: (r: Rascunho) => Rascunho) => {
-      setSujo(true);
-      setRascunho((x) => {
-        const novo = f(x);
-        if (novo.modalidade === "crediario") {
-          const anteriores = novo.pagamentos.filter((p) => p.forma !== "crediario");
-          const saldo = Math.max(
-            0,
-            resumoDaNegociacao({ ...novo, pagamentos: anteriores }).saldo_cents,
-          );
-          const credito = novo.pagamentos.find((p) => p.forma === "crediario");
-          novo.pagamentos = [
-            ...anteriores,
-            { forma: "crediario", parcelas: 1, ...credito, valor_cents: saldo },
-          ];
-        }
-        return novo;
-      });
-    },
-    [],
-  );
+  const setR = React.useCallback((f: (r: Rascunho) => Rascunho) => {
+    setSujo(true);
+    setRascunho((x) => {
+      const novo = f(x);
+      if (novo.modalidade === "crediario") {
+        const anteriores = novo.pagamentos.filter((p) => p.forma !== "crediario");
+        const saldo = Math.max(
+          0,
+          resumoDaNegociacao({ ...novo, pagamentos: anteriores }).saldo_cents,
+        );
+        const credito = novo.pagamentos.find((p) => p.forma === "crediario");
+        novo.pagamentos = [
+          ...anteriores,
+          { forma: "crediario", parcelas: 1, ...credito, valor_cents: saldo },
+        ];
+      }
+      return novo;
+    });
+  }, []);
   const resumo = resumoDaNegociacao(r);
   const faltas = pendenciasParaConcluir(r);
   const atual = comoNegociacao(r, aberta);
@@ -2078,9 +2360,80 @@ export function PdvClient({
   ];
 
   const telaLarga = useTelaLarga();
+  const telaAmpla = useTelaLarga(1280);
+  const [quatroColunas, setQuatroColunas] = React.useState(false);
+  const quatroColunasNoDesktop = telaAmpla && quatroColunas;
+  const contratoEmColuna = !telaLarga || quatroColunasNoDesktop;
+  // Celular: uma coluna aberta por vez; as outras viram bolinhas na barra do topo.
+  const [colunaAberta, setColunaAberta] = React.useState(0);
+  React.useEffect(() => {
+    const abrir = (e: Event) => setColunaAberta((e as CustomEvent<number>).detail);
+    window.addEventListener(EVENTO_ABRIR_COLUNA, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_COLUNA, abrir);
+  }, []);
+  const colunasDoCelular = [
+    { icone: UserCircle, rotulo: t("Cliente") },
+    { icone: Storefront, rotulo: t("Veículos") },
+    { icone: FileText, rotulo: t("Dados do contrato") },
+    { icone: CurrencyDollar, rotulo: t("Pagamento") },
+  ];
+  const classeDaColuna = (i: number) => (telaLarga || colunaAberta === i ? "contents" : "hidden");
+  const dadosDoContrato = (
+    <>
+      <EditorDoContrato
+        contrato={r.contrato}
+        pagamentos={r.pagamentos}
+        onChange={(contrato, pagamentos) => setR((x) => ({ ...x, contrato, pagamentos }))}
+        requisitos={{ venda: r.tipo === "venda", blocos }}
+        faltando={chavesDoQueFalta(oQueFalta)}
+        mostrarTitulo={!contratoEmColuna}
+        onSalvarPadrao={
+          podeSalvarPadrao && !travado
+            ? async (c) => {
+                const e = c.empresa;
+                if (!e) return { ok: false, error: "Preencha os dados da loja." };
+                const res = await salvarPadraoDaLoja({
+                  empresa: e,
+                  representante_nome: c.representante_nome,
+                  representante_cpf: c.representante_cpf,
+                  representante_cargo: c.representante_cargo,
+                });
+                return res.ok
+                  ? { ok: true }
+                  : {
+                      ok: false,
+                      error:
+                        res.error === "validation_failed"
+                          ? "Informe ao menos a razão social."
+                          : res.error === "forbidden_role"
+                            ? "Só administradores salvam o padrão da loja."
+                            : res.error,
+                    };
+              }
+            : undefined
+        }
+      />
+      <label className="block">
+        <span className="text-sm font-normal text-muted-foreground">
+          {r.tipo === "venda" ? t("Observações da Venda") : t("Observações da Compra")}
+        </span>
+        <textarea
+          value={r.observacoes ?? ""}
+          onChange={(e) => setR((x) => ({ ...x, observacoes: e.target.value }))}
+          placeholder="Observações adicionais sobre a venda..."
+          rows={3}
+          className="mt-2 w-full rounded-3xl border border-border/80 bg-surface px-3.5 py-2 text-sm shadow-xs transition-colors focus-visible:border-accent/50 focus-visible:ring-2 focus-visible:ring-accent/20 focus-visible:outline-hidden"
+          data-testid="pdv-observacoes"
+        />
+      </label>
+    </>
+  );
   const rodapeDoPagamento =
     aba !== "historico" ? (
-      <footer className="border-t border-border/60 bg-surface text-foreground" data-testid="pdv-rodape">
+      <footer
+        className="border-t border-border/60 bg-surface text-foreground"
+        data-testid="pdv-rodape"
+      >
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div data-testid="pdv-saldo" className="min-w-0">
             <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
@@ -2175,6 +2528,19 @@ export function PdvClient({
           </span>
         ) : null}
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {aba !== "historico" && !contratoAberto ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="hidden rounded-full aria-pressed:bg-accent aria-pressed:text-accent-foreground xl:inline-flex"
+              aria-controls="pdv-colunas"
+              aria-pressed={quatroColunasNoDesktop}
+              onClick={() => setQuatroColunas((ativa) => !ativa)}
+            >
+              {t("4 colunas")}
+            </Button>
+          ) : null}
           {aberta ? (
             <>
               <button
@@ -2261,39 +2627,87 @@ export function PdvClient({
           <Historico negociacoes={negociacoes} abrir={abrir} />
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)] lg:overflow-hidden">
-          <ColunaCliente
-            r={r}
-            setR={setR}
-            travado={travado}
-            faltando={oQueFalta}
-            pendenciasCom={(cliente) => {
-              const comOCliente = { ...r, cliente };
-              return faltandoParaConcluir(
-                comoNegociacao(comOCliente, aberta),
-                pendenciasParaConcluir(comOCliente),
-              );
-            }}
-          />
-          <ColunaVeiculo
-            r={r}
-            setR={setR}
-            estoque={estoque}
-            urlsDasCapas={urlsDasCapas}
-            travado={travado}
-          />
-          <ColunaPagamento
-            r={r}
-            setR={setR}
-            travado={travado}
-            faltando={oQueFalta}
-            blocos={blocos}
-            rodape={telaLarga ? rodapeDoPagamento : null}
-            usuarioId={usuarioId}
-            podeTrocarTipo={aberta === null}
-            onTrocarTipo={nova}
-          />
-        </div>
+        <>
+          <nav
+            aria-label={t("Seções da venda")}
+            data-testid="pdv-bolinhas"
+            className="flex shrink-0 items-center justify-center gap-3 border-b border-border/60 bg-surface px-4 py-2 lg:hidden"
+          >
+            {colunasDoCelular.map(({ icone: Icone, rotulo }, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={rotulo}
+                aria-current={colunaAberta === i ? "true" : undefined}
+                onClick={() => setColunaAberta(i)}
+                className={`flex size-11 items-center justify-center rounded-full border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-hidden ${
+                  colunaAberta === i
+                    ? "scale-110 border-accent bg-accent text-accent-foreground shadow-sm"
+                    : "border-border/80 bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icone className="size-5" weight="duotone" aria-hidden />
+              </button>
+            ))}
+          </nav>
+          <div
+            id="pdv-colunas"
+            className={`grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 lg:overflow-hidden ${
+              quatroColunasNoDesktop
+                ? "xl:grid-cols-[minmax(0,0.85fr)_repeat(3,minmax(0,1.15fr))]"
+                : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)]"
+            }`}
+          >
+            <div className={classeDaColuna(0)}>
+              <ColunaCliente
+                r={r}
+                setR={setR}
+                travado={travado}
+                faltando={oQueFalta}
+                pendenciasCom={(cliente) => {
+                  const comOCliente = { ...r, cliente };
+                  return faltandoParaConcluir(
+                    comoNegociacao(comOCliente, aberta),
+                    pendenciasParaConcluir(comOCliente),
+                  );
+                }}
+              />
+            </div>
+            <div className={classeDaColuna(1)}>
+              <ColunaVeiculo
+                r={r}
+                setR={setR}
+                estoque={estoque}
+                urlsDasCapas={urlsDasCapas}
+                travado={travado}
+              />
+            </div>
+            {contratoEmColuna ? (
+              <div className={classeDaColuna(2)}>
+                <Coluna titulo={t("Dados do contrato")} icone={FileText} indice={2}>
+                  <fieldset disabled={travado} className="min-w-0 space-y-3">
+                    {dadosDoContrato}
+                  </fieldset>
+                </Coluna>
+              </div>
+            ) : null}
+            <div className={classeDaColuna(3)}>
+              <ColunaPagamento
+                indice={contratoEmColuna ? 3 : 2}
+                r={r}
+                setR={setR}
+                travado={travado}
+                faltando={oQueFalta}
+                rodape={telaLarga ? rodapeDoPagamento : null}
+                usuarioId={usuarioId}
+                taxasDeCartao={taxasDeCartao}
+                dadosDoContrato={contratoEmColuna ? undefined : dadosDoContrato}
+                podeTrocarTipo={aberta === null}
+                onTrocarTipo={nova}
+              />
+            </div>
+          </div>
+        </>
       )}
       {!telaLarga && !contratoAberto ? <div className="shrink-0">{rodapeDoPagamento}</div> : null}
     </div>

@@ -39,9 +39,86 @@ const USUARIO = "d0849a00-0000-4000-8000-0000000000a1";
 const CPF = "529.982.247-25";
 const CPF_HASH = hashCpf(CPF);
 const EMAIL = "ana@example.com";
+const CNPJ = "11222333000181";
+const CAMPOS_CNPJ = { cadastro_cliente: { cnpj: CNPJ } };
 
 const INDICE_CPF = "uniq_contacts_org_cpf";
 const INDICE_EMAIL = "uniq_contacts_org_email";
+
+describe("cadastro de cliente com dados já registrados", () => {
+  it("bloqueia o telefone salvo com a grafia antiga antes de inserir", async () => {
+    await expect(
+      criar(
+        clienteFalso({
+          contatos: [{ id: EXISTENTE, organization_id: ORG, phone_number: "+553284793302" }],
+        }),
+        { name: "Novo cliente", phone_number: "+5532984793302", source: "manual" },
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "Já existe um contato com este telefone.",
+    });
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("bloqueia CNPJ já gravado com pontuação antes de inserir", async () => {
+    await expect(
+      criar(
+        clienteFalso({
+          contatos: [{
+            id: EXISTENTE,
+            organization_id: ORG,
+            custom_fields: { cadastro_cliente: { cnpj: "11.222.333/0001-81" } },
+          }],
+        }),
+        { name: "Nova empresa", custom_fields: CAMPOS_CNPJ },
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "contact_exists",
+      details: { contact_id: EXISTENTE },
+      message: "Já existe um contato com este CNPJ.",
+    });
+    expect(inserts).toHaveLength(0);
+  });
+
+  it("informa conflito de CNPJ quando o banco detecta uma gravação concorrente", async () => {
+    await expect(
+      criar(
+        clienteFalso({
+          falhaDoInsert: {
+            code: "23505",
+            message: 'duplicate key value violates unique constraint "uniq_contacts_org_cnpj"',
+          },
+        }),
+        { name: "Nova empresa", custom_fields: CAMPOS_CNPJ },
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "contact_exists",
+      message: "Já existe um contato com este CNPJ.",
+    });
+  });
+
+  it("bloqueia trocar o CNPJ pelo de outro cliente", async () => {
+    await expect(
+      editar(
+        clienteFalso({
+          contatos: [
+            { id: EXISTENTE, organization_id: ORG },
+            { id: NOVO, organization_id: ORG, custom_fields: CAMPOS_CNPJ },
+          ],
+        }),
+        { custom_fields: CAMPOS_CNPJ },
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      details: { contact_id: NOVO },
+      message: "Já existe um contato com este CNPJ.",
+    });
+    expect(updates).toHaveLength(0);
+  });
+});
 
 interface LinhaContato {
   id: string;
@@ -49,6 +126,7 @@ interface LinhaContato {
   phone_number?: string | null;
   cpf_hash?: string | null;
   email?: string | null;
+  custom_fields?: { cadastro_cliente?: { cnpj?: string } };
   is_merged_into?: string | null;
 }
 
@@ -68,7 +146,9 @@ interface Cadeia {
   insert: (linha: Record<string, unknown>) => Cadeia;
   update: (linha: Record<string, unknown>) => Cadeia;
   eq: (coluna: string, valor: unknown) => Cadeia;
+  neq: (coluna: string, valor: unknown) => Cadeia;
   in: (coluna: string, valores: unknown) => Cadeia;
+  filter: (coluna: string, operador: string, valor: string) => Cadeia;
   is: (coluna: string, valor: unknown) => Cadeia;
   order: (coluna: string, opcoes?: unknown) => Cadeia;
   limit: (n: number) => Cadeia;
@@ -88,7 +168,9 @@ function cadeiaQualquer(tabela: string): Cadeia {
     insert: () => cadeia,
     update: () => cadeia,
     eq: () => cadeia,
+    neq: () => cadeia,
     in: () => cadeia,
+    filter: () => cadeia,
     is: () => cadeia,
     order: () => cadeia,
     limit: () => cadeia,
@@ -108,8 +190,11 @@ function linhaCasaCom(linha: LinhaContato, filtros: Filtro[], variantes: string[
   for (const [coluna, valor] of filtros) {
     if (coluna === "organization_id" && linha.organization_id !== valor) return false;
     if (coluna === "id" && linha.id !== valor) return false;
+    if (coluna === "neq:id" && linha.id === valor) return false;
     if (coluna === "cpf_hash" && linha.cpf_hash !== valor) return false;
     if (coluna === "email_normalized" && emailNormalizado(linha.email) !== valor) return false;
+    if (coluna === "custom_fields->cadastro_cliente->>cnpj" &&
+        !new RegExp(String(valor)).test(linha.custom_fields?.cadastro_cliente?.cnpj ?? "")) return false;
     if (coluna === "is_merged_into" && valor === null && linha.is_merged_into) return false;
   }
   if (variantes !== null && !variantes.includes(linha.phone_number ?? "")) return false;
@@ -175,9 +260,17 @@ function cadeiaDeContatos(opts: OpcoesFake = {}): Cadeia {
       filtros.push([coluna, valor]);
       return cadeia;
     },
+    neq: (coluna, valor) => {
+      filtros.push([`neq:${coluna}`, valor]);
+      return cadeia;
+    },
     in: (coluna, valores) => {
       filtros.push([coluna, valores]);
       variantes = Array.isArray(valores) ? (valores as string[]) : null;
+      return cadeia;
+    },
+    filter: (coluna, _operador, valor) => {
+      filtros.push([coluna, valor]);
       return cadeia;
     },
     is: (coluna, valor) => {

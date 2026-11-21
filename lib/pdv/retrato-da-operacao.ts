@@ -17,6 +17,7 @@
  * Pendências trazem `onde` para a tela levar direto ao campo que falta. Textos em
  * português; quem mostra traduz.
  */
+import { PRAZO_DA_GARANTIA } from "./modelo-contrato";
 import {
   documentoValido,
   resumoDaNegociacao,
@@ -78,6 +79,8 @@ export interface BlocosDaOperacao {
   cartao: boolean;
   /** Promissória, crediário, boleto ou cheque: a loja recebe depois. */
   parcelas_a_loja: boolean;
+  /** Algum valor fica para depois da assinatura: parcelas, financiamento, consórcio ou data futura. */
+  saldo_posterior: boolean;
 }
 
 export interface ValoresDaOperacao {
@@ -148,8 +151,11 @@ const CAMPOS_DE_ENTREGA = new Set([
   "entrega_hora",
   "recebimento_troca_em",
   "recebimento_troca_hora",
+  "entrega_km",
+  "entrega_chaves",
+  "recebimento_troca_km",
+  "recebimento_troca_chaves",
   "transferencia_taxas_por",
-  "transferencia_prazo_dias",
   "transferencia_conta_de",
   "despachante_cents",
 ]);
@@ -208,7 +214,19 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
     consorcio: formas.has("consorcio"),
     cartao: formas.has("cartao_credito") || formas.has("cartao_debito"),
     parcelas_a_loja: PARCELAS_A_LOJA.some((f) => formas.has(f)),
+    saldo_posterior: false,
   };
+  const assinatura = (n.contrato?.assinatura_em ?? "").slice(0, 10);
+  blocos.saldo_posterior =
+    venda &&
+    (blocos.parcelas_a_loja ||
+      blocos.financiamento_bancario ||
+      blocos.consorcio ||
+      n.pagamentos.some(
+        (p) =>
+          p.valor_cents > 0 &&
+          [p.data_pagamento, p.primeiro_vencimento].some((d) => !!d && !!assinatura && d.slice(0, 10) > assinatura),
+      ));
 
   const faltas: Falta[] = [];
   const contrato = n.contrato ?? null;
@@ -300,6 +318,8 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
       telefone: "o telefone do cliente",
       email: "o e-mail do cliente",
       ...(comprador === "pessoa_fisica" ? { nascimento: "a data de nascimento do cliente" } : {}),
+      // Anexo de indicação do condutor: sem CNH sai em branco (o condutor pode ser outro).
+      ...(venda && comprador === "pessoa_fisica" ? { cnh: "a CNH do cliente (indicação de condutor)" } : {}),
     },
     "aviso",
   );
@@ -436,8 +456,60 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
     if (venda)
       exigir(faltas, "contrato", contrato, {
         transferencia_taxas_por: "quem paga as taxas de transferência",
-        transferencia_prazo_dias: "o prazo para a entrega do documento de transferência",
       });
+    // Termos de entrega e de recebimento: km e chaves no ato (km cai na do cadastro).
+    exigir(faltas, "contrato", contrato, { entrega_chaves: "o número de chaves entregues" });
+    if (vazio(contrato.entrega_km) && vazio(v.km))
+      exigir(faltas, "contrato", contrato, { entrega_km: "a quilometragem na entrega" });
+    if (troca) {
+      exigir(faltas, "contrato", contrato, {
+        recebimento_troca_chaves: "o número de chaves recebidas com o veículo da troca",
+      });
+      if (vazio(contrato.recebimento_troca_km) && vazio(troca.km))
+        exigir(faltas, "contrato", contrato, {
+          recebimento_troca_km: "a quilometragem do veículo da troca no recebimento",
+        });
+    }
+    // Anexo do estado do veículo: conferido na assinatura.
+    const estado = contrato.estado_veiculo ?? {};
+    for (const [k, rotulo] of [
+      ["lataria", "o estado da lataria e pintura"],
+      ["interior", "o estado do interior"],
+      ["pneus", "o estado dos pneus"],
+      ["itens", "os itens e acessórios do veículo"],
+    ] as const)
+      if (vazio(estado[k]))
+        faltas.push({
+          onde: "contrato",
+          campo: `estado_veiculo.${k}`,
+          gravidade: "bloqueia",
+          mensagem: `Informe ${rotulo}.`,
+        });
+    // Termo de garantia: só existe com garantia contratual, e então nada sai em branco.
+    const g = contrato.garantia_contratual;
+    if (g) {
+      if (!PRAZO_DA_GARANTIA.test(g.prazo ?? ""))
+        faltas.push({
+          onde: "contrato",
+          campo: "garantia_contratual.prazo",
+          gravidade: "bloqueia",
+          mensagem: "Informe o prazo da garantia com número e unidade (ex.: 3 meses).",
+        });
+      if (vazio(g.componentes))
+        faltas.push({
+          onde: "contrato",
+          campo: "garantia_contratual.componentes",
+          gravidade: "bloqueia",
+          mensagem: "Informe os componentes cobertos pela garantia.",
+        });
+      if (vazio(contrato.empresa?.telefone) && vazio(contrato.empresa?.email))
+        faltas.push({
+          onde: "empresa",
+          campo: "telefone",
+          gravidade: "bloqueia",
+          mensagem: "Informe o telefone ou o e-mail da loja: é o contato para acionar a garantia.",
+        });
+    }
     if (blocos.quitacao_da_troca)
       exigir(faltas, "contrato", contrato, {
         quitacao_troca_prazo_dias: "o prazo para a loja quitar o financiamento da troca",
@@ -457,8 +529,8 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
         test_drive: "se o comprador fez o test-drive",
         entrega_hora: "o horário da entrega do veículo",
         ...(troca ? { recebimento_troca_hora: "o horário do recebimento do veículo da troca" } : {}),
-        // A cláusula de inadimplemento imprime o percentual em toda venda.
-        ...(venda ? { retencao_percentual_mes: "o percentual de retenção por mês de uso" } : {}),
+        // A cláusula 7.2 (fruição) só existe quando há saldo depois da assinatura.
+        ...(blocos.saldo_posterior ? { taxa_fruicao: "a taxa de fruição mensal (configuração da loja)" } : {}),
       },
       "aviso",
     );

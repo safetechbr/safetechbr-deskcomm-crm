@@ -3,6 +3,30 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      config_fiscal_loja: {
+        Row: { id: string; organization_id: string; cnpj: string | null; razao_social: string | null; nome_fantasia: string | null; inscricao_estadual: string | null; inscricao_municipal: string | null; crt: number | null; cnae: string | null; logradouro: string | null; numero: string | null; complemento: string | null; bairro: string | null; municipio: string | null; uf: string; cep: string | null; telefone: string | null; ambiente: string; serie_nfe: number; proximo_numero_nfe: number; provider: string; provider_empresa_id: string | null; provider_token_cifrado: string | null; provider_token_iv: string | null; provider_token_tag: string | null; webhook_segredo: string | null; certificado_validade: string | null; certificado_enviado_em: string | null; email_contador: string | null; credenciado_sefaz: boolean; regras_revisadas_em: string | null; nota_teste_ok_em: string | null; ativo: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; organization_id: string; cnpj?: string | null; razao_social?: string | null; nome_fantasia?: string | null; inscricao_estadual?: string | null; inscricao_municipal?: string | null; crt?: number | null; cnae?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null; bairro?: string | null; municipio?: string | null; uf?: string; cep?: string | null; telefone?: string | null; ambiente?: string; serie_nfe?: number; proximo_numero_nfe?: number; provider?: string; provider_empresa_id?: string | null; provider_token_cifrado?: string | null; provider_token_iv?: string | null; provider_token_tag?: string | null; webhook_segredo?: string | null; certificado_validade?: string | null; certificado_enviado_em?: string | null; email_contador?: string | null; credenciado_sefaz?: boolean; regras_revisadas_em?: string | null; nota_teste_ok_em?: string | null; ativo?: boolean; created_at?: string; updated_at?: string };
+        Update: { cnpj?: string | null; razao_social?: string | null; nome_fantasia?: string | null; inscricao_estadual?: string | null; inscricao_municipal?: string | null; crt?: number | null; cnae?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null; bairro?: string | null; municipio?: string | null; uf?: string; cep?: string | null; telefone?: string | null; ambiente?: string; serie_nfe?: number; proximo_numero_nfe?: number; provider?: string; provider_empresa_id?: string | null; provider_token_cifrado?: string | null; provider_token_iv?: string | null; provider_token_tag?: string | null; webhook_segredo?: string | null; certificado_validade?: string | null; certificado_enviado_em?: string | null; email_contador?: string | null; credenciado_sefaz?: boolean; regras_revisadas_em?: string | null; nota_teste_ok_em?: string | null; ativo?: boolean; created_at?: string; updated_at?: string };
+        Relationships: [];
+      };
+      regras_fiscais: {
+        Row: { id: string; organization_id: string; operacao: string; destino: string; tipo_pessoa: string; presencial: boolean; cfop: string; natureza_operacao: string; csosn_ou_cst: string | null; aliq_icms: number | null; reducao_bc_pct: number | null; cst_ibscbs: string | null; cst_pis: string; cst_cofins: string; cclasstrib: string | null; texto_inf_adic: string | null; validado_contador: boolean; ativo: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; organization_id: string; operacao: string; destino?: string; tipo_pessoa?: string; presencial?: boolean; cfop: string; natureza_operacao: string; csosn_ou_cst?: string | null; aliq_icms?: number | null; reducao_bc_pct?: number | null; cst_ibscbs?: string | null; cst_pis?: string; cst_cofins?: string; cclasstrib?: string | null; texto_inf_adic?: string | null; validado_contador?: boolean; ativo?: boolean; created_at?: string; updated_at?: string };
+        Update: { operacao?: string; destino?: string; tipo_pessoa?: string; presencial?: boolean; cfop?: string; natureza_operacao?: string; csosn_ou_cst?: string | null; aliq_icms?: number | null; reducao_bc_pct?: number | null; cst_ibscbs?: string | null; cst_pis?: string; cst_cofins?: string; cclasstrib?: string | null; texto_inf_adic?: string | null; validado_contador?: boolean; ativo?: boolean; created_at?: string; updated_at?: string };
+        Relationships: [];
+      };
+      documentos_fiscais: {
+        Row: { id: string; organization_id: string; modelo: string; operacao: string; tipo: string; finalidade: string; status: string; numero: number | null; serie: number | null; chave: string | null; protocolo: string | null; ref_provider: string | null; ambiente: string; data_emissao: string | null; valor_total_cents: number; cfop: string | null; veiculo_id: string | null; negociacao_id: string | null; contrato_id: string | null; pessoa_id: string | null; doc_referenciado_id: string | null; rascunho: Json; json_enviado: Json | null; retorno_provider: Json | null; motivo_rejeicao: string | null; xml_url: string | null; pdf_url: string | null; renave_enviado_em: string | null; renave_status: string | null; created_by: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; organization_id: string; modelo?: string; operacao: string; tipo: string; finalidade?: string; status?: string; numero?: number | null; serie?: number | null; chave?: string | null; protocolo?: string | null; ref_provider?: string | null; ambiente?: string; data_emissao?: string | null; valor_total_cents?: number; cfop?: string | null; veiculo_id?: string | null; negociacao_id?: string | null; contrato_id?: string | null; pessoa_id?: string | null; doc_referenciado_id?: string | null; rascunho?: Json; json_enviado?: Json | null; retorno_provider?: Json | null; motivo_rejeicao?: string | null; xml_url?: string | null; pdf_url?: string | null; renave_enviado_em?: string | null; renave_status?: string | null; created_by?: string | null; created_at?: string; updated_at?: string };
+        Update: { modelo?: string; operacao?: string; tipo?: string; finalidade?: string; status?: string; numero?: number | null; serie?: number | null; chave?: string | null; protocolo?: string | null; ref_provider?: string | null; ambiente?: string; data_emissao?: string | null; valor_total_cents?: number; cfop?: string | null; veiculo_id?: string | null; negociacao_id?: string | null; contrato_id?: string | null; pessoa_id?: string | null; doc_referenciado_id?: string | null; rascunho?: Json; json_enviado?: Json | null; retorno_provider?: Json | null; motivo_rejeicao?: string | null; xml_url?: string | null; pdf_url?: string | null; renave_enviado_em?: string | null; renave_status?: string | null; created_by?: string | null; created_at?: string; updated_at?: string };
+        Relationships: [];
+      };
+      documento_fiscal_eventos: {
+        Row: { id: string; organization_id: string; documento_id: string | null; tipo: string; sequencia: number; texto: string | null; protocolo: string | null; status: string; serie: number | null; numero_inicial: number | null; numero_final: number | null; retorno_provider: Json | null; data: string; created_by: string | null; created_at: string };
+        Insert: { id?: string; organization_id: string; documento_id?: string | null; tipo: string; sequencia?: number; texto?: string | null; protocolo?: string | null; status?: string; serie?: number | null; numero_inicial?: number | null; numero_final?: number | null; retorno_provider?: Json | null; data?: string; created_by?: string | null; created_at?: string };
+        Update: { documento_id?: string | null; tipo?: string; sequencia?: number; texto?: string | null; protocolo?: string | null; status?: string; serie?: number | null; numero_inicial?: number | null; numero_final?: number | null; retorno_provider?: Json | null; data?: string; created_by?: string | null; created_at?: string };
+        Relationships: [];
+      };
       atendimento_senhas: {
         Row: { organization_id: string; senha_hash: string; updated_by: string | null; updated_at: string };
         Insert: { organization_id: string; senha_hash: string; updated_by: string | null; updated_at?: string };
@@ -18,6 +42,11 @@ export type Database = {
 
       veiculos: {
         Row: {
+          ncm: string | null;
+          custo_aquisicao: number | null;
+          origem: string | null;
+          nfe_entrada_id: string | null;
+          nfe_saida_id: string | null;
           ano_fabricacao: number | null;
           ano_modelo: number | null;
           cambio: string | null;
@@ -53,6 +82,11 @@ export type Database = {
           video: string | null;
         };
         Insert: {
+          ncm?: string | null;
+          custo_aquisicao?: number | null;
+          origem?: string | null;
+          nfe_entrada_id?: string | null;
+          nfe_saida_id?: string | null;
           ano_fabricacao?: number | null;
           ano_modelo?: number | null;
           cambio?: string | null;
@@ -88,6 +122,11 @@ export type Database = {
           video?: string | null;
         };
         Update: {
+          ncm?: string | null;
+          custo_aquisicao?: number | null;
+          origem?: string | null;
+          nfe_entrada_id?: string | null;
+          nfe_saida_id?: string | null;
           ano_fabricacao?: number | null;
           ano_modelo?: number | null;
           cambio?: string | null;

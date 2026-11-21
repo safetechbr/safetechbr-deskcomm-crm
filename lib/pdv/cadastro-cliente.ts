@@ -26,7 +26,6 @@ export function validarCadastroDeCliente(c: ClienteDaNegociacao): ErrosDoCadastr
 
 export interface CorpoDoContato {
   name: string;
-  reuse_existing_phone: true;
   phone_number?: string;
   email?: string;
   cpf?: string;
@@ -36,7 +35,7 @@ export interface CorpoDoContato {
 
 /** Corpo do `POST /api/v1/contacts`. Campo vazio é omitido; o servidor normaliza o telefone. */
 export function corpoDoContato(c: ClienteDaNegociacao, editar = false): CorpoDoContato {
-  const corpo: CorpoDoContato = { name: c.nome.trim(), reuse_existing_phone: true };
+  const corpo: CorpoDoContato = { name: c.nome.trim() };
   const telefone = (c.telefone ?? "").trim();
   if (telefone) corpo.phone_number = telefone;
   const email = (c.email ?? "").trim();

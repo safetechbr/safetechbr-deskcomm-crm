@@ -106,8 +106,8 @@ describe("manifesto da pasta", () => {
     expect(por.termo_recebimento!.situacao).toBe("nao_se_aplica");
     expect(por.procuracao_transferencia_entrada!.situacao).toBe("nao_se_aplica");
     expect(por.nota_promissoria!.situacao).toBe("nao_se_aplica");
-    expect(por.laudo_vistoria!.situacao).toBe("nao_implementado");
-    expect(m.anexos_pendentes).toContain("termo_entrega");
+    expect(por.laudo_vistoria!.situacao).toBe("pronto");
+    expect(m.anexos_pendentes).not.toContain("termo_entrega");
     expect(m.anexos_pendentes).not.toContain("termo_recebimento");
     expect(m.completa).toBe(false);
   });
@@ -162,11 +162,10 @@ describe("o que falta para concluir", () => {
   it("cada falta diz o setor do PDV e o campo", () => {
     const n = vendaCompleta();
     n.cliente = { ...n.cliente, profissao: "" };
-    n.contrato = { ...n.contrato!, transferencia_prazo_dias: undefined, empresa: { ...n.contrato!.empresa!, cidade: "" } };
+    n.contrato = { ...n.contrato!, empresa: { ...n.contrato!.empresa!, cidade: "" } };
     const f = faltandoParaConcluir(n, []);
     expect(f.map((x) => `${x.setor}|${x.onde}.${x.campo}`).sort()).toEqual([
       "Comprador|cliente.profissao",
-      "Entrega e transferência|contrato.transferencia_prazo_dias",
       "Loja|empresa.cidade",
     ]);
     expect(f.every((x) => x.mensagem.length > 0)).toBe(true);
@@ -199,6 +198,45 @@ describe("o que falta para concluir", () => {
     const simples = vendaCompleta();
     simples.contrato = { ...simples.contrato!, quitacao_troca_prazo_dias: undefined, financiamento_prazo_dias: undefined };
     expect(faltandoParaConcluir(simples, [])).toEqual([]);
+  });
+
+  it("anexos: km, chaves, estado do veículo e garantia são exigidos no ato", () => {
+    const n = comTroca(vendaCompleta());
+    n.veiculo = { ...n.veiculo, km: null };
+    n.troca = { ...n.troca!, km: null };
+    n.contrato = {
+      ...n.contrato!,
+      entrega_chaves: undefined,
+      recebimento_troca_chaves: undefined,
+      estado_veiculo: { lataria: "ok" },
+      garantia_contratual: { prazo: "três meses", componentes: "" },
+      empresa: { ...n.contrato!.empresa!, telefone: "", email: "" },
+    };
+    expect(faltandoParaConcluir(n, []).map((x) => x.campo).sort()).toEqual([
+      "entrega_chaves",
+      "entrega_km",
+      "estado_veiculo.interior",
+      "estado_veiculo.itens",
+      "estado_veiculo.pneus",
+      "garantia_contratual.componentes",
+      "garantia_contratual.prazo",
+      "recebimento_troca_chaves",
+      "recebimento_troca_km",
+      "telefone",
+    ]);
+    // Km do contrato supre a do cadastro; sem garantia, nada da garantia é pedido.
+    n.contrato = { ...n.contrato!, entrega_km: 12_000, recebimento_troca_km: 60_000, garantia_contratual: undefined };
+    const campos = faltandoParaConcluir(n, []).map((x) => x.campo);
+    expect(campos).not.toContain("entrega_km");
+    expect(campos).not.toContain("recebimento_troca_km");
+    expect(campos).not.toContain("telefone");
+  });
+
+  it("CNH do comprador pessoa física é aviso (indicação de condutor)", () => {
+    const n = vendaCompleta();
+    n.cliente = { ...n.cliente, cnh: "" };
+    const p = retratoDaOperacao(n).pendencias.find((x) => x.campo === "cnh");
+    expect(p?.gravidade).toBe("aviso");
   });
 
   it("compra pela loja só traz as pendências de caixa, com lugar", () => {

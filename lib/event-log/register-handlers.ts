@@ -1,3 +1,4 @@
+import { posAutorizacaoFiscalHandler } from "@/lib/fiscal/pos-autorizacao.handler";
 import { followupGatilhoPresencaHandler } from "@/lib/followup/gatilho-presenca.handler";
 import { followupGatilhoRetornoHandler } from "@/lib/followup/gatilho-retorno.handler";
 /**
@@ -107,5 +108,7 @@ export function ensureHandlersRegistered(): void {
   registerHandler(conversaoDeEtapaMetaHandler);
   registerHandler(conversaoDeNascimentoMetaHandler);
   registerHandler(conversaoDeCliqueMetaHandler);
+  // Fiscal pós-autorização: arquivo, RENAVE e entrega ao comprador (rede de terceiro).
+  registerHandler(posAutorizacaoFiscalHandler);
   _registered = true;
 }

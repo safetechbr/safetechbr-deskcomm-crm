@@ -31,7 +31,7 @@ describe("versão do contrato", () => {
     const d = decidirVersaoDoContrato(concluida(vendaCompleta()));
     expect(d.versao).toBe("assinatura");
     expect(d.motivos).toEqual([]);
-    expect(d.anexos_pendentes).toContain("termo_entrega");
+    expect(d.anexos_pendentes).not.toContain("termo_entrega");
   });
 
   it("em aberto é minuta, mesmo com dados completos", () => {
@@ -84,8 +84,8 @@ describe("PDF do contrato", () => {
     n.pagamentos = [{ ...n.pagamentos[0]!, valor_cents: 5_900_000 }];
     expect(decidirVersaoDoContrato(n).bloqueios).toEqual([]);
     const t = await texto(n);
-    expect(t).toContain("Veículo recebido na troca");
-    expect(t).toContain("Data prevista de recebimento da troca");
+    expect(t).toContain("VEÍCULO EM PAGAMENTO");
+    expect(t).toContain("Data prevista de recebimento do VEÍCULO EM PAGAMENTO");
     expect(t).toContain("Desconto");
     // Sem quitação assumida pela loja, a linha de quitação não aparece.
     expect(t).not.toContain("Quitação da troca");
@@ -95,12 +95,20 @@ describe("PDF do contrato", () => {
   it("minuta mostra o que falta e os documentos ainda sem emissão", async () => {
     const n = vendaCompleta();
     n.cliente = { ...n.cliente, rg: "" };
+    n.contrato = { ...n.contrato!, clausula_especial: "   " };
     const t = await texto(n);
     expect(t).toContain("MINUTA");
     expect(t).toContain("Pendências desta minuta");
     expect(t).toContain("Cliente: Informe");
-    expect(t).toContain("Termo de entrega (Anexo II)");
-    expect(t).not.toContain("Termo de recebimento (Anexo III)");
+    expect(t).toContain("ANEXO II");
+    expect(t).toContain("TERMO DE ENTREGA");
+    expect(t).not.toContain("TERMO DE RECEBIMENTO");
+    expect(t).not.toContain("Cláusula Especial");
+
+    n.contrato.clausula_especial = "A loja entregará o acessório na próxima semana.";
+    const comCondicao = await texto(n);
+    expect(comCondicao).toContain("Cláusula Especial");
+    expect(comCondicao).toContain("A loja entregará o acessório na próxima semana.");
   }, 30_000);
 
   it("comprador pessoa jurídica é qualificado por CNPJ, sem RG", async () => {
@@ -121,7 +129,7 @@ describe("PDF do contrato", () => {
     expect(sem).not.toContain("Não liberado o financiamento");
     n.contrato = {
       ...n.contrato!,
-      venda_fora_do_estabelecimento: true,
+      canal_venda: "fora_do_estabelecimento",
       garantia_contratual: { prazo: "3 meses", componentes: "motor e câmbio" },
     };
     const com = await texto(n);

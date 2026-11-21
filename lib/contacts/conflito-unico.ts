@@ -23,12 +23,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Nome do índice único de CPF dentro de uma organização. */
 export const INDICE_CPF = "uniq_contacts_org_cpf";
+export const INDICE_CNPJ = "uniq_contacts_org_cnpj";
 /** Nome do índice único de e-mail dentro de uma organização. */
 export const INDICE_EMAIL = "uniq_contacts_org_email";
 /** O do telefone entra na varredura só para reconhecê-lo, não para decidir. */
 export const INDICE_TELEFONE = "uniq_contacts_org_phone";
 
-const INDICES_CONHECIDOS = [INDICE_CPF, INDICE_EMAIL, INDICE_TELEFONE] as const;
+const INDICES_CONHECIDOS = [INDICE_CPF, INDICE_CNPJ, INDICE_EMAIL, INDICE_TELEFONE] as const;
 
 /** O mínimo do erro do driver que a leitura do índice precisa. */
 export interface ErroDeDriver {
@@ -72,6 +73,32 @@ export async function encontrarContatoPorCpfHash(
   cpfHash: string,
 ): Promise<{ id: string } | null> {
   return primeiraLinha(admin, orgId, "cpf_hash", cpfHash);
+}
+
+export function cnpjDoCadastro(campos: unknown): string | null {
+  const cnpj = (campos as { cadastro_cliente?: { cnpj?: unknown } } | null)
+    ?.cadastro_cliente?.cnpj;
+  const digitos = typeof cnpj === "string" ? cnpj.replace(/\D/g, "") : "";
+  return digitos.length === 14 ? digitos : null;
+}
+
+export async function encontrarContatoPorCnpj(
+  supabase: SupabaseClient,
+  orgId: string,
+  cnpj: string,
+  excluirId?: string,
+): Promise<{ id: string } | null> {
+  const padrao = `^[^0-9]*${cnpj.split("").join("[^0-9]*")}[^0-9]*$`;
+  let consulta = supabase
+    .from("contacts")
+    .select("id")
+    .eq("organization_id", orgId)
+    .is("is_merged_into", null)
+    .filter("custom_fields->cadastro_cliente->>cnpj", "match", padrao);
+  if (excluirId) consulta = consulta.neq("id", excluirId);
+  const { data, error } = await consulta.limit(1);
+  if (error) throw error;
+  return data?.[0] ?? null;
 }
 
 /**
