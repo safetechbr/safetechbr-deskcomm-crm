@@ -20,6 +20,7 @@ import {
 } from "@/lib/pdv/rascunho-local";
 
 import { showApiError } from "@/components/feedback/ApiErrorToast";
+import { codigoIbgePorCep } from "@/lib/fiscal/ibge";
 import { Button } from "@/components/ui/button";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useT } from "@/hooks/i18n/useT";
@@ -40,6 +41,7 @@ import {
   resumoDaNegociacao,
   ROTULO_DA_FORMA,
   ROTULO_DO_STATUS_DA_NEGOCIACAO,
+  soDigitos,
   type TipoDeNegociacao,
   tituloDoVeiculoDaNegociacao,
   type TrocaDaNegociacao,
@@ -189,6 +191,8 @@ function Campo({
   placeholder,
   testid,
   campo,
+  inputMode,
+  invalido,
 }: {
   rotulo: string;
   valor: string | number | null | undefined;
@@ -199,16 +203,20 @@ function Campo({
   testid?: string;
   /** Chave `onde.campo` da pendência, para o painel do que falta achar este campo. */
   campo?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  invalido?: boolean;
 }) {
   return (
     <label className={`block text-xs ${extra ?? ""}`}>
       <span className="text-muted-foreground">{rotulo}</span>
       <input
         type={tipo}
+        inputMode={inputMode}
+        aria-invalid={invalido || undefined}
         value={valor ?? ""}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className={`mt-1 ${CAMPO}`}
+        className={`mt-1 ${CAMPO} aria-invalid:border-error`}
         data-testid={testid}
         data-campo={campo}
       />
@@ -339,30 +347,35 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
   onChange,
   prefixo,
   onde,
+  falta,
 }: {
   v: V;
   onChange: (v: V) => void;
   prefixo: string;
   /** Lugar das pendências desta ficha: o veículo vendido ou o da troca. */
   onde: "veiculo" | "troca";
+  falta?: (campo: string) => boolean;
 }) {
   const t = useT();
   const set = (campo: keyof VeiculoDaNegociacao, valor: unknown) =>
     onChange({ ...v, [campo]: valor });
   const c = (campo: keyof VeiculoDaNegociacao) => `${onde}.${campo}`;
+  const rotuloFiscal = (rotulo: string) => onde === "troca" ? `${rotulo} *` : rotulo;
   return (
     <div className="grid grid-cols-2 gap-2">
       <Campo
-        rotulo={t("Marca")}
+        rotulo={rotuloFiscal(t("Marca"))}
         valor={v.marca}
         onChange={(x) => set("marca", x)}
         campo={c("marca")}
+        invalido={falta?.(c("marca"))}
       />
       <Campo
-        rotulo={t("Modelo")}
+        rotulo={rotuloFiscal(t("Modelo"))}
         valor={v.modelo}
         onChange={(x) => set("modelo", x)}
         campo={c("modelo")}
+        invalido={falta?.(c("modelo"))}
         testid={`${prefixo}-modelo`}
       />
       <Campo
@@ -373,24 +386,33 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
         extra="col-span-2"
       />
       <Campo
-        rotulo={t("Ano fab.")}
+        rotulo={rotuloFiscal(t("Ano fab."))}
         valor={v.ano_fabricacao}
         onChange={(x) => set("ano_fabricacao", numeroOuNull(x))}
         campo={c("ano_fabricacao")}
+        invalido={falta?.(c("ano_fabricacao"))}
       />
       <Campo
-        rotulo={t("Ano modelo")}
+        rotulo={rotuloFiscal(t("Ano modelo"))}
         valor={v.ano_modelo}
         onChange={(x) => set("ano_modelo", numeroOuNull(x))}
         campo={c("ano_modelo")}
+        invalido={falta?.(c("ano_modelo"))}
       />
       <Campo
-        rotulo={t("Km")}
+        rotulo={rotuloFiscal(t("Km"))}
         valor={v.km}
         onChange={(x) => set("km", numeroOuNull(x))}
         campo={c("km")}
+        invalido={falta?.(c("km")) || (onde === "troca" && falta?.("contrato.recebimento_troca_km"))}
       />
-      <Campo rotulo={t("Cor")} valor={v.cor} onChange={(x) => set("cor", x)} campo={c("cor")} />
+      <Campo
+        rotulo={rotuloFiscal(t("Cor"))}
+        valor={v.cor}
+        onChange={(x) => set("cor", x)}
+        campo={c("cor")}
+        invalido={falta?.(c("cor"))}
+      />
       <Campo
         rotulo={t("Combustível")}
         valor={v.combustivel}
@@ -423,22 +445,25 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
         campo={c("cambio")}
       />
       <Campo
-        rotulo={t("Placa")}
+        rotulo={rotuloFiscal(t("Placa"))}
         valor={v.placa}
         onChange={(x) => set("placa", x.toUpperCase())}
         campo={c("placa")}
+        invalido={falta?.(c("placa"))}
       />
       <Campo
-        rotulo={t("Renavam")}
+        rotulo={rotuloFiscal(t("Renavam"))}
         valor={v.renavam}
         onChange={(x) => set("renavam", x)}
         campo={c("renavam")}
+        invalido={falta?.(c("renavam"))}
       />
       <Campo
-        rotulo={t("Chassi")}
+        rotulo={rotuloFiscal(t("Chassi"))}
         valor={v.chassi}
         onChange={(x) => set("chassi", x.toUpperCase())}
         campo={c("chassi")}
+        invalido={falta?.(c("chassi"))}
         extra="col-span-2"
       />
     </div>
@@ -933,71 +958,6 @@ function ColunaVeiculo({
           />
         </div>
 
-        <div className="border-t border-border/60 pt-3">
-          {r.troca ? (
-            <div
-              id="pdv-setor-troca"
-              className="ds-entra mt-3 space-y-2 rounded-xl border border-border/60 bg-muted/50 p-3"
-            >
-              <FichaDoVeiculo
-                v={r.troca}
-                onChange={(v) => setR((x) => ({ ...x, troca: v }))}
-                prefixo="pdv-troca"
-                onde="troca"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <CampoDinheiro
-                  rotulo={t("Valor avaliado")}
-                  cents={r.troca.valor_cents}
-                  onChange={(c) =>
-                    setR((x) => ({ ...x, troca: x.troca ? { ...x.troca, valor_cents: c } : null }))
-                  }
-                  testid="pdv-troca-valor"
-                  campo="troca.valor_cents"
-                />
-                <CampoDinheiro
-                  rotulo={t("Saldo a quitar (financiamento)")}
-                  cents={r.troca.quitacao_cents}
-                  onChange={(c) =>
-                    setR((x) => ({
-                      ...x,
-                      troca: x.troca ? { ...x.troca, quitacao_cents: c } : null,
-                    }))
-                  }
-                />
-                {r.troca.quitacao_cents > 0 ? (
-                  <Campo
-                    rotulo={t("Credor do financiamento da troca *")}
-                    valor={r.troca.gravame_credor}
-                    onChange={(v) =>
-                      setR((x) => ({
-                        ...x,
-                        troca: x.troca ? { ...x.troca, gravame_credor: v } : null,
-                      }))
-                    }
-                    extra="col-span-2"
-                    testid="pdv-troca-gravame"
-                    campo="troca.gravame_credor"
-                  />
-                ) : null}
-              </div>
-              <label className="flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={r.troca.entra_no_estoque}
-                  onChange={(e) =>
-                    setR((x) => ({
-                      ...x,
-                      troca: x.troca ? { ...x.troca, entra_no_estoque: e.target.checked } : null,
-                    }))
-                  }
-                  className="size-4 accent-accent"
-                />
-                {t("Colocar a troca no estoque ao concluir (como reservado)")}
-              </label>
-            </div>
-          ) : null}
-        </div>
       </fieldset>
     </Coluna>
   );
@@ -1153,7 +1113,7 @@ const ANCORA_DO_SETOR: Record<SetorDoPdv, string> = {
 const COLUNA_DO_SETOR: Record<SetorDoPdv, number> = {
   Comprador: 0,
   Veículo: 1,
-  Troca: 1,
+  Troca: 3,
   Pagamento: 3,
   Loja: 2,
   "Entrega e transferência": 2,
@@ -1246,6 +1206,195 @@ function OQueFalta({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+const CAMPOS_DO_REMETENTE = [
+  ["nome", "Nome completo", "text"],
+  ["documento", "CPF", "text"],
+  ["cep", "CEP", "text"],
+  ["endereco", "Rua", "text"],
+  ["numero", "Número (ou S/N)", "text"],
+  ["complemento", "Complemento", "text"],
+  ["bairro", "Bairro", "text"],
+  ["cidade", "Município", "text"],
+  ["uf", "UF", "text"],
+  ["codigo_municipio", "Código IBGE do município", "text"],
+  ["email", "E-mail", "email"],
+] as const;
+
+function diaDoRecebimento(valor?: string | null): string {
+  const data = (valor ?? "").trim();
+  const antiga = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(data);
+  return antiga ? `${antiga[3]}-${antiga[2]}-${antiga[1]}` : data.slice(0, 10);
+}
+
+function FormularioDaTroca({
+  troca,
+  cliente,
+  contrato,
+  setR,
+  faltando,
+  travado,
+}: {
+  troca: TrocaDaNegociacao;
+  cliente: ClienteDaNegociacao;
+  contrato?: DadosDoContrato | null;
+  setR: (f: (r: Rascunho) => Rascunho) => void;
+  faltando: readonly FaltaParaConcluir[];
+  travado: boolean;
+}) {
+  const t = useT();
+  const remetente = troca.remetente ?? cliente;
+  const cep = soDigitos(remetente.cep);
+  const codigo = remetente.codigo_municipio;
+  const usaComprador = troca.remetente == null;
+
+  React.useEffect(() => {
+    if (travado || cep.length !== 8 || codigo) return;
+    let ativo = true;
+    void codigoIbgePorCep(cep).then((codigo_municipio) => {
+      if (!ativo || !codigo_municipio) return;
+      setR((x) => {
+        if (!x.troca || (x.troca.remetente == null) !== usaComprador) return x;
+        const pessoa = x.troca.remetente ?? x.cliente;
+        if (soDigitos(pessoa.cep) !== cep || pessoa.codigo_municipio) return x;
+        return x.troca.remetente
+          ? { ...x, troca: { ...x.troca, remetente: { ...x.troca.remetente, codigo_municipio } } }
+          : { ...x, cliente: { ...x.cliente, codigo_municipio } };
+      });
+    });
+    return () => { ativo = false; };
+  }, [cep, codigo, setR, travado, usaComprador]);
+
+  function mudarTroca(alteracao: Partial<TrocaDaNegociacao>) {
+    setR((x) => x.troca ? { ...x, troca: { ...x.troca, ...alteracao } } : x);
+  }
+
+  function mudarRemetente(campo: (typeof CAMPOS_DO_REMETENTE)[number][0], valor: string) {
+    const normalizado =
+      campo === "codigo_municipio" ? soDigitos(valor).slice(0, 7) :
+      campo === "uf" ? valor.toUpperCase().slice(0, 2) : valor;
+    setR((x) => {
+      if (!x.troca) return x;
+      const pessoa = x.troca.remetente ?? x.cliente;
+      const mudouLocal =
+        (campo === "cep" && soDigitos(pessoa.cep) !== soDigitos(normalizado)) ||
+        ((campo === "cidade" || campo === "uf") && pessoa[campo] !== normalizado);
+      const atualizada = {
+        ...pessoa,
+        [campo]: normalizado,
+        ...(mudouLocal ? { codigo_municipio: null } : {}),
+      };
+      return x.troca.remetente
+        ? { ...x, troca: { ...x.troca, remetente: atualizada } }
+        : { ...x, cliente: atualizada };
+    });
+  }
+
+  function mudarRecebimento(alteracao: Partial<DadosDoContrato>) {
+    setR((x) => x.contrato ? { ...x, contrato: { ...x.contrato, ...alteracao } } : x);
+  }
+
+  const falta = (campo: string) => faltando.some((f) => `${f.onde}.${f.campo}` === campo);
+
+  return (
+    <div id="pdv-setor-troca" className="space-y-4 rounded-xl border border-border/60 bg-muted/50 p-3">
+      <h4 className="text-sm font-medium">{t("Dados para a NF-e de entrada")}</h4>
+      <FichaDoVeiculo
+        v={troca}
+        onChange={mudarTroca}
+        prefixo="pdv-troca"
+        onde="troca"
+        falta={falta}
+      />
+      <Campo
+        rotulo={`${t("NCM do veículo")} *`}
+        valor={troca.ncm}
+        onChange={(valor) => mudarTroca({ ncm: soDigitos(valor).slice(0, 8) })}
+        inputMode="numeric"
+        campo="troca.ncm"
+        invalido={falta("troca.ncm")}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <CampoDinheiro
+          rotulo={`${t("Valor avaliado")} *`}
+          cents={troca.valor_cents}
+          onChange={(valor_cents) => mudarTroca({ valor_cents })}
+          testid="pdv-troca-valor"
+          campo="troca.valor_cents"
+        />
+        <CampoDinheiro
+          rotulo={t("Saldo a quitar (financiamento)")}
+          cents={troca.quitacao_cents}
+          onChange={(quitacao_cents) => mudarTroca({ quitacao_cents })}
+        />
+        {troca.quitacao_cents > 0 ? (
+          <Campo
+            rotulo={t("Credor do financiamento da troca *")}
+            valor={troca.gravame_credor}
+            onChange={(gravame_credor) => mudarTroca({ gravame_credor })}
+            extra="col-span-2"
+            testid="pdv-troca-gravame"
+            campo="troca.gravame_credor"
+          />
+        ) : null}
+      </div>
+      <label className="flex items-center gap-2 text-xs">
+        <input
+          type="checkbox"
+          checked={troca.entra_no_estoque}
+          onChange={(e) => mudarTroca({ entra_no_estoque: e.target.checked })}
+          className="size-4 accent-accent"
+        />
+        {t("Colocar a troca no estoque ao concluir (como reservado)")}
+      </label>
+      {contrato && (
+        <div className="grid grid-cols-2 gap-2">
+          <Campo
+            rotulo={`${t("Data prevista de recebimento")} *`}
+            tipo="date"
+            valor={diaDoRecebimento(contrato.recebimento_troca_em)}
+            onChange={(recebimento_troca_em) => mudarRecebimento({ recebimento_troca_em })}
+            campo="contrato.recebimento_troca_em"
+            invalido={falta("contrato.recebimento_troca_em")}
+          />
+          <Campo
+            rotulo={t("Hora do recebimento da troca")}
+            tipo="time"
+            valor={contrato.recebimento_troca_hora}
+            onChange={(recebimento_troca_hora) => mudarRecebimento({ recebimento_troca_hora })}
+            campo="contrato.recebimento_troca_hora"
+          />
+        </div>
+      )}
+      <div className="space-y-2 border-t border-border/60 pt-3">
+        <h5 className="text-xs font-medium">{t("Remetente do veículo")}</h5>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={usaComprador}
+            onChange={(e) => mudarTroca({ remetente: e.target.checked ? null : { nome: "" } })}
+            className="size-4 accent-accent"
+          />
+          {t("Usar dados do comprador")}
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {CAMPOS_DO_REMETENTE.map(([campo, rotulo, tipo]) => (
+            <Campo
+              key={campo}
+              rotulo={campo === "email" || campo === "complemento" ? t(rotulo) : `${t(rotulo)} *`}
+              tipo={tipo}
+              valor={remetente[campo]}
+              onChange={(valor) => mudarRemetente(campo, valor)}
+              extra={campo === "nome" || campo === "endereco" || campo === "email" ? "col-span-2" : undefined}
+              campo={`troca.remetente.${campo}`}
+              invalido={falta(`troca.remetente.${campo}`) || (usaComprador && falta(`cliente.${campo}`))}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1871,28 +2020,37 @@ function ColunaPagamento({
         {venda ? (
           <Secao titulo={t("Troca")} testid="pdv-troca">
             {r.troca ? (
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface px-3 py-2 text-xs shadow-xs">
-                <div className="min-w-0">
-                  <div className="truncate font-medium">
-                    {r.troca.modelo.trim() || t("Veículo da troca")}
+              <>
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface px-3 py-2 text-xs shadow-xs">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">
+                      {r.troca.modelo.trim() || t("Veículo da troca")}
+                    </div>
+                    <div className="text-muted-foreground tabular-nums">
+                      {t("Abate")} {formatarPreco(resumo.troca_liquida_cents)}
+                    </div>
                   </div>
-                  <div className="text-muted-foreground tabular-nums">
-                    {t("Abate")} {formatarPreco(resumo.troca_liquida_cents)} ·{" "}
-                    {t("dados do veículo na coluna do meio")}
-                  </div>
+                  {!travado ? (
+                    <button
+                      type="button"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-error-fg transition-colors hover:bg-error-bg"
+                      onClick={() => setR((x) => ({ ...x, troca: null }))}
+                      data-testid="pdv-troca-remover"
+                    >
+                      <Trash className="size-3.5" aria-hidden />
+                      {t("Remover")}
+                    </button>
+                  ) : null}
                 </div>
-                {!travado ? (
-                  <button
-                    type="button"
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-error-fg transition-colors hover:bg-error-bg"
-                    onClick={() => setR((x) => ({ ...x, troca: null }))}
-                    data-testid="pdv-troca-remover"
-                  >
-                    <Trash className="size-3.5" aria-hidden />
-                    {t("Remover")}
-                  </button>
-                ) : null}
-              </div>
+                <FormularioDaTroca
+                  troca={r.troca}
+                  cliente={r.cliente}
+                  contrato={r.contrato}
+                  setR={setR}
+                  faltando={faltando}
+                  travado={travado}
+                />
+              </>
             ) : (
               <>
                 <button
@@ -2387,6 +2545,7 @@ export function PdvClient({
         requisitos={{ venda: r.tipo === "venda", blocos }}
         faltando={chavesDoQueFalta(oQueFalta)}
         mostrarTitulo={!contratoEmColuna}
+        recebimentoNaTroca
         onSalvarPadrao={
           podeSalvarPadrao && !travado
             ? async (c) => {

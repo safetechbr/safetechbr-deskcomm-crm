@@ -19,6 +19,12 @@
  */
 import { PRAZO_DA_GARANTIA } from "./modelo-contrato";
 import {
+  pendenciasDaPessoaFiscal,
+  pendenciasDoVeiculoFiscal,
+  pessoaFiscal,
+  veiculoFiscalDaTroca,
+} from "@/lib/fiscal/rascunho";
+import {
   documentoValido,
   resumoDaNegociacao,
   soDigitos,
@@ -173,6 +179,7 @@ export function setorDaPendencia(onde: LugarDaPendencia, campo?: string): SetorD
     case "pagamentos":
       return "Pagamento";
     case "contrato":
+      if (campo === "recebimento_troca_em" || campo === "recebimento_troca_hora") return "Troca";
       return campo && CAMPOS_DE_ENTREGA.has(campo) ? "Entrega e transferência" : "Contrato";
   }
 }
@@ -591,6 +598,22 @@ export function faltandoParaConcluir(
     for (const p of retratoDaOperacao(n).pendencias)
       if (p.gravidade === "bloqueia")
         add({ setor: p.setor, onde: p.onde, ...(p.campo ? { campo: p.campo } : {}), mensagem: p.mensagem });
+  if (n.tipo === "venda" && n.troca) {
+    const troca = n.troca;
+    const jaPendente = (onde: LugarDaPendencia, campo: string) =>
+      out.some((f) => f.onde === onde && f.campo === campo);
+    for (const f of pendenciasDaPessoaFiscal(pessoaFiscal(troca.remetente ?? n.cliente), true)) {
+      const campo = f.campo === "logradouro" ? "endereco" : f.campo === "municipio" ? "cidade" : f.campo;
+      if (troca.remetente || !jaPendente("cliente", campo))
+        add({ setor: "Troca", onde: "troca", campo: `remetente.${campo}`, mensagem: f.mensagem });
+    }
+    const veiculo = veiculoFiscalDaTroca(troca, n.contrato?.recebimento_troca_km);
+    for (const f of pendenciasDoVeiculoFiscal(veiculo)) {
+      if (f.campo === "km" && jaPendente("contrato", "recebimento_troca_km")) continue;
+      if (!jaPendente("troca", f.campo))
+        add({ setor: "Troca", onde: "troca", ...f });
+    }
+  }
   for (const m of pendenciasDeCaixa) add({ ...lugarDaPendenciaDeCaixa(m), mensagem: m });
   return out;
 }

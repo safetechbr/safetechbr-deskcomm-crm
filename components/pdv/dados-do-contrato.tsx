@@ -370,9 +370,11 @@ export function EditorDoContrato({
   faltando,
   onSalvarPadrao,
   mostrarTitulo = true,
+  recebimentoNaTroca = false,
 }: {
   contrato?: DadosDoContrato | null;
   mostrarTitulo?: boolean;
+  recebimentoNaTroca?: boolean;
   pagamentos: PagamentoDaNegociacao[];
   onChange: (v: DadosDoContrato, p: PagamentoDaNegociacao[]) => void;
   /** Sem requisitos (ex.: compra), só os campos fixos levam asterisco. */
@@ -556,21 +558,25 @@ export function EditorDoContrato({
           />
           {!requisitos || blocos?.troca ? (
             <>
-              <Campo
-                nome="Recebimento do veículo na troca"
-                tipo="date"
-                obrigatorio={!!blocos?.troca}
-                falta={f("recebimento_troca_em")}
-                campo="contrato.recebimento_troca_em"
-                valor={c.recebimento_troca_em}
-                mudar={(recebimento_troca_em) => mudar({ recebimento_troca_em })}
-              />
-              <Campo
-                nome="Hora do recebimento da troca"
-                tipo="time"
-                valor={c.recebimento_troca_hora}
-                mudar={(recebimento_troca_hora) => mudar({ recebimento_troca_hora })}
-              />
+              {!recebimentoNaTroca && (
+                <>
+                  <Campo
+                    nome="Recebimento do veículo na troca"
+                    tipo="date"
+                    obrigatorio={!!blocos?.troca}
+                    falta={f("recebimento_troca_em")}
+                    campo="contrato.recebimento_troca_em"
+                    valor={c.recebimento_troca_em}
+                    mudar={(recebimento_troca_em) => mudar({ recebimento_troca_em })}
+                  />
+                  <Campo
+                    nome="Hora do recebimento da troca"
+                    tipo="time"
+                    valor={c.recebimento_troca_hora}
+                    mudar={(recebimento_troca_hora) => mudar({ recebimento_troca_hora })}
+                  />
+                </>
+              )}
               <Campo
                 nome="Quilometragem da troca no recebimento"
                 tipo="number"

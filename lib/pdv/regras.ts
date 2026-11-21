@@ -159,6 +159,7 @@ export const clienteSchema = z.object({
   bairro: textoOpcional(100),
   cidade: textoOpcional(100),
   uf: textoOpcional(2),
+  codigo_municipio: textoOpcional(7),
 });
 export type ClienteDaNegociacao = z.infer<typeof clienteSchema>;
 
@@ -190,6 +191,11 @@ export type VeiculoDaNegociacao = z.infer<typeof veiculoDaNegociacaoSchema>;
 
 export const trocaSchema = z.object({
   ...camposDoVeiculo,
+  ncm: textoOpcional(8),
+  remetente: clienteSchema.pick({
+    nome: true, documento: true, email: true, cep: true, endereco: true, numero: true,
+    complemento: true, bairro: true, cidade: true, uf: true, codigo_municipio: true,
+  }).optional().nullable(),
   /** Quanto a loja avaliou o carro da troca. */
   valor_cents: centavos.default(0),
   /** Quanto o cliente ainda deve do financiamento da troca — a loja quita e isso sai do abatimento. */

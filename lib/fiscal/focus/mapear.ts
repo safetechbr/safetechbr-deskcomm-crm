@@ -134,6 +134,7 @@ export function payloadNfe(d: DocumentoParaEmitir): Record<string, unknown> {
     logradouro_destinatario: p.logradouro,
     numero_destinatario: p.numero,
     bairro_destinatario: p.bairro,
+    codigo_municipio_destinatario: p.codigoMunicipio ?? undefined,
     municipio_destinatario: p.municipio,
     uf_destinatario: p.uf,
     cep_destinatario: p.cep,
@@ -141,7 +142,10 @@ export function payloadNfe(d: DocumentoParaEmitir): Record<string, unknown> {
     valor_produtos: total,
     valor_total: total,
     informacoes_adicionais_contribuinte: d.informacoesAdicionais,
-    formas_pagamento: [{ forma_pagamento: d.formaPagamento, valor_pagamento: total }],
+    formas_pagamento: [{
+      forma_pagamento: d.formaPagamento,
+      valor_pagamento: d.formaPagamento === "90" ? 0 : total,
+    }],
     items: itens,
   };
 }

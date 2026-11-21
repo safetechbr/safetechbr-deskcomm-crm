@@ -74,6 +74,23 @@ describe("FocusNfeProvider", () => {
     expect(r.rejeicao?.explicacao).toMatch(/NCM/);
   });
 
+  it("emite uma troca sem pagamento com valor pago zero e preserva o valor fiscal", async () => {
+    const { f, p } = setup(resp({}, 201));
+    await p.emitirNfe(ctx, {
+      ...doc,
+      tipo: 0,
+      formaPagamento: "90",
+      destinatario: { ...doc.destinatario, codigoMunicipio: "2211001" },
+      itens: [{ quantidade: 1, valorUnitarioCents: 2_000_000 } as DocumentoParaEmitir["itens"][number]],
+    });
+    const payload = JSON.parse(f.mock.calls[0]![1].body);
+    expect(payload).toMatchObject({
+      valor_total: 20_000,
+      codigo_municipio_destinatario: "2211001",
+      formas_pagamento: [{ forma_pagamento: "90", valor_pagamento: 0 }],
+    });
+  });
+
   it("consulta: mapeia autorizado e rejeitado", async () => {
     const { p } = setup(
       resp({ status: "autorizado", numero: "10", caminho_xml_nota_fiscal: "/x.xml", caminho_danfe: "/d.pdf" }),

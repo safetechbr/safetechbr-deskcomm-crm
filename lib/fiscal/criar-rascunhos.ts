@@ -4,10 +4,10 @@
  * Rascunho incompleto também é criado: a validação só bloqueia o botão Emitir.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Negociacao } from "@/lib/pdv/regras";
+import type { ClienteDaNegociacao, Negociacao } from "@/lib/pdv/regras";
 import { codigoIbgePorCep } from "./ibge";
 import { ncmPadraoDaCategoria } from "./ncm";
-import type { PessoaFiscal, RascunhoFiscal, VeiculoFiscal } from "./rascunho";
+import { pessoaFiscal, veiculoFiscalDaTroca, type RascunhoFiscal, type VeiculoFiscal } from "./rascunho";
 import type { OperacaoFiscal } from "./regras";
 
 /** "2026-11-20" ou "20/11/2026" + "14:30" → ISO com fuso de Brasília. Null se a data não for legível. */
@@ -22,21 +22,10 @@ export function dataDoTermo(dia: string | null | undefined, hora: string | null 
   return `${y}-${mo}-${da}T${hh}:${mm}:00-03:00`;
 }
 
-async function pessoaDaNegociacao(n: Negociacao): Promise<PessoaFiscal> {
-  const c = n.cliente;
-  return {
-    nome: c.nome ?? "",
-    documento: (c.documento ?? "").replace(/\D/g, ""),
-    email: c.email ?? null,
-    cep: (c.cep ?? "").replace(/\D/g, ""),
-    logradouro: c.endereco ?? "",
-    numero: c.numero ?? "",
-    complemento: c.complemento ?? null,
-    bairro: c.bairro ?? "",
-    municipio: c.cidade ?? "",
-    uf: (c.uf ?? "").toUpperCase(),
-    codigo_municipio: await codigoIbgePorCep(c.cep),
-  };
+async function pessoaDoRascunho(cliente: ClienteDaNegociacao) {
+  const pessoa = pessoaFiscal(cliente);
+  pessoa.codigo_municipio ??= await codigoIbgePorCep(pessoa.cep);
+  return pessoa;
 }
 
 async function veiculoFiscal(
@@ -63,7 +52,7 @@ export interface RascunhoCriado { operacao: OperacaoFiscal; id: string | null; c
 export async function criarRascunhosDaNegociacao(
   admin: SupabaseClient, org: string, n: Negociacao, userId: string,
 ): Promise<RascunhoCriado[]> {
-  const pessoa = await pessoaDaNegociacao(n);
+  const pessoa = await pessoaDoRascunho(n.cliente);
   const concluida = n.concluida_em ?? new Date().toISOString();
   const alvos: Array<{ operacao: OperacaoFiscal; veiculoId: string | null; reserva: object; valor: number; data: string; extra: Partial<RascunhoFiscal>; finalidadeTipo: "entrada" | "saida" }> = [];
 
@@ -85,9 +74,14 @@ export async function criarRascunhosDaNegociacao(
 
   const out: RascunhoCriado[] = [];
   for (const a of alvos) {
+    const troca = a.operacao === "ENT_TROCA" ? n.troca : null;
     const rascunho: RascunhoFiscal = {
-      pessoa, veiculo: await veiculoFiscal(admin, org, a.veiculoId, a.reserva), ...a.extra,
-    } as RascunhoFiscal;
+      pessoa: troca?.remetente ? await pessoaDoRascunho(troca.remetente) : pessoa,
+      veiculo: troca
+        ? veiculoFiscalDaTroca(troca, n.contrato?.recebimento_troca_km)
+        : await veiculoFiscal(admin, org, a.veiculoId, a.reserva),
+      ...a.extra,
+    };
     const { data, error } = await admin.from("documentos_fiscais").insert({
       organization_id: org, modelo: "55", operacao: a.operacao, tipo: a.finalidadeTipo, finalidade: "normal",
       status: "rascunho", ambiente: "homologacao", data_emissao: a.data, valor_total_cents: a.valor,

@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { dataDoTermo } from "./criar-rascunhos";
+import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { comTroca, vendaCompleta } from "@/tests/fixtures/negociacao-documentos";
+import { criarRascunhosDaNegociacao, dataDoTermo } from "./criar-rascunhos";
 import { observacaoDaTroca, validarParaEmitir, validarPessoa, validarVeiculo, type ContextoDeValidacao } from "./rascunho";
 
 const pessoa = {
@@ -25,6 +27,46 @@ describe("dataDoTermo", () => {
 describe("observacaoDaTroca", () => {
   it("texto exato", () =>
     expect(observacaoDaTroca("abc1d23", 42)).toBe("Veículo ABC1D23 recebido como parte do pagamento – NF-e de entrada nº 42"));
+});
+
+it("usa o remetente, o NCM, o valor bruto e o km da própria troca no rascunho de entrada", async () => {
+  const n = comTroca(vendaCompleta());
+  n.troca = {
+    ...n.troca!,
+    entra_no_estoque: false,
+    remetente: {
+      ...n.cliente,
+      nome: "Remetente da troca",
+      documento: "11144477735",
+      codigo_municipio: "3550308",
+      uf: "SP",
+      cidade: "São Paulo",
+    },
+  };
+  n.contrato = { ...n.contrato!, recebimento_troca_km: 56000 };
+  const insert = vi.fn(() => ({
+    select: () => ({ maybeSingle: async () => ({ data: { id: "nota" }, error: null }) }),
+  }));
+  const admin = {
+    from: (tabela: string) => tabela === "documentos_fiscais"
+      ? { insert }
+      : { select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) }) },
+  };
+  await criarRascunhosDaNegociacao(admin as unknown as SupabaseClient, "loja", n, "vendedor");
+  expect(insert).toHaveBeenNthCalledWith(1, expect.objectContaining({
+    operacao: "ENT_TROCA",
+    valor_total_cents: 2_000_000,
+    rascunho: expect.objectContaining({
+      pessoa: expect.objectContaining({ nome: "Remetente da troca", documento: "11144477735", codigo_municipio: "3550308" }),
+      veiculo: expect.objectContaining({ ncm: "87032100", km: 56000 }),
+    }),
+  }));
+  expect(insert).toHaveBeenNthCalledWith(2, expect.objectContaining({
+    operacao: "SAI_VENDA",
+    rascunho: expect.objectContaining({
+      pessoa: expect.objectContaining({ documento: n.cliente.documento }),
+    }),
+  }));
 });
 
 describe("validações", () => {

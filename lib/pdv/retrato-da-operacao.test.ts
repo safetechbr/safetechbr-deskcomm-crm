@@ -155,6 +155,25 @@ describe("manifesto da pasta", () => {
 });
 
 describe("o que falta para concluir", () => {
+  it("cobra os dados fiscais de uma troca antes de fechar a venda", () => {
+    const n = comTroca(vendaCompleta());
+    n.cliente = { ...n.cliente, cep: "123" };
+    n.troca = { ...n.troca!, chassi: "CURTO", renavam: "123", cor: null };
+    const campos = faltandoParaConcluir(n, []).map((f) => f.campo);
+    expect(campos).toEqual(expect.arrayContaining(["remetente.cep", "chassi", "renavam", "cor"]));
+  });
+
+  it("usa o CPF do remetente da troca quando o comprador tem CNPJ", () => {
+    const n = comTroca(vendaCompleta());
+    const cpf = n.cliente.documento;
+    n.cliente.documento = "11222333000181";
+    const temPendenciaDeCpfDaTroca = () => faltandoParaConcluir(n, [])
+      .some((f) => f.setor === "Troca" && f.campo === "remetente.documento");
+    expect(temPendenciaDeCpfDaTroca()).toBe(true);
+    n.troca = { ...n.troca!, remetente: { ...n.cliente, documento: cpf } };
+    expect(temPendenciaDeCpfDaTroca()).toBe(false);
+  });
+
   it("venda completa sem pendência de caixa não falta nada", () => {
     expect(faltandoParaConcluir(vendaCompleta(), [])).toEqual([]);
   });

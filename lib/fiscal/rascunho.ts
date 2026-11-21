@@ -2,7 +2,7 @@
  * Conteúdo do campo `rascunho` de um documento fiscal e as validações de antes de emitir.
  * Funções puras: nada aqui toca banco ou rede.
  */
-import { documentoValido, soDigitos } from "@/lib/pdv/regras";
+import { documentoValido, soDigitos, type ClienteDaNegociacao, type TrocaDaNegociacao } from "@/lib/pdv/regras";
 import type { OperacaoFiscal } from "./regras";
 
 export interface PessoaFiscal {
@@ -58,36 +58,75 @@ export function observacaoDaTroca(placa: string, numeroEntrada: number): string 
 
 const UFS = new Set("AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO".split(" "));
 
-export function validarPessoa(p: PessoaFiscal): string[] {
-  const e: string[] = [];
-  if (!p.nome.trim()) e.push("Pessoa: informe o nome.");
-  if (!documentoValido(p.documento)) e.push("Pessoa: CPF/CNPJ inválido.");
-  if (soDigitos(p.cep).length !== 8) e.push("Pessoa: CEP deve ter 8 dígitos.");
-  if (!p.logradouro.trim()) e.push("Pessoa: informe a rua.");
-  if (!p.numero.trim()) e.push("Pessoa: informe o número do endereço (use S/N se não houver).");
-  if (!p.bairro.trim()) e.push("Pessoa: informe o bairro.");
-  if (!p.municipio.trim()) e.push("Pessoa: informe a cidade.");
-  if (!UFS.has(p.uf.trim().toUpperCase())) e.push("Pessoa: UF inválida.");
+export function pessoaFiscal(c: ClienteDaNegociacao): PessoaFiscal {
+  return {
+    nome: c.nome.trim(),
+    documento: soDigitos(c.documento),
+    email: c.email ?? null,
+    cep: soDigitos(c.cep),
+    logradouro: c.endereco ?? "",
+    numero: c.numero ?? "",
+    complemento: c.complemento ?? null,
+    bairro: c.bairro ?? "",
+    municipio: c.cidade ?? "",
+    uf: c.uf?.toUpperCase() ?? "",
+    codigo_municipio: c.codigo_municipio || null,
+  };
+}
+
+export function veiculoFiscalDaTroca(troca: TrocaDaNegociacao, kmRecebimento?: number | null): VeiculoFiscal {
+  return {
+    marca: troca.marca ?? null,
+    modelo: troca.modelo,
+    ano_fabricacao: troca.ano_fabricacao ?? null,
+    ano_modelo: troca.ano_modelo ?? null,
+    cor: troca.cor ?? null,
+    chassi: troca.chassi ?? null,
+    placa: troca.placa ?? null,
+    renavam: troca.renavam ?? null,
+    km: kmRecebimento ?? troca.km ?? null,
+    ncm: troca.ncm ?? null,
+  };
+}
+
+type PendenciaFiscal<T> = { campo: keyof T; mensagem: string };
+
+export function pendenciasDaPessoaFiscal(p: PessoaFiscal, somenteCpf = false): PendenciaFiscal<PessoaFiscal>[] {
+  const e: PendenciaFiscal<PessoaFiscal>[] = [];
+  const falta = (campo: keyof PessoaFiscal, texto: string) => e.push({ campo, mensagem: `Pessoa: ${texto}` });
+  if (!p.nome.trim()) falta("nome", "informe o nome.");
+  if (!documentoValido(p.documento) || (somenteCpf && soDigitos(p.documento).length !== 11))
+    falta("documento", somenteCpf ? "informe um CPF válido do remetente da troca." : "CPF/CNPJ inválido.");
+  if (soDigitos(p.cep).length !== 8) falta("cep", "CEP deve ter 8 dígitos.");
+  if (!p.logradouro.trim()) falta("logradouro", "informe a rua.");
+  if (!p.numero.trim()) falta("numero", "informe o número do endereço (use S/N se não houver).");
+  if (!p.bairro.trim()) falta("bairro", "informe o bairro.");
+  if (!p.municipio.trim()) falta("municipio", "informe a cidade.");
+  if (!UFS.has(p.uf.trim().toUpperCase())) falta("uf", "UF inválida.");
   if (!p.codigo_municipio || !/^\d{7}$/.test(p.codigo_municipio))
-    e.push("Pessoa: código IBGE do município não encontrado pelo CEP. Informe os 7 dígitos.");
-  if (p.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) e.push("Pessoa: e-mail inválido.");
+    falta("codigo_municipio", "informe o código IBGE do município com 7 dígitos.");
+  if (p.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) falta("email", "e-mail inválido.");
   return e;
 }
 
-export function validarVeiculo(v: VeiculoFiscal): string[] {
-  const e: string[] = [];
+export function pendenciasDoVeiculoFiscal(v: VeiculoFiscal): PendenciaFiscal<VeiculoFiscal>[] {
+  const e: PendenciaFiscal<VeiculoFiscal>[] = [];
+  const falta = (campo: keyof VeiculoFiscal, texto: string) => e.push({ campo, mensagem: `Veículo: ${texto}` });
   if (!v.chassi || !/^[A-HJ-NPR-Z0-9]{17}$/i.test(v.chassi.trim()))
-    e.push("Veículo: chassi deve ter 17 caracteres (sem I, O ou Q).");
-  if (!v.placa?.trim()) e.push("Veículo: informe a placa.");
-  if (!v.renavam || soDigitos(v.renavam).length < 9) e.push("Veículo: informe o Renavam.");
-  if (!v.ncm || !/^\d{8}$/.test(v.ncm)) e.push("Veículo: NCM deve ter 8 dígitos.");
-  if (!v.ano_fabricacao) e.push("Veículo: informe o ano de fabricação.");
-  if (!v.ano_modelo) e.push("Veículo: informe o ano do modelo.");
-  if (!v.cor?.trim()) e.push("Veículo: informe a cor.");
-  if (v.km == null) e.push("Veículo: informe a quilometragem.");
-  if (!v.marca?.trim() && !v.modelo?.trim()) e.push("Veículo: informe marca e modelo.");
+    falta("chassi", "chassi deve ter 17 caracteres (sem I, O ou Q).");
+  if (!v.placa?.trim()) falta("placa", "informe a placa.");
+  if (!v.renavam || soDigitos(v.renavam).length < 9) falta("renavam", "informe o Renavam.");
+  if (!v.ncm || !/^\d{8}$/.test(v.ncm)) falta("ncm", "NCM deve ter 8 dígitos.");
+  if (!v.ano_fabricacao) falta("ano_fabricacao", "informe o ano de fabricação.");
+  if (!v.ano_modelo) falta("ano_modelo", "informe o ano do modelo.");
+  if (!v.cor?.trim()) falta("cor", "informe a cor.");
+  if (v.km == null) falta("km", "informe a quilometragem.");
+  if (!v.marca?.trim() && !v.modelo?.trim()) falta("modelo", "informe marca e modelo.");
   return e;
 }
+
+export const validarPessoa = (p: PessoaFiscal) => pendenciasDaPessoaFiscal(p).map((f) => f.mensagem);
+export const validarVeiculo = (v: VeiculoFiscal) => pendenciasDoVeiculoFiscal(v).map((f) => f.mensagem);
 
 export interface ContextoDeValidacao {
   operacao: OperacaoFiscal;
