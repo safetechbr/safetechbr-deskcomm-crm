@@ -444,6 +444,8 @@ const schema = z.object({
    */
   RESEND_API_KEY: z.string().optional().default(""),
   RESEND_FROM_EMAIL: z.string().optional().default(""),
+  /** Token da API Placas (apiplacas.com.br), para preencher o veículo pela placa. Vazio = consulta desligada. */
+  APIPLACAS_TOKEN: z.string().optional().default(""),
 
   /**
    * SMTP — o SEGUNDO transporte de e-mail, ao lado da Resend, nunca no lugar

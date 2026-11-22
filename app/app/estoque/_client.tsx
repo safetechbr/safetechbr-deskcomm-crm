@@ -16,6 +16,7 @@ import { apiClient } from "@/lib/api/client";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 import { centavosParaMascara, mascararMoeda } from "@/lib/money";
 import { CATEGORIAS_PADRAO, listaDeCategorias, mesmaCategoria, sugerirCategoria } from "@/lib/veiculos/categorias";
+import { normalizarPlaca, placaValida, type DadosDaPlaca } from "@/lib/veiculos/placa";
 import { interpretarModeloFipe, marcasDoCatalogo, modelosDaMarca } from "@/lib/veiculos/catalogo";
 import {
   formatarKm,
@@ -338,6 +339,7 @@ function FormularioDoVeiculo({
   const [condicao, setCondicao] = React.useState(veiculo?.condicao ?? "");
   const [regularizacao, setRegularizacao] = React.useState(veiculo?.regularizacao ?? []);
   const [ocupado, setOcupado] = React.useState(false);
+  const [consultandoPlaca, setConsultandoPlaca] = React.useState(false);
   const [excluindo, setExcluindo] = React.useState(false);
   const [fotos, setFotos] = React.useState<string[]>(veiculo?.fotos ?? []);
   const [temVideo, setTemVideo] = React.useState(Boolean(veiculo?.video));
@@ -396,6 +398,31 @@ function FormularioDoVeiculo({
 
   // Ao escolher um modelo da lista (nome completo da tabela FIPE), separa e
   // preenche modelo, versão, motor, câmbio e combustível de uma vez.
+  async function aoDigitarPlaca(valor: string) {
+    const placa = normalizarPlaca(valor);
+    setR((atual) => ({ ...atual, placa }));
+    if (!placaValida(placa) || consultandoPlaca) return;
+    setConsultandoPlaca(true);
+    try {
+      const resp = await apiClient.get<{ data: DadosDaPlaca }>(`/api/v1/veiculos/consulta-placa?placa=${placa}`);
+      const d = resp.data;
+      // só preenche o que está vazio, nunca sobrescreve o que foi digitado
+      setR((atual) => ({
+        ...atual,
+        marca: atual.marca || d.marca || "",
+        modelo: atual.modelo || d.modelo || "",
+        ano_fabricacao: atual.ano_fabricacao || (d.ano_fabricacao ? String(d.ano_fabricacao) : ""),
+        ano_modelo: atual.ano_modelo || (d.ano_modelo ? String(d.ano_modelo) : ""),
+        cor: atual.cor || d.cor || "",
+      }));
+      toast.success(t("Dados da placa preenchidos"));
+    } catch (e) {
+      showApiError(e);
+    } finally {
+      setConsultandoPlaca(false);
+    }
+  }
+
   function aoDigitarModelo(valor: string) {
     if (r.marca && sugestoes.includes(valor)) {
       const m = interpretarModeloFipe(valor);
@@ -628,7 +655,7 @@ function FormularioDoVeiculo({
           {campo("cambio", t("Câmbio (ex.: automático)"))}
           {campo("combustivel", t("Combustível"))}
           {campo("cor", t("Cor"))}
-          {campo("placa", t("Placa completa"))}
+          {campo("placa", t("Placa completa"), undefined, undefined, aoDigitarPlaca)}
           {campo("chassi", t("Chassi"))}
           {campo("renavam", t("Renavam"))}
           {campo("placa_final", t("Final da placa"))}

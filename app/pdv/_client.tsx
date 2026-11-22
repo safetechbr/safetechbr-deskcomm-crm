@@ -49,6 +49,8 @@ import {
 } from "@/lib/pdv/regras";
 import { precoParaCentavos } from "@/lib/schemas/produtos";
 import { centavosParaMascara, mascararMoeda } from "@/lib/money";
+import { interpretarModeloFipe, marcasDoCatalogo, modelosDaMarca } from "@/lib/veiculos/catalogo";
+import { type DadosDaPlaca, normalizarPlaca, placaValida } from "@/lib/veiculos/placa";
 import { formatarKm, formatarPreco, tituloDoVeiculo, type Veiculo } from "@/lib/veiculos/regras";
 import { clienteDoContato, type ContatoDoCadastro } from "@/lib/pdv/cadastro-cliente";
 import { CadastroClienteModal } from "./cadastro-cliente-modal";
@@ -193,6 +195,7 @@ function Campo({
   campo,
   inputMode,
   invalido,
+  lista,
 }: {
   rotulo: string;
   valor: string | number | null | undefined;
@@ -205,6 +208,7 @@ function Campo({
   campo?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   invalido?: boolean;
+  lista?: string;
 }) {
   return (
     <label className={`block text-xs ${extra ?? ""}`}>
@@ -215,6 +219,8 @@ function Campo({
         aria-invalid={invalido || undefined}
         value={valor ?? ""}
         placeholder={placeholder}
+        list={lista}
+        autoComplete={lista ? "off" : undefined}
         onChange={(e) => onChange(e.target.value)}
         className={`mt-1 ${CAMPO} aria-invalid:border-error`}
         data-testid={testid}
@@ -360,24 +366,99 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
   const set = (campo: keyof VeiculoDaNegociacao, valor: unknown) =>
     onChange({ ...v, [campo]: valor });
   const c = (campo: keyof VeiculoDaNegociacao) => `${onde}.${campo}`;
-  const rotuloFiscal = (rotulo: string) => onde === "troca" ? `${rotulo} *` : rotulo;
+  const usaCatalogo = onde === "troca";
+  const rotuloFiscal = (rotulo: string) => usaCatalogo ? `${rotulo} *` : rotulo;
+  const listaMarcas = usaCatalogo ? `${prefixo}-marcas` : undefined;
+  const listaModelos = usaCatalogo ? `${prefixo}-modelos` : undefined;
+  const sugestoes = React.useMemo(
+    () => usaCatalogo && v.marca ? modelosDaMarca(v.marca.trim(), v.modelo, 40) : [],
+    [usaCatalogo, v.marca, v.modelo],
+  );
+
+  function mudarModelo(valor: string) {
+    if (!sugestoes.includes(valor)) {
+      set("modelo", valor);
+      return;
+    }
+    const modelo = interpretarModeloFipe(valor);
+    onChange({
+      ...v,
+      modelo: modelo.modelo,
+      versao: modelo.versao ?? v.versao,
+      motor: modelo.motor ?? v.motor,
+      cambio: modelo.cambio ?? v.cambio,
+      combustivel: modelo.combustivel ?? v.combustivel,
+    });
+  }
+
+  const [consultando, setConsultando] = React.useState(false);
+
+  async function aoDigitarPlaca(x: string) {
+    const placa = normalizarPlaca(x);
+    if (!placaValida(placa)) {
+      set("placa", placa);
+      return;
+    }
+    setConsultando(true);
+    try {
+      const r = await apiClient.get<{ data: DadosDaPlaca }>(`/api/v1/veiculos/consulta-placa?placa=${placa}`);
+      const d = r.data;
+      onChange({
+        ...v,
+        placa,
+        marca: v.marca || d.marca || v.marca,
+        modelo: v.modelo || d.modelo || v.modelo,
+        ano_fabricacao: v.ano_fabricacao ?? d.ano_fabricacao,
+        ano_modelo: v.ano_modelo ?? d.ano_modelo,
+        cor: v.cor || d.cor || v.cor,
+      });
+      toast.success(t("Dados da placa preenchidos"));
+    } catch (e) {
+      set("placa", placa);
+      showApiError(e);
+    } finally {
+      setConsultando(false);
+    }
+  }
+
   return (
     <div className="grid grid-cols-2 gap-2">
+      <Campo
+        rotulo={rotuloFiscal(t("Placa"))}
+        valor={v.placa}
+        onChange={aoDigitarPlaca}
+        campo={c("placa")}
+        invalido={falta?.(c("placa"))}
+        testid={`${prefixo}-placa`}
+        extra={consultando ? "opacity-60" : undefined}
+      />
       <Campo
         rotulo={rotuloFiscal(t("Marca"))}
         valor={v.marca}
         onChange={(x) => set("marca", x)}
         campo={c("marca")}
         invalido={falta?.(c("marca"))}
+        lista={listaMarcas}
       />
       <Campo
         rotulo={rotuloFiscal(t("Modelo"))}
         valor={v.modelo}
-        onChange={(x) => set("modelo", x)}
+        onChange={mudarModelo}
         campo={c("modelo")}
         invalido={falta?.(c("modelo"))}
         testid={`${prefixo}-modelo`}
+        lista={listaModelos}
       />
+      {usaCatalogo && (
+        <>
+          <datalist id={listaMarcas}>
+            {marcasDoCatalogo().map((marca) => <option key={marca} value={marca} />)}
+          </datalist>
+          <datalist id={listaModelos}>
+            {sugestoes.map((modelo) => <option key={modelo} value={modelo} />)}
+          </datalist>
+        </>
+      )}
       <Campo
         rotulo={t("Versão")}
         valor={v.versao}
@@ -419,6 +500,14 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
         onChange={(x) => set("combustivel", x)}
         campo={c("combustivel")}
       />
+      {usaCatalogo && (
+        <Campo
+          rotulo={t("Motor")}
+          valor={v.motor}
+          onChange={(x) => set("motor", x)}
+          campo={c("motor")}
+        />
+      )}
       <label className="text-xs">
         Condição
         <select
@@ -443,13 +532,6 @@ function FichaDoVeiculo<V extends VeiculoDaNegociacao | TrocaDaNegociacao>({
         valor={v.cambio}
         onChange={(x) => set("cambio", x)}
         campo={c("cambio")}
-      />
-      <Campo
-        rotulo={rotuloFiscal(t("Placa"))}
-        valor={v.placa}
-        onChange={(x) => set("placa", x.toUpperCase())}
-        campo={c("placa")}
-        invalido={falta?.(c("placa"))}
       />
       <Campo
         rotulo={rotuloFiscal(t("Renavam"))}
