@@ -880,6 +880,16 @@ const HOSTS_DECLARADOS: Record<string, EntradaDeHost> = {
     motivo:
       "API de homologação do provedor fiscal (Focus NFe): `lib/fiscal/focus/client.ts` usa este host quando a loja está em ambiente de testes, sem validade fiscal.",
   },
+  "api.renavefacil.net": {
+    categoria: "FORNECEDOR",
+    motivo:
+      "API do Renave Fácil (integração com o Renave/Senatran): `lib/renave/renave-facil/http.ts` envia e consulta veículos e baixa documentos neste host, com a credencial que a loja cadastra em Configurações.",
+  },
+  "apiplacas.com.br": {
+    categoria: "FORNECEDOR",
+    motivo:
+      "consulta pública de placa: `app/api/v1/veiculos/consulta-placa/route.ts` preenche os dados do veículo (marca, modelo, ano) a partir da placa digitada no PDV e no estoque.",
+  },
   "viacep.com.br": {
     categoria: "FORNECEDOR",
     motivo:
