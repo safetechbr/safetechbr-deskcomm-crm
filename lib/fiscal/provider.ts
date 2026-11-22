@@ -62,6 +62,7 @@ export interface PessoaDestino {
   inscricaoEstadual: string | null;
   logradouro: string;
   numero: string;
+  complemento?: string | null;
   bairro: string;
   municipio: string;
   codigoMunicipio: string | null;

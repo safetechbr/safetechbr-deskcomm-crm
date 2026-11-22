@@ -129,7 +129,8 @@ export async function emitirDocumento(
     dataEmissao: doc.data_emissao, serie, numero, emitente,
     destinatario: {
       nome: r.pessoa.nome, documento: r.pessoa.documento, ...destinatarioIe(r.pessoa),
-      logradouro: r.pessoa.logradouro, numero: r.pessoa.numero, bairro: r.pessoa.bairro, municipio: r.pessoa.municipio,
+      logradouro: r.pessoa.logradouro, numero: r.pessoa.numero, complemento: r.pessoa.complemento,
+      bairro: r.pessoa.bairro, municipio: r.pessoa.municipio,
       codigoMunicipio: r.pessoa.codigo_municipio, uf: r.pessoa.uf, cep: r.pessoa.cep,
     },
     itens: [{

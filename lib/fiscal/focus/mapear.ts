@@ -133,6 +133,7 @@ export function payloadNfe(d: DocumentoParaEmitir): Record<string, unknown> {
     inscricao_estadual_destinatario: p.inscricaoEstadual,
     logradouro_destinatario: p.logradouro,
     numero_destinatario: p.numero,
+    complemento_destinatario: p.complemento || undefined,
     bairro_destinatario: p.bairro,
     codigo_municipio_destinatario: p.codigoMunicipio ?? undefined,
     municipio_destinatario: p.municipio,
