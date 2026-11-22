@@ -65,6 +65,8 @@ const NAV_ITEMS: NavItem[] = [
   // A porta da tela que decide quem pode criar conta nesta instalação — mesma
   // razão das duas de cima: é configuração da INSTALAÇÃO, e /admin tem
   // navegação própria (o registro de `lib/navigation/` cobre só `app/app/**`).
+  // Token de revenda da Focus NFe (emissão de NF-e) — da INSTALAÇÃO, como as de cima.
+  { href: "/admin/fiscal", label: "Focus NFe", icon: Receipt },
   { href: "/admin/cadastro", label: "Cadastro", icon: Key },
   // A porta da tela do servidor de e-mail (SMTP) — mesma razão das de cima: um
   // servidor de e-mail manda o e-mail de todas as empresas desta VPS, então é

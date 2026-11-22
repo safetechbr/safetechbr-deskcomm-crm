@@ -16,7 +16,7 @@ import { audit } from "@/lib/audit";
 import { fail, ok } from "@/lib/api/wrappers";
 import { requireRole } from "@/lib/auth/require-role";
 import { bufToBytea, encryptKey } from "@/lib/crypto/aes_gcm";
-import { env } from "@/lib/env";
+import { tokenRevendaFocus } from "@/lib/fiscal/focus/token-revenda";
 import type { DadosEmpresa } from "@/lib/fiscal/provider";
 import { FocusNfeProvider } from "@/lib/fiscal/focus/provider";
 import { requireSupportWrite } from "@/lib/impersonate/support";
@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success || Number.isNaN(Date.parse(parsed.data.certificado_validade)))
     return fail("validation_failed", "Certificado, senha ou validade inválidos.", 422, { requestId });
-  if (!env.FOCUS_TOKEN_REVENDA)
+  const tokenRevenda = await tokenRevendaFocus();
+  if (!tokenRevenda)
     return fail("service_unavailable", "Provedor fiscal não configurado neste ambiente.", 503, { requestId });
 
   const org = authz.org.orgId;
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
   };
   let resultado;
   try {
-    resultado = await new FocusNfeProvider({ tokenRevenda: env.FOCUS_TOKEN_REVENDA })
+    resultado = await new FocusNfeProvider({ tokenRevenda })
       .cadastrarEmpresa(empresa, { pfxBase64: parsed.data.pfx_base64, senha: parsed.data.senha });
   } catch (e) {
     // Só a mensagem do provedor: o corpo da requisição (pfx/senha) nunca entra no log.
