@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api/client";
 import { useT } from "@/hooks/i18n/useT";
 import {
+  CaretDown,
   ChartLineUp,
   CheckCircle,
   DownloadSimple,
@@ -18,6 +19,7 @@ import {
   Receipt,
   Trash,
   WarningOctagon,
+  X,
 } from "@/lib/ui/icons";
 import {
   FORMAS_DE_PAGAMENTO,
@@ -32,6 +34,24 @@ import {
 import { formatarPreco } from "@/lib/veiculos/regras";
 
 type Ordem = "recente" | "antiga" | "maior" | "menor";
+
+const CAMPO_DO_FILTRO =
+  "h-11 w-full min-w-0 rounded-lg border border-border/80 bg-surface px-2.5 text-sm shadow-xs transition-colors hover:border-border focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20 lg:h-9";
+
+function Filtro({ rotulo, ...props }: React.ComponentProps<"select"> & { rotulo: string }) {
+  return (
+    <label className="grid min-w-0 gap-1 text-xs text-muted-foreground">
+      <span>{rotulo}</span>
+      <span className="relative block min-w-0">
+        <select {...props} className={`${CAMPO_DO_FILTRO} appearance-none pe-9 forced-colors:appearance-auto`} />
+        <CaretDown
+          className="pointer-events-none absolute end-3 top-1/2 size-3.5 -translate-y-1/2 forced-colors:hidden"
+          aria-hidden
+        />
+      </span>
+    </label>
+  );
+}
 
 const COR_DO_STATUS: Record<StatusDaNegociacao, string> = {
   concluida: "bg-success-bg text-success-fg",
@@ -150,17 +170,14 @@ export function HistoricoDeVendasClient({
     URL.revokeObjectURL(url);
   };
 
-  const seletor =
-    "h-10 rounded-full border border-border/80 bg-surface px-4 text-sm shadow-xs transition-colors hover:border-border focus-visible:border-accent/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/20";
-
   return (
-    <div className="space-y-6 p-6" data-testid="historico-de-vendas">
+    <div className="space-y-4 px-3 py-4 sm:p-6 lg:space-y-5" data-testid="historico-de-vendas">
       <header className="ds-entra">
         <h1 className="text-2xl font-semibold tracking-tight">{titulo}</h1>
         <p className="text-sm text-muted-foreground">{subtitulo}</p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         <Cartao indice={0} icone={Receipt} rotulo={t("Total de negociações")} valor={String(cartoes.total)} testid="cartao-total" />
         <Cartao
           indice={1}
@@ -189,61 +206,78 @@ export function HistoricoDeVendasClient({
         />
       </div>
 
-      <div className="ds-entra flex flex-wrap items-center gap-2" style={{ animationDelay: "200ms" }}>
-        <label className="relative min-w-64 flex-1">
+      <section
+        aria-label={t("Filtros")}
+        className="ds-entra grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 xl:grid-cols-[minmax(9rem,1fr)_minmax(0,2.5fr)_auto]"
+        style={{ animationDelay: "200ms" }}
+      >
+        <label className="relative col-start-1 row-start-1 min-w-0">
           <MagnifyingGlass
-            className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
           <input
             type="search"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder={t("Buscar por cliente, telefone, veículo, placa ou número…")}
-            className={`${seletor} w-full pl-9`}
+            placeholder={t("Buscar")}
+            title={t("Buscar por cliente, telefone, veículo, placa ou número…")}
+            className={`${CAMPO_DO_FILTRO} pl-9 text-base md:text-sm`}
             aria-label={t("Buscar")}
           />
         </label>
-        <select className={seletor} value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} aria-label={t("Tipo")}>
-          <option value="all">{t("Venda e compra")}</option>
-          <option value="venda">{t("Vendas")}</option>
-          <option value="compra">{t("Compras")}</option>
-        </select>
-        <select className={seletor} value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label={t("Situação")}>
-          <option value="all">{t("Todas as situações")}</option>
-          {(Object.keys(ROTULO_DO_STATUS_DA_NEGOCIACAO) as StatusDaNegociacao[]).map((s) => (
-            <option key={s} value={s}>{t(ROTULO_DO_STATUS_DA_NEGOCIACAO[s])}</option>
-          ))}
-        </select>
-        <select className={seletor} value={forma} onChange={(e) => setForma(e.target.value as typeof forma)} aria-label={t("Pagamento")}>
-          <option value="all">{t("Todos os pagamentos")}</option>
-          {FORMAS_DE_PAGAMENTO.map((f) => (
-            <option key={f} value={f}>{t(ROTULO_DA_FORMA[f])}</option>
-          ))}
-        </select>
-        <select className={seletor} value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} aria-label={t("Ordem")}>
-          <option value="recente">{t("Mais recente")}</option>
-          <option value="antiga">{t("Mais antiga")}</option>
-          <option value="maior">{t("Maior valor")}</option>
-          <option value="menor">{t("Menor valor")}</option>
-        </select>
-        {filtrando ? (
-          <Button type="button" variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={limpar}>
-            {t("Limpar")}
+        <div className="col-span-full row-start-2 grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-4 xl:col-span-1 xl:col-start-2 xl:row-start-1">
+          <Filtro rotulo={t("Tipo")} value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)}>
+            <option value="all">{t("Todos")}</option>
+            <option value="venda">{t("Vendas")}</option>
+            <option value="compra">{t("Compras")}</option>
+          </Filtro>
+          <Filtro rotulo={t("Situação")} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+            <option value="all">{t("Todas")}</option>
+            {(Object.keys(ROTULO_DO_STATUS_DA_NEGOCIACAO) as StatusDaNegociacao[]).map((s) => (
+              <option key={s} value={s}>{t(ROTULO_DO_STATUS_DA_NEGOCIACAO[s])}</option>
+            ))}
+          </Filtro>
+          <Filtro rotulo={t("Pagamento")} value={forma} onChange={(e) => setForma(e.target.value as typeof forma)}>
+            <option value="all">{t("Todos")}</option>
+            {FORMAS_DE_PAGAMENTO.map((f) => (
+              <option key={f} value={f}>{t(ROTULO_DA_FORMA[f])}</option>
+            ))}
+          </Filtro>
+          <Filtro rotulo={t("Ordem")} value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)}>
+            <option value="recente">{t("Mais recente")}</option>
+            <option value="antiga">{t("Mais antiga")}</option>
+            <option value="maior">{t("Maior valor")}</option>
+            <option value="menor">{t("Menor valor")}</option>
+          </Filtro>
+        </div>
+        <div className="col-start-2 row-start-1 flex items-center gap-1.5 xl:col-start-3">
+          {filtrando ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-lg"
+              onClick={limpar}
+              aria-label={t("Limpar filtros")}
+              title={t("Limpar filtros")}
+            >
+              <X aria-hidden />
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-lg border-border/80 bg-surface px-2.5"
+            onClick={exportar}
+            disabled={lista.length === 0}
+          >
+            <DownloadSimple aria-hidden />
+            {t("Exportar")}
           </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-10 gap-1.5 rounded-full border-border/80 bg-surface px-4 shadow-xs"
-          onClick={exportar}
-          disabled={lista.length === 0}
-        >
-          <DownloadSimple className="size-4" aria-hidden />
-          {t("Exportar")}
-        </Button>
-      </div>
+        </div>
+      </section>
 
       {lista.length === 0 ? (
         <div
@@ -413,18 +447,20 @@ function Cartao({
 }) {
   return (
     <div
-      className="ds-entra rounded-xl border border-border/60 bg-surface p-5 shadow-xs"
+      className="ds-entra flex min-h-24 min-w-0 flex-col gap-2 rounded-lg border border-border/60 bg-surface p-3 shadow-xs md:p-3.5"
       style={{ animationDelay: `${indice * 50}ms` }}
       data-testid={testid}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm text-muted-foreground">{rotulo}</div>
-        <span className={`flex size-8 items-center justify-center rounded-full ${tomDoIcone ?? "bg-accent-soft text-accent"}`}>
+      <div className="flex items-center gap-2">
+        <span className={`flex size-6 shrink-0 items-center justify-center rounded-md ${tomDoIcone ?? "bg-accent-soft text-accent"}`}>
           <Icone className="size-4" weight="duotone" aria-hidden />
         </span>
+        <div className="min-w-0 text-xs leading-tight text-muted-foreground sm:text-sm">{rotulo}</div>
       </div>
-      <div className={`mt-2 text-3xl font-semibold tracking-tight tabular-nums ${tom ?? ""}`}>{valor}</div>
-      {nota ? <div className="mt-1 text-xs text-muted-foreground">{nota}</div> : null}
+      <div className="mt-auto">
+        <div className={`text-lg font-semibold tracking-tight break-words tabular-nums sm:text-2xl ${tom ?? ""}`}>{valor}</div>
+        {nota ? <div className="text-xs text-muted-foreground">{nota}</div> : null}
+      </div>
     </div>
   );
 }
