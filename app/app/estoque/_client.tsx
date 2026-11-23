@@ -347,6 +347,8 @@ function FormularioDoVeiculo({
   const videoRef = React.useRef<HTMLInputElement>(null);
 
   const marcas = React.useMemo(() => marcasDoCatalogo(), []);
+  const [listaModelosAberta, setListaModelosAberta] = React.useState(false);
+  const [destaqueModelo, setDestaqueModelo] = React.useState(-1);
   const sugestoes = React.useMemo(
     () => (r.marca ? modelosDaMarca(r.marca, r.modelo, 40) : []),
     [r.marca, r.modelo],
@@ -572,20 +574,72 @@ function FormularioDoVeiculo({
             </div>
           ) : null}
           {campo("marca", t("Marca"), undefined, "lista-marcas")}
-          {campo(
-            "modelo",
-            r.marca ? t("Modelo (digite para buscar)") : t("Modelo (escolha a marca antes)"),
-            undefined,
-            "lista-modelos",
-            aoDigitarModelo,
-          )}
+          {/* Lista própria: o <datalist> nativo não reabre quando as opções mudam a cada tecla. */}
+          <div className="relative text-sm">
+            <label htmlFor="campo-modelo">
+              {r.marca ? t("Modelo (digite para buscar)") : t("Modelo (escolha a marca antes)")}
+            </label>
+            <input
+              id="campo-modelo"
+              role="combobox"
+              aria-expanded={listaModelosAberta}
+              aria-controls="lista-modelos"
+              aria-autocomplete="list"
+              value={r.modelo}
+              onChange={(e) => {
+                aoDigitarModelo(e.target.value);
+                setListaModelosAberta(true);
+                setDestaqueModelo(-1);
+              }}
+              onFocus={() => setListaModelosAberta(true)}
+              onBlur={() => setListaModelosAberta(false)}
+              onKeyDown={(e) => {
+                if (!listaModelosAberta || sugestoes.length === 0) return;
+                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const passo = e.key === "ArrowDown" ? 1 : -1;
+                  const n = sugestoes.length;
+                  setDestaqueModelo((i) => (i < 0 ? (passo > 0 ? 0 : n - 1) : (i + passo + n) % n));
+                } else if (e.key === "Enter" && sugestoes[destaqueModelo] !== undefined) {
+                  e.preventDefault();
+                  aoDigitarModelo(sugestoes[destaqueModelo]!);
+                  setListaModelosAberta(false);
+                } else if (e.key === "Escape") {
+                  e.stopPropagation();
+                  setListaModelosAberta(false);
+                }
+              }}
+              autoComplete="off"
+              className="mt-1 h-9 w-full rounded-md border bg-background px-3"
+              data-testid="campo-modelo"
+            />
+            {listaModelosAberta && r.modelo.trim() && sugestoes.length > 0 ? (
+              <ul
+                id="lista-modelos"
+                role="listbox"
+                className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border bg-popover p-1 shadow-md"
+              >
+                {sugestoes.map((m, i) => (
+                  <li
+                    key={m}
+                    role="option"
+                    aria-selected={i === destaqueModelo}
+                    // mousedown, não click: o blur do input fecharia a lista antes do click.
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      aoDigitarModelo(m);
+                      setListaModelosAberta(false);
+                    }}
+                    className={`cursor-pointer rounded px-2 py-1.5 ${i === destaqueModelo ? "bg-accent" : "hover:bg-accent"}`}
+                  >
+                    {m}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
           <datalist id="lista-marcas">
             {marcas.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
-          <datalist id="lista-modelos">
-            {sugestoes.map((m) => (
               <option key={m} value={m} />
             ))}
           </datalist>
