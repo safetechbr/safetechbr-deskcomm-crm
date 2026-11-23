@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ContextoProvider, DocumentoParaEmitir } from "../provider";
-import { FocusNfeProvider } from "./provider";
+import { FocusNfeProvider, NotaNaoEncontradaNoProvedor } from "./provider";
 
 const TOKEN = "tok_segredo_123";
 const ctx: ContextoProvider = { cnpj: "12.345.678/0001-99", ambiente: "homologacao", token: TOKEN };
@@ -110,6 +110,11 @@ describe("FocusNfeProvider", () => {
     const e = await p.consultarNfe(ctx, "r1").catch((x: Error) => x);
     expect(e).toBeInstanceOf(Error);
     expect((e as Error).message).not.toContain(TOKEN);
+  });
+
+  it("consulta: 404 lança NotaNaoEncontradaNoProvedor", async () => {
+    const { p } = setup(resp({ mensagem: "Nota fiscal não encontrada" }, 404));
+    await expect(p.consultarNfe(ctx, "r1")).rejects.toBeInstanceOf(NotaNaoEncontradaNoProvedor);
   });
 
   it("cancelar: valida justificativa e devolve ok", async () => {

@@ -36,6 +36,9 @@ function resultadoDeEvento(r: RespostaFocus, statusOk: string): ResultadoEvento 
   };
 }
 
+/** A Focus não conhece esta ref (404): a emissão nunca chegou lá. */
+export class NotaNaoEncontradaNoProvedor extends Error {}
+
 export interface OpcoesFocus {
   fetchImpl?: FetchLike;
   /** Token de revenda: só o cadastro de empresas usa. */
@@ -122,6 +125,7 @@ export class FocusNfeProvider implements FiscalProvider {
 
   async consultarNfe(ctx: ContextoProvider, ref: string): Promise<ResultadoDocumento> {
     const r = await this.chamar(ctx, "GET", `/v2/nfe/${encodeURIComponent(ref)}?completa=1`);
+    if (r.http === 404) throw new NotaNaoEncontradaNoProvedor(rejeicaoDeRequisicao(r.json).mensagem);
     if (!ok2xx(r.http)) throw new Error(rejeicaoDeRequisicao(r.json).mensagem);
     return resultadoDeConsulta(r.json);
   }

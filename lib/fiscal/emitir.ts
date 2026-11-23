@@ -106,7 +106,11 @@ export async function emitirDocumento(
   const { error: eUp } = await admin.from("documentos_fiscais").update({
     status: "processando", numero, serie, ref_provider: ref, ambiente: ctx.ambiente, cfop: regra.cfop, updated_at: agora,
   }).eq("id", doc.id).eq("organization_id", org);
-  if (eUp) return falha("upstream_error", "Não foi possível preparar a nota.");
+  if (eUp) {
+    // Sem isto a nota ficaria `processando` sem ref: o cron nunca a acharia no provedor.
+    await admin.from("documentos_fiscais").update({ status: doc.status }).eq("id", doc.id).eq("organization_id", org);
+    return falha("upstream_error", "Não foi possível preparar a nota.");
+  }
 
   const r = doc.rascunho;
   const emitente: DadosEmpresa = {
