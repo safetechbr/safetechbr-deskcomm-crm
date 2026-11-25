@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 import { useT } from "@/hooks/i18n/useT";
 import { Badge } from "@/components/ui/badge";
 import { JanelaSelo } from "@/components/inbox/JanelaSelo";
@@ -16,6 +17,7 @@ import { rotuloDoCanalDaConversa } from "@/lib/channels/estado";
 
 interface Props {
   conversation: ConversationWithContact;
+  acaoDaFicha?: ReactNode;
 }
 
 /**
@@ -49,7 +51,7 @@ const STATUS_LABEL: Record<string, string> = {
  * fechar, buscar…) moraram aqui e foram para o bloco recolhível
  * `AcoesDaConversa`, no painel lateral direito — o fio fica com a altura toda.
  */
-export function ConversationHeader({ conversation }: Props) {
+export function ConversationHeader({ conversation, acaoDaFicha }: Props) {
   const t = useT();
   const { user } = useAuth();
   const automaticoDaOrg = useAutomaticoAtivo();
@@ -82,6 +84,7 @@ export function ConversationHeader({ conversation }: Props) {
         <span className="text-sm text-muted-foreground">
           {STATUS_LABEL[status] ?? status} · Somente leitura
         </span>
+        {acaoDaFicha}
       </header>
     );
   return (
@@ -93,72 +96,75 @@ export function ConversationHeader({ conversation }: Props) {
       {c?.id && (
         <FaixaDaCarteira contactId={c.id} quemAtendeId={conversation.assigned_to_user_id} />
       )}
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <ChannelLogo channel={conversation.channel_sessions} size={20} />
-          <h2 className="min-w-0 truncate text-sm font-semibold" title={displayName}>
-            {displayName}
-          </h2>
-          <Badge variant="outline" className="h-4 shrink-0 px-1.5 text-[10px]">
-            {t(STATUS_LABEL[status] ?? status)}
-          </Badge>
-          {/* Ao lado do estado, não escondido num painel: a pergunta "dá para
-              escrever agora?" se faz ANTES de digitar, não depois de receber um
-              `failed` com um código de cinco dígitos. */}
-          <JanelaSelo
-            provider={conversation.channel_sessions?.provider ?? null}
-            lastInboundAt={conversation.last_inbound_at}
-          />
-          {/* #2383: O CANAL DESTA CONVERSA, NO CABEÇALHO — a acepção que faltava
-              da issue: a lista já dizia por onde a conversa entrou, a conversa
-              ABERTA não dizia. O logo ao lado nomeia o provedor, não o número:
-              com "Peças" e "Vendas" conectados, ele é idêntico nos dois casos.
-
-              O TEXTO é o mesmo da lista e da tela `/app/connections`
-              (`rotuloDoCanalDaConversa` → `nomeDoCanal`): uma segunda cadeia de
-              regras aqui seria como as leituras de "quem manda" divergiram —
-              três telas, um fato, uma fonte.
-
-              `max-w` + `truncate` respondem ao critério de aceite "layout
-              utilizável com nomes de canal maiores": o badge encolhe e o `title`
-              devolve o texto inteiro. Sem canal (grupo, conversa sem sessão,
-              não-WA) não há rótulo nenhum e esta barra fica exatamente como
-              estava — o badge é acréscimo, não substituição. */}
-          {rotuloCanal && (
-            <Badge
-              variant="outline"
-              className="h-4 max-w-[9rem] min-w-0 truncate px-1.5 text-[10px]"
-              title={`${t("Entrou por")} ${rotuloCanal}`}
-              data-testid="canal-da-conversa"
-            >
-              <span className="truncate">{rotuloCanal}</span>
+      <div className="flex min-w-0 items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <ChannelLogo channel={conversation.channel_sessions} size={20} />
+            <h2 className="min-w-0 truncate text-sm font-semibold" title={displayName}>
+              {displayName}
+            </h2>
+            <Badge variant="outline" className="h-4 shrink-0 px-1.5 text-[10px]">
+              {t(STATUS_LABEL[status] ?? status)}
             </Badge>
-          )}
-        </div>
+            {/* Ao lado do estado, não escondido num painel: a pergunta "dá para
+                escrever agora?" se faz ANTES de digitar, não depois de receber um
+                `failed` com um código de cinco dígitos. */}
+            <JanelaSelo
+              provider={conversation.channel_sessions?.provider ?? null}
+              lastInboundAt={conversation.last_inbound_at}
+            />
+            {/* #2383: O CANAL DESTA CONVERSA, NO CABEÇALHO — a acepção que faltava
+                da issue: a lista já dizia por onde a conversa entrou, a conversa
+                ABERTA não dizia. O logo ao lado nomeia o provedor, não o número:
+                com "Peças" e "Vendas" conectados, ele é idêntico nos dois casos.
 
-        {/* QUEM ESTÁ NO COMANDO, com nome e por GEOMETRIA — disco cheio para
-            pessoa, anel vazado para o automático. É o mesmo componente do card do
-            funil e do dossiê: um terceiro jeito de dizer "quem manda", por cor ou
-            por texto, faria a mesma pergunta ter três respostas diferentes na
-            mesma tela. Cor não sobrevive ao daltonismo nem ao teste do metro. */}
-        <div className="mt-1 flex items-center gap-2" data-testid="comando-da-conversa">
-          {comando.quem === "humano" ? (
-            <OwnerBadge ownerKind="user" ownerName={comando.nome ?? t("Atendente")} />
-          ) : comando.quem === "automatico" ? (
-            <OwnerBadge ownerKind="ai" ownerName={t("Automático")} />
-          ) : (
-            // `ninguem`, `aguardando` e `encerrada` sem dono caem aqui: o disco
-            // TRACEJADO do OwnerBadge, que é como o funil já desenha "ninguém".
-            <OwnerBadge ownerKind={null} ownerName={null} />
+                O TEXTO é o mesmo da lista e da tela `/app/connections`
+                (`rotuloDoCanalDaConversa` → `nomeDoCanal`): uma segunda cadeia de
+                regras aqui seria como as leituras de "quem manda" divergiram —
+                três telas, um fato, uma fonte.
+
+                `max-w` + `truncate` respondem ao critério de aceite "layout
+                utilizável com nomes de canal maiores": o badge encolhe e o `title`
+                devolve o texto inteiro. Sem canal (grupo, conversa sem sessão,
+                não-WA) não há rótulo nenhum e esta barra fica exatamente como
+                estava — o badge é acréscimo, não substituição. */}
+            {rotuloCanal && (
+              <Badge
+                variant="outline"
+                className="h-4 max-w-[9rem] min-w-0 truncate px-1.5 text-[10px]"
+                title={`${t("Entrou por")} ${rotuloCanal}`}
+                data-testid="canal-da-conversa"
+              >
+                <span className="truncate">{rotuloCanal}</span>
+              </Badge>
+            )}
+          </div>
+
+          {/* QUEM ESTÁ NO COMANDO, com nome e por GEOMETRIA — disco cheio para
+              pessoa, anel vazado para o automático. É o mesmo componente do card do
+              funil e do dossiê: um terceiro jeito de dizer "quem manda", por cor ou
+              por texto, faria a mesma pergunta ter três respostas diferentes na
+              mesma tela. Cor não sobrevive ao daltonismo nem ao teste do metro. */}
+          <div className="mt-1 flex items-center gap-2" data-testid="comando-da-conversa">
+            {comando.quem === "humano" ? (
+              <OwnerBadge ownerKind="user" ownerName={comando.nome ?? t("Atendente")} />
+            ) : comando.quem === "automatico" ? (
+              <OwnerBadge ownerKind="ai" ownerName={t("Automático")} />
+            ) : (
+              // `ninguem`, `aguardando` e `encerrada` sem dono caem aqui: o disco
+              // TRACEJADO do OwnerBadge, que é como o funil já desenha "ninguém".
+              <OwnerBadge ownerKind={null} ownerName={null} />
+            )}
+          </div>
+          {phone && (
+            // No celular o telefone sai: cada linha do cabeçalho é altura tirada
+            // do fio, e o número continua na Ficha.
+            <p className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground max-md:hidden">
+              <Phone size={11} weight="regular" aria-hidden /> {phone}
+            </p>
           )}
         </div>
-        {phone && (
-          // No celular o telefone sai: cada linha do cabeçalho é altura tirada
-          // do fio, e o número continua na Ficha.
-          <p className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground max-md:hidden">
-            <Phone size={11} weight="regular" aria-hidden /> {phone}
-          </p>
-        )}
+        {acaoDaFicha}
       </div>
       {/* O aviso pertence à operação automática. O testid é contrato:
           `escalacao-ciclo.spec.ts` o clica. */}

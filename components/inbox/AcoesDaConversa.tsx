@@ -1,5 +1,5 @@
 "use client";
-import { useState, type RefObject } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
 import {
@@ -44,10 +44,9 @@ import { rotuloParaAEquipe } from "@/lib/contacts/rotulo-do-contato";
 
 interface Props {
   conversation: ConversationWithContact;
-  /** A busca DENTRO da conversa: o ref devolve o foco ao botão quando o campo fecha. */
-  onBuscar?: () => void;
-  buscaAberta?: boolean;
-  botaoBuscaRef?: RefObject<HTMLButtonElement | null>;
+  /** A busca DENTRO da conversa: campo sempre aberto; cada tecla filtra o fio. */
+  termoDaBusca?: string;
+  onBuscar?: (termo: string) => void;
   /** Seleciona outra conversa no Inbox — a aba Número do Transferir abre a do outro número. */
   onAbrirConversa?: (id: string) => void;
 }
@@ -66,8 +65,7 @@ export function AcoesDaConversa({
   conversation,
   onAbrirConversa,
   onBuscar,
-  buscaAberta,
-  botaoBuscaRef,
+  termoDaBusca = "",
 }: Props) {
   const t = useT();
   const { user, activeOrg } = useAuth();
@@ -159,6 +157,22 @@ export function AcoesDaConversa({
         hidden={recolhido}
         className="flex flex-col gap-2 border-t border-border/60 p-3"
       >
+        {onBuscar && (
+          <label className="flex items-center gap-2 rounded-md border border-input bg-transparent px-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring">
+            <MagnifyingGlass size={16} className="shrink-0 text-muted-foreground" aria-hidden />
+            <input
+              type="search"
+              className="min-w-0 flex-1 bg-transparent py-1.5 text-base outline-hidden placeholder:text-muted-foreground md:text-sm"
+              aria-label={t("Buscar nas mensagens carregadas")}
+              placeholder={t("Buscar nas mensagens carregadas")}
+              value={termoDaBusca}
+              onChange={(e) => onBuscar(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") onBuscar("");
+              }}
+            />
+          </label>
+        )}
         {isOpen && !c?.id && (
           <Button
             size="sm"
@@ -232,20 +246,6 @@ export function AcoesDaConversa({
         )}
 
         <div className="grid grid-cols-2 gap-2 [&_button]:w-full [&_button]:min-w-0 [&_button]:flex-1 [&_button]:justify-center">
-          {onBuscar && (
-            <Button
-              ref={botaoBuscaRef}
-              size="sm"
-              variant="outline"
-              onClick={onBuscar}
-              aria-label={t("Buscar nesta conversa")}
-              title={t("Buscar nesta conversa")}
-              aria-expanded={buscaAberta}
-            >
-              <MagnifyingGlass size={16} aria-hidden />
-              {t("Buscar")}
-            </Button>
-          )}
           {!conversation.is_group && c?.id && (
             <DialButton contactId={c.id} hasPhone={!!c.phone_number} />
           )}

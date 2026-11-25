@@ -67,7 +67,7 @@ import { apiClient } from "@/lib/api/client";
 import { normalizePhoneBR, phoneForDisplay, samePhone } from "@/lib/channels/phone-variants";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import { assumirConversaAoAbrir } from "@/lib/inbox/assumir-conversa-ao-abrir";
-import { ChatCircle, Plus, UserCircle, Users } from "@/lib/ui/icons";
+import { Plus, UserCircle, Users } from "@/lib/ui/icons";
 import { useAuth, usePermission } from "@/hooks/auth/AuthProvider";
 import { useContactList } from "@/hooks/contacts/useContactList";
 import { useT } from "@/hooks/i18n/useT";
@@ -384,20 +384,17 @@ export function BotaoIniciarConversa() {
 
   return (
     <>
-      <div className="shrink-0 md:mb-1 md:w-full">
-        <Button
-          type="button"
-          variant="outline"
-          className="w-11 px-0 md:w-full md:px-4"
-          aria-label={t("Iniciar conversa")}
-          title={t("Iniciar conversa")}
-          onClick={() => setAberto(true)}
-        >
-          <Plus size={16} aria-hidden className="md:hidden" />
-          <ChatCircle size={16} aria-hidden className="hidden md:block" />
-          <span className="hidden md:inline">{t("Iniciar conversa")}</span>
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        size="icon"
+        className="shrink-0 md:size-8"
+        aria-label={t("Iniciar conversa")}
+        title={t("Iniciar conversa")}
+        onClick={() => setAberto(true)}
+      >
+        <Plus size={16} aria-hidden />
+      </Button>
       <IniciarConversaDialog open={aberto} onOpenChange={setAberto} />
     </>
   );

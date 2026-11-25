@@ -3,11 +3,12 @@
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
 
 import type { Locale } from "date-fns";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useT } from "@/hooks/i18n/useT";
 import { format, isToday, isYesterday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CaretDown, CaretUp } from "@/lib/ui/icons";
 import { MessageBubble } from "./MessageBubble";
 import { separarReacoes } from "@/lib/inbox/reacoes-no-fio";
 import { NoteCard } from "./NoteCard";
@@ -181,13 +182,34 @@ export function ChatThread({
   });
   const { scrollerRef, contentRef, bottomRef } = scroll;
 
+  /**
+   * As ocorrências na ordem do fio (mais antiga primeiro) e a atual das setas.
+   * Sem escolha (termo novo), a atual é a MAIS RECENTE: quem busca está no fim
+   * da conversa, e "anterior" sobe para as mais antigas.
+   */
+  const ordem = useMemo(
+    () => items.filter((i) => i.kind === "message" && resultados.has(i.data.id)).map((i) => i.data.id),
+    [items, resultados],
+  );
+  const [atualId, setAtualId] = useState<string | null>(null);
+  const achado = atualId ? ordem.indexOf(atualId) : -1;
+  const atual = achado >= 0 ? achado : ordem.length - 1;
+
+  const irPara = (indice: number) => {
+    setAtualId(ordem[indice] ?? null);
+    // A ordem do DOM é a mesma de `ordem`: o fio desenha os itens nessa ordem.
+    scrollerRef.current
+      ?.querySelectorAll('[data-search-match="true"]')
+      [indice]?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+
   // Só o TERMO leva à ocorrência. Depender do conjunto de resultados faria cada
-  // mensagem nova do tempo real arrancar quem lê de volta à primeira ocorrência.
+  // mensagem nova do tempo real arrancar quem lê de volta a uma ocorrência.
   useEffect(() => {
-    if (termo)
-      scrollerRef.current
-        ?.querySelector('[data-search-match="true"]')
-        ?.scrollIntoView({ block: "nearest" });
+    setAtualId(null);
+    if (!termo) return;
+    const todas = scrollerRef.current?.querySelectorAll('[data-search-match="true"]');
+    todas?.[todas.length - 1]?.scrollIntoView({ block: "nearest" });
   }, [termo, scrollerRef]);
 
   /**
@@ -275,8 +297,18 @@ export function ChatThread({
   return (
     <div {...sinalDoCanal} className="relative flex h-full min-h-0 min-w-0 flex-col">
       {termo && (
-        <div className="px-4 py-1 text-xs text-muted-foreground" role="status">
-          {t("Resultados nas mensagens carregadas")}: {resultados.size}
+        <div className="flex items-center gap-1 px-4 py-1 text-xs text-muted-foreground">
+          <span role="status" className="flex-1">
+            {t("Resultados nas mensagens carregadas")}: {ordem.length > 0 ? `${atual + 1}/${ordem.length}` : 0}
+          </span>
+          <Button size="icon" variant="ghost" className="size-7" aria-label={t("Resultado anterior")}
+            disabled={atual <= 0} onClick={() => irPara(atual - 1)}>
+            <CaretUp aria-hidden className="size-4" />
+          </Button>
+          <Button size="icon" variant="ghost" className="size-7" aria-label={t("Próximo resultado")}
+            disabled={atual >= ordem.length - 1} onClick={() => irPara(atual + 1)}>
+            <CaretDown aria-hidden className="size-4" />
+          </Button>
         </div>
       )}
       <div ref={scrollerRef} role="region" aria-label={t("Mensagens da conversa")} tabIndex={0}
@@ -339,6 +371,7 @@ export function ChatThread({
                   key={`msg-${item.data.id}`}
                   message={item.data}
                   searchMatch={resultados.has(item.data.id)}
+                  searchCurrent={item.data.id === ordem[atual]}
                   debugCitations={debugCitations}
                   onResponder={onResponder}
                   onEncaminhar={onEncaminhar}

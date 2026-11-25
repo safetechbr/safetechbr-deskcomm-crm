@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "@/lib/types/messaging";
@@ -117,7 +117,7 @@ describe("ChatThread: busca nas mensagens carregadas", () => {
     expect(achadas).toHaveLength(2);
     expect(achadas[0]).toContain("Qual o valor do BOLETO?");
     expect(achadas[1]).toContain("segue o boleto");
-    expect(screen.getByRole("status")).toHaveTextContent("Resultados nas mensagens carregadas: 2");
+    expect(screen.getByRole("status")).toHaveTextContent("Resultados nas mensagens carregadas: 2/2");
     // O anel é o que o atendente enxerga; o atributo sozinho não pinta nada.
     const bolha = container.querySelector('[data-search-match="true"] [data-testid="message-bubble"]');
     expect(bolha?.className).toContain("ring-2");
@@ -125,7 +125,23 @@ describe("ChatThread: busca nas mensagens carregadas", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("leva a primeira ocorrência ao campo de visão", () => {
+  it("as setas andam entre as ocorrências, marcando a atual em vermelho mais grosso", () => {
+    const { container } = render(<ChatThread conversationId="c-1" searchTerm="boleto" />, { wrapper });
+    const atual = () => container.querySelector('[data-search-current="true"]')?.textContent ?? "";
+    // Começa na mais recente: quem busca está no fim da conversa.
+    expect(atual()).toContain("segue o boleto");
+    expect(screen.getByRole("button", { name: "Próximo resultado" })).toBeDisabled();
+    rolar.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Resultado anterior" }));
+    expect(atual()).toContain("Qual o valor do BOLETO?");
+    expect(screen.getByRole("status")).toHaveTextContent(": 1/2");
+    expect(rolar).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Resultado anterior" })).toBeDisabled();
+    const bolha = container.querySelector('[data-search-current="true"] [data-testid="message-bubble"]');
+    expect(bolha?.className).toContain("ring-red-600");
+  });
+
+  it("leva uma ocorrência ao campo de visão", () => {
     render(<ChatThread conversationId="c-1" searchTerm="boleto" />, { wrapper });
     const alvos = rolar.mock.contexts as Element[];
     expect(alvos.some((el) => el.getAttribute("data-search-match") === "true")).toBe(true);

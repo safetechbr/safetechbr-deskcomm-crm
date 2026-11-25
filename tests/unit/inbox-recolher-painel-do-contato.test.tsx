@@ -138,7 +138,9 @@ vi.mock("@/components/inbox/ConversationList", () => ({ ConversationList: () => 
 vi.mock("@/components/inbox/InboxFilters", () => ({ InboxFilters: () => null }));
 vi.mock("@/components/inbox/ChatThread", () => ({ ChatThread: () => null }));
 vi.mock("@/components/inbox/Composer", () => ({ Composer: () => null }));
-vi.mock("@/components/inbox/ConversationHeader", () => ({ ConversationHeader: () => null }));
+vi.mock("@/components/inbox/ConversationHeader", () => ({
+  ConversationHeader: ({ acaoDaFicha }: { acaoDaFicha?: React.ReactNode }) => acaoDaFicha ?? null,
+}));
 vi.mock("@/components/inbox/RetentionNotice", () => ({ RetentionNotice: () => null }));
 vi.mock("@/components/inbox/InboxKeyboardShortcuts", () => ({ InboxKeyboardShortcuts: () => null }));
 vi.mock("@/components/inbox/ShortcutsHelpDialog", () => ({ ShortcutsHelpDialog: () => null }));
@@ -214,6 +216,27 @@ const botaoRecolher = () => screen.getByRole("button", { name: "Recolher painel 
 const botaoExpandir = () => screen.getByRole("button", { name: "Expandir painel do contato" });
 
 describe("Inbox — recolher o painel do contato (#3004)", () => {
+  it("na faixa md, o botão Ficha abre a ficha como terceira coluna (e fecha de novo)", async () => {
+    const larguraAnterior = window.innerWidth;
+    window.innerWidth = 1097;
+    try {
+      montar();
+      const gatilho = await screen.findByRole("button", { name: "Ficha", exact: true });
+      expect(gatilho).toHaveAttribute("aria-pressed", "false");
+      await userEvent.click(gatilho);
+      expect(gatilho).toHaveAttribute("aria-pressed", "true");
+      // Coluna, não gaveta: nenhum diálogo, e a grade ganha a terceira trilha.
+      expect(screen.queryByRole("dialog", { name: "Ficha do contato" })).toBeNull();
+      await waitFor(() => expect(grade().style.gridTemplateColumns).toBe("240px minmax(0,1fr) 260px"));
+      await userEvent.click(gatilho);
+      expect(gatilho).toHaveAttribute("aria-pressed", "false");
+      // Abrir/fechar no md é local: não grava a preferência do painel.
+      expect(togglePainelDoContato).not.toHaveBeenCalled();
+    } finally {
+      window.innerWidth = larguraAnterior;
+    }
+  });
+
   it("aberto: o painel desenha o conteúdo e o controle no alto", async () => {
     montar();
     await screen.findByTestId("inbox-demandas");

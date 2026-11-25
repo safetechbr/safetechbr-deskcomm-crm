@@ -195,6 +195,7 @@ test.describe("Lote 12 — painel do contato no Inbox", () => {
     registra(`#944 · GET /crm-summary = ${rr.status()}`);
 
     // ── #909: o rótulo do botão é o TÍTULO do diálogo que ele abre ─────────
+    await page.getByRole("button", { name: "Contato", exact: true }).click();
     const botao = page.getByRole("button", { name: "Novo Lead" });
     await expect(botao).toBeVisible({ timeout: 30_000 });
     registra(`#909 · rótulo do botão = "${await botao.innerText()}"`);
@@ -249,6 +250,7 @@ test.describe("Lote 12 — painel do contato no Inbox", () => {
     await abreConversa(page, conversaId);
     await expect(page.getByText(`Cliente L12 ${SUFIXO}`).first()).toBeVisible({ timeout: 60_000 });
 
+    await page.getByRole("button", { name: "Contato", exact: true }).click();
     await page.getByRole("button", { name: "Tags do contato", exact: true }).click();
     const rt = await respostaTags;
     const corpoTags = await rt.text();

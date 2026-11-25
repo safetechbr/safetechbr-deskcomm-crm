@@ -44,7 +44,7 @@ import { EncaminharDialog } from "./EncaminharDialog";
 import { useEncaminharMensagem } from "@/hooks/inbox/useEncaminharMensagem";
 import { OpenConversationProvider } from "@/hooks/notifications/OpenConversationContext";
 // ADR-05: ícone de feature sai do mapa canônico, nunca do pacote direto.
-import { CaretLeft, ChatCircle, IdentificationCard, MagnifyingGlass, X } from "@/lib/ui/icons";
+import { CaretLeft, ChatCircle, IdentificationCard } from "@/lib/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -93,8 +93,8 @@ import {
  * CONVERSA EM TELA CHEIA (F2 da ADR-0006). Escolhida, a conversa vira uma
  * camada `fixed` abaixo do `md`, em vez de um layout novo:
  *
- *   - `z-[45]` cobre o TopBar (z-20) e a barra de abas (z-40) sem que ninguém
- *     os edite, e fica abaixo das faixas de cima e dos portais Radix (z-50);
+ *   - `z-[45]` cobre a barra de abas (z-40) e fica abaixo das faixas de cima
+ *     e dos portais Radix (z-50);
  *   - o topo desconta `--faixas-de-cima`: o aviso de canal caído é o único
  *     sinal de "nada entra nem sai" quando só há um número;
  *   - `--vv-topo`/`--vv-altura` (`useAlturaVisivel`) colam a camada na área
@@ -389,8 +389,6 @@ export function InboxLayout({
   const ultimoIdNaUrl = useRef(idNaUrl);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
-  /** A ficha do contato como painel deslizante — só existe abaixo do `xl`. */
-  const [fichaAberta, setFichaAberta] = useState(false);
   /**
    * O PAINEL DO CONTATO RECOLHIDO (issue #3004).
    *
@@ -419,17 +417,14 @@ export function InboxLayout({
    * voltar do navegador — sem que cada caminho precise lembrar de limpá-la.
    */
   const [busca, setBusca] = useState<{ conversaId: string; termo: string } | null>(null);
-  const buscaAberta = busca !== null && busca.conversaId === selectedId;
-  const botaoBuscaRef = useRef<HTMLButtonElement | null>(null);
-  const fecharBusca = useCallback(() => {
-    setBusca(null);
-    botaoBuscaRef.current?.focus();
-  }, []);
-  const alternarBusca = useCallback(() => {
-    if (!selectedId) return;
-    if (buscaAberta) fecharBusca();
-    else setBusca({ conversaId: selectedId, termo: "" });
-  }, [selectedId, buscaAberta, fecharBusca]);
+  // O campo mora sempre aberto no painel (Ações da conversa): cada tecla já filtra o fio.
+  const termoDaBusca = busca !== null && busca.conversaId === selectedId ? busca.termo : "";
+  const mudarBusca = useCallback(
+    (termo: string) => {
+      if (selectedId) setBusca({ conversaId: selectedId, termo });
+    },
+    [selectedId],
+  );
   /**
    * A mensagem escolhida para responder "em cima".
    *
@@ -772,6 +767,15 @@ export function InboxLayout({
    */
   const fichaOcupaEspaco = faixa?.temFicha === true && !painelRecolhido;
 
+  /**
+   * FICHA COMO COLUNA NA FAIXA `md` (768–1279). Antes ali a ficha só abria como
+   * gaveta por cima da conversa; agora o botão "Ficha" abre uma terceira coluna.
+   * Fechada por padrão: a faixa é estreita e a conversa perde espaço. Aberta, a
+   * lista e a ficha descem aos seus mínimos (240/260) para a conversa respirar.
+   */
+  const [fichaNoMd, setFichaNoMd] = useState(false);
+  const fichaAbertaNoMd = faixa?.id === "md" && fichaNoMd;
+
   useEffect(() => {
     const medir = () => setFaixa(faixaDaLargura(window.innerWidth));
     medir();
@@ -807,8 +811,9 @@ export function InboxLayout({
   /** O que vale AGORA na tela: o ajuste salvo, ou o padrão da faixa. */
   const efetivas: LargurasDoInbox | null = larguras ?? (faixa ? largurasPadrao(faixa) : null);
 
-  const estiloDaGrade: CSSProperties | undefined =
-    faixa && larguras
+  const estiloDaGrade: CSSProperties | undefined = fichaAbertaNoMd
+    ? { gridTemplateColumns: `${LIMITES_LISTA.min}px minmax(0,1fr) ${LIMITES_FICHA.min}px` }
+    : faixa && larguras
       ? {
           gridTemplateColumns:
             painelRecolhido && faixa.temFicha
@@ -882,28 +887,8 @@ export function InboxLayout({
     aplicarLarguras(null);
   }, [faixa, aplicarLarguras]);
 
-  // Altura da grade: a conta desconta TUDO que fica acima e abaixo dela.
-  //   --faixas-de-cima  as faixas do topo (canal caído etc., `FaixasDeCima`)
-  //   3.5rem            TopBar (`h-14`, em components/shell/TopBar.tsx)
-  //   2 * --space-6     padding do <main> do AppShell (`p-6`, em cima e embaixo)
-  //
-  // Com `100vh-3.5rem` o padding ficava de fora e a grade media 48px a MAIS que a
-  // tela. Quem pagava a diferença era o composer, que fica no rodapé: nascia
-  // parcialmente abaixo da borda, atrapalhando justo na hora de escrever.
-  //
-  // As duas parcelas NÃO estão na mesma unidade, e por isso o padding entra pelo
-  // token e não como `3rem`: o `@theme inline` de `app/globals.css` remapeia a
-  // escala de spacing para `var(--space-N)` — `--space-6` é `24px` LITERAL —, mas
-  // não remapeia o `14`, que o Tailwind 4 calcula pelo multiplicador `--spacing`
-  // e segue sendo `3.5rem` de verdade. (Até o Tailwind 4 quem remapeava era o
-  // `tailwind.config.ts`; o arquivo não existe mais, o efeito é o mesmo.)
-  // Escrever a soma como
-  // `6.5rem` só acerta enquanto a raiz for 16px; com acessibilidade de fonte maior
-  // ou menor o composer sai da tela de novo. Pelo token, a conta se auto-corrige
-  // se a escala de espaçamento mudar.
-  //
-  // `dvh` em vez de `vh` porque no celular a `vh` ignora a barra do navegador — o
-  // mesmo corte, só que pior e mudando conforme se rola a página.
+  // A Central usa a altura útil da tela, descontando as faixas superiores,
+  // o padding do <main> e a área reservada ao rodapé.
 
   // TRÊS COLUNAS QUE CABEM — medido, não estimado.
   //
@@ -925,7 +910,7 @@ export function InboxLayout({
   // deixava. Margem de 2px não é margem, é sorte.
   return (
     <OpenConversationProvider conversationId={selectedId}>
-      <div className="flex h-[calc(100dvh-var(--faixas-de-cima,0px)-4rem-var(--space-6)-max(var(--space-6),var(--rodape-ocupado,0px)))] min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs">
+      <div className="flex h-[calc(100dvh-var(--faixas-de-cima,0px)-var(--inbox-padding-top)-max(var(--space-6),var(--rodape-ocupado,0px),env(safe-area-inset-bottom,0px)))] min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-surface shadow-xs [--inbox-padding-top:var(--space-4)] sm:[--inbox-padding-top:var(--space-6)]">
         <NavegacaoDaCentral
           key={`navegacao:${orgId}`}
           visao={visaoDaCentral}
@@ -1074,9 +1059,7 @@ export function InboxLayout({
           >
             {/*
           A barra do celular vive FORA do ramo da conversa carregada: o caminho
-          de volta tem de existir inclusive quando não há o que mostrar — é aí
-          que ele é a única saída. A porta da ficha, essa sim, depende da
-          conversa, e só aparece quando há uma.
+          de volta tem de existir inclusive quando não há o que mostrar.
         */}
             {selectedId && (
               <div className="flex items-center gap-1 border-b border-border/60 px-1 py-1 md:hidden">
@@ -1089,27 +1072,6 @@ export function InboxLayout({
                   <CaretLeft size={16} />
                   {t("Conversas")}
                 </Button>
-                <div className="flex-1" />
-                {selectedConversation && (
-                  <Sheet open={fichaAberta} onOpenChange={setFichaAberta}>
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="sm" className="gap-1 px-2 xl:hidden">
-                        <IdentificationCard size={16} />
-                        {t("Ficha")}
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="w-[min(22rem,90vw)] overflow-y-auto p-0">
-                      <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
-                      <CRMSidePanel
-                        conversation={selectedConversation}
-                        onBuscar={alternarBusca}
-                        buscaAberta={buscaAberta}
-                        botaoBuscaRef={botaoBuscaRef}
-                        onAbrirConversa={handleSelect}
-                      />
-                    </SheetContent>
-                  </Sheet>
-                )}
               </div>
             )}
             {selectedConversation ? (
@@ -1119,43 +1081,52 @@ export function InboxLayout({
                 <ConversationHeader
                   key={selectedConversation.id}
                   conversation={selectedConversation}
-                />
-                {buscaAberta && (
-                  <div className="flex items-center gap-2 border-b border-border/60 px-4 py-1.5">
-                    <MagnifyingGlass
-                      size={16}
-                      className="shrink-0 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <input
-                      type="search"
-                      autoFocus
-                      className="min-w-0 flex-1 bg-transparent py-1 text-base outline-hidden placeholder:text-muted-foreground md:text-sm"
-                      aria-label={t("Buscar nas mensagens carregadas")}
-                      placeholder={t("Buscar nas mensagens carregadas")}
-                      value={busca.termo}
-                      onChange={(e) =>
-                        setBusca({ conversaId: busca.conversaId, termo: e.target.value })
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") fecharBusca();
-                      }}
-                    />
+                  acaoDaFicha={faixa?.id === "md" ? (
                     <Button
-                      variant="ghost"
+                      variant={fichaNoMd ? "secondary" : "outline"}
                       size="sm"
-                      className="w-11 shrink-0 px-0 lg:w-8"
-                      aria-label={t("Fechar busca")}
-                      onClick={fecharBusca}
+                      className="shrink-0 gap-1 px-2"
+                      aria-pressed={fichaNoMd}
+                      title={t("Ficha do contato")}
+                      onClick={() => setFichaNoMd((aberta) => !aberta)}
                     >
-                      <X size={16} aria-hidden />
+                      <IdentificationCard size={16} aria-hidden />
+                      <span>{t("Ficha")}</span>
                     </Button>
-                  </div>
-                )}
+                  ) : !faixa?.temFicha && (
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="min-w-11 shrink-0 gap-1 px-2 lg:min-w-0 xl:hidden"
+                          aria-label={t("Ficha")}
+                          title={t("Ficha do contato")}
+                        >
+                          <IdentificationCard size={16} aria-hidden />
+                          <span className="max-sm:sr-only">{t("Ficha")}</span>
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent
+                        side="right"
+                        className="w-[min(22rem,90vw)] overflow-y-auto p-0"
+                        aria-describedby={undefined}
+                      >
+                        <SheetTitle className="sr-only">{t("Ficha do contato")}</SheetTitle>
+                        <CRMSidePanel
+                          conversation={selectedConversation}
+                          onBuscar={mudarBusca}
+                          termoDaBusca={termoDaBusca}
+                          onAbrirConversa={handleSelect}
+                        />
+                      </SheetContent>
+                    </Sheet>
+                  )}
+                />
                 <div className="min-h-0 flex-1 overflow-hidden">
                   <ChatThread
                     conversationId={selectedConversation.id}
-                    searchTerm={buscaAberta ? busca.termo : ""}
+                    searchTerm={termoDaBusca}
                     provider={selectedConversation.channel_sessions?.provider ?? null}
                     onResponder={setRespondendo}
                     onEncaminhar={setEncaminhando}
@@ -1244,14 +1215,20 @@ export function InboxLayout({
             )}
           </div>
 
-          <div className="hidden h-full min-h-0 min-w-0 xl:block">
+          <div
+            className={cn(
+              "hidden h-full min-h-0 min-w-0 xl:block",
+              fichaAbertaNoMd && "md:block border-l border-border/60",
+            )}
+          >
             <CRMSidePanel
               conversation={selectedConversation}
-              recolhido={painelRecolhido}
-              onAlternarRecolhido={alternarPainelDoContato}
-              onBuscar={alternarBusca}
-              buscaAberta={buscaAberta}
-              botaoBuscaRef={botaoBuscaRef}
+              recolhido={fichaAbertaNoMd ? false : painelRecolhido}
+              onAlternarRecolhido={
+                fichaAbertaNoMd ? () => setFichaNoMd(false) : alternarPainelDoContato
+              }
+              onBuscar={mudarBusca}
+              termoDaBusca={termoDaBusca}
               onAbrirConversa={handleSelect}
             />
           </div>
@@ -1267,7 +1244,8 @@ export function InboxLayout({
         ficha), o que evita medir a conversa para saber onde a terceira trilha
         começa.
       */}
-          {efetivas && (
+          {/* Ficha aberta no `md` usa larguras fixas mínimas: sem divisória. */}
+          {efetivas && !fichaAbertaNoMd && (
             <>
               <span
                 role="separator"

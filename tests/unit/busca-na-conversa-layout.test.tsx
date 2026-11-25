@@ -1,16 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { RefObject } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * O CAMPO DA BUSCA NA CONVERSA (extraída do PR #1793): quem abre, quem fecha e
- * para onde o foco volta.
+ * O CAMPO DA BUSCA NA CONVERSA (extraída do PR #1793): ele mora sempre aberto
+ * no painel lateral (Ações da conversa), e cada tecla já filtra o fio.
  *
- * O cabeçalho e o fio são SONDAS: o cabeçalho expõe o botão com o ref que o
- * layout lhe dá, e o fio publica o termo que recebeu. O que se mede é o layout:
- * o campo tem rótulo, o termo chega ao fio, Esc fecha e devolve o foco ao botão,
- * e trocar de conversa — por clique OU pelo voltar do navegador — fecha a busca.
+ * O painel e o fio são SONDAS: o painel expõe o campo com o termo que o layout
+ * lhe dá, e o fio publica o termo que recebeu. O que se mede é o layout: o termo
+ * chega ao fio, e trocar de conversa — por clique OU pelo voltar do navegador —
+ * zera a busca.
  */
 
 const { ORG, CONV_A, CONV_B, linha } = vi.hoisted(() => {
@@ -80,20 +79,21 @@ vi.mock("@/components/inbox/ChatThread", () => ({
 }));
 vi.mock("@/components/inbox/Composer", () => ({ Composer: () => null }));
 vi.mock("@/components/inbox/ConversationHeader", () => ({ ConversationHeader: () => null }));
-// O botão da busca mora no painel lateral (Ações da conversa): a sonda é o painel.
+// O campo da busca mora no painel lateral (Ações da conversa): a sonda é o painel.
 vi.mock("@/components/inbox/CRMSidePanel", () => ({
   CRMSidePanel: ({
     onBuscar,
-    buscaAberta,
-    botaoBuscaRef,
+    termoDaBusca = "",
   }: {
-    onBuscar?: () => void;
-    buscaAberta?: boolean;
-    botaoBuscaRef?: RefObject<HTMLButtonElement | null>;
+    onBuscar?: (termo: string) => void;
+    termoDaBusca?: string;
   }) => (
-    <button ref={botaoBuscaRef} onClick={onBuscar} aria-expanded={buscaAberta}>
-      Buscar nesta conversa
-    </button>
+    <input
+      type="search"
+      aria-label="Buscar nas mensagens carregadas"
+      value={termoDaBusca}
+      onChange={(e) => onBuscar?.(e.target.value)}
+    />
   ),
 }));
 vi.mock("@/components/inbox/RetentionNotice", () => ({ RetentionNotice: () => null }));
@@ -118,10 +118,9 @@ function montar() {
   return { renderDeNovo: () => r.rerender(arvore()) };
 }
 
-async function abrirBusca() {
-  const botao = await screen.findByRole("button", { name: "Buscar nesta conversa" });
-  fireEvent.click(botao);
-  return { botao, campo: screen.getByRole("searchbox", { name: CAMPO }) };
+/** Há dois painéis (gaveta e coluna) no DOM de teste; qualquer um serve. */
+async function campo() {
+  return (await screen.findAllByRole("searchbox", { name: CAMPO }))[0];
 }
 
 describe("busca dentro da conversa: o campo", () => {
@@ -129,59 +128,37 @@ describe("busca dentro da conversa: o campo", () => {
     window.history.replaceState(null, "", `/app/inbox?id=${CONV_A}`);
   });
 
-  it("abre com rótulo e foco, o termo chega ao fio, e Esc fecha devolvendo o foco ao botão", async () => {
+  it("já está aberto e cada tecla leva o termo ao fio", async () => {
     montar();
-    expect(screen.queryByRole("searchbox")).toBeNull();
-
-    const { botao, campo } = await abrirBusca();
-    expect(botao).toHaveAttribute("aria-expanded", "true");
-    expect(campo).toHaveFocus();
-
-    fireEvent.change(campo, { target: { value: "boleto" } });
+    const c = await campo();
+    expect(c).toHaveValue("");
+    fireEvent.change(c, { target: { value: "boleto" } });
     expect(screen.getByTestId("fio")).toHaveAttribute("data-termo", "boleto");
-
-    fireEvent.keyDown(campo, { key: "Escape" });
-    expect(screen.queryByRole("searchbox")).toBeNull();
+    fireEvent.change(c, { target: { value: "" } });
     expect(screen.getByTestId("fio")).toHaveAttribute("data-termo", "");
-    expect(botao).toHaveAttribute("aria-expanded", "false");
-    expect(botao).toHaveFocus();
   });
 
-  it("o botão de fechar limpa o termo; reabrir começa vazio", async () => {
+  it("trocar de conversa por clique zera a busca", async () => {
     montar();
-    const { campo } = await abrirBusca();
-    fireEvent.change(campo, { target: { value: "pix" } });
-    fireEvent.click(screen.getByRole("button", { name: "Fechar busca" }));
-    expect(screen.getByTestId("fio")).toHaveAttribute("data-termo", "");
-
-    const { campo: denovo } = await abrirBusca();
-    expect(denovo).toHaveValue("");
-  });
-
-  it("trocar de conversa por clique fecha a busca", async () => {
-    montar();
-    const { campo } = await abrirBusca();
-    fireEvent.change(campo, { target: { value: "boleto" } });
+    fireEvent.change(await campo(), { target: { value: "boleto" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Abrir B" }));
     await waitFor(() => expect(screen.getByTestId("fio")).toHaveAttribute("data-conversa", CONV_B));
-    expect(screen.queryByRole("searchbox")).toBeNull();
     expect(screen.getByTestId("fio")).toHaveAttribute("data-termo", "");
+    expect(await campo()).toHaveValue("");
   });
 
-  it("trocar de conversa pelo voltar do navegador também fecha a busca", async () => {
+  it("trocar de conversa pelo voltar do navegador também zera a busca", async () => {
     const { renderDeNovo } = montar();
     fireEvent.click(await screen.findByRole("button", { name: "Abrir B" }));
     await waitFor(() => expect(screen.getByTestId("fio")).toHaveAttribute("data-conversa", CONV_B));
-    const { campo } = await abrirBusca();
-    fireEvent.change(campo, { target: { value: "boleto" } });
+    fireEvent.change(await campo(), { target: { value: "boleto" } });
 
     act(() => {
       window.history.replaceState(null, "", `/app/inbox?id=${CONV_A}`);
       renderDeNovo();
     });
     await waitFor(() => expect(screen.getByTestId("fio")).toHaveAttribute("data-conversa", CONV_A));
-    expect(screen.queryByRole("searchbox")).toBeNull();
     expect(screen.getByTestId("fio")).toHaveAttribute("data-termo", "");
   });
 });

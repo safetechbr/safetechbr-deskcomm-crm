@@ -99,7 +99,7 @@ vi.mock("@/components/inbox/SnoozeButton", () => ({
  * caso "a união cobre o inventário" reprova nos dois lados).
  */
 const INVENTARIO = [
-  "Buscar nesta conversa",
+  "Buscar nas mensagens carregadas",
   "Assumir",
   "Liberar",
   "Devolver ao automático",
@@ -187,7 +187,7 @@ const CENARIOS: Cenario[] = [
     ancora: "Assumir",
     comBusca: true,
     esperadas: [
-      "Buscar nesta conversa",
+      "Buscar nas mensagens carregadas",
       "Assumir",
       "Transferir",
       "Lembrar",
@@ -200,7 +200,7 @@ const CENARIOS: Cenario[] = [
     ancora: "Fechar",
     comBusca: true,
     esperadas: [
-      "Buscar nesta conversa",
+      "Buscar nas mensagens carregadas",
       "Lembrar",
       "Fechar",
       "Arquivar",
@@ -292,6 +292,7 @@ function naBarra(barra: HTMLElement, rotulo: string): boolean {
   return (
     within(barra).queryAllByText(rotulo).length > 0 ||
     within(barra).queryByRole("button", { name: rotulo }) !== null ||
+    within(barra).queryByRole("searchbox", { name: rotulo }) !== null ||
     within(barra).queryByRole("link", { name: rotulo }) !== null
   );
 }

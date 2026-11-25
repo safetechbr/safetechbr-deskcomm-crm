@@ -37,6 +37,8 @@ import {
 interface Props {
   message: Message;
   searchMatch?: boolean;
+  /** A ocorrência em que as setas da busca pararam — anel mais grosso. */
+  searchCurrent?: boolean;
   debugCitations?: boolean;
   /** Escolher esta mensagem para responder "em cima" dela. */
   onResponder?: (m: Message) => void;
@@ -112,6 +114,7 @@ function AckIndicator({ status, paradaSemConexao, saiSozinha, t }: {
 export function MessageBubble({
   message,
   searchMatch = false,
+  searchCurrent = false,
   debugCitations,
   onResponder,
   onEncaminhar,
@@ -296,6 +299,7 @@ export function MessageBubble({
   return (
     <div
       data-search-match={searchMatch || undefined}
+      data-search-current={(searchMatch && searchCurrent) || undefined}
       className={cn(
         "group flex w-full min-w-0 items-center gap-1 px-4 py-1",
         isOutbound ? "justify-end" : "justify-start",
@@ -329,7 +333,9 @@ export function MessageBubble({
           apagada && "bg-muted/60 text-muted-foreground ring-1 ring-border",
           // A marca da busca é ANEL, não cor de fundo: o fundo já diz de quem é
           // a mensagem, e trocá-lo apagaria essa leitura justo na bolha achada.
-          searchMatch && "ring-2 ring-foreground ring-offset-2 ring-offset-background",
+          // Vermelho para saltar aos olhos ao varrer a conversa; a atual, mais grossa.
+          searchMatch && "ring-offset-2 ring-offset-background",
+          searchMatch && (searchCurrent ? "ring-4 ring-red-600" : "ring-2 ring-red-500"),
           // Espaço para a marca de reação, que fica metade para fora do balão.
           Boolean(reacoes?.length) && "mb-3",
         )}

@@ -194,12 +194,20 @@ test("número e Não lidos sobrevivem à recarga e permanecem na sua organizaç�
     expect(error).toBeNull();
     return data!.id as string;
   };
+  const abrirFiltros = async () => {
+    const botao = page.getByRole("button", { name: /^Filtros(?: ativos)?$/ });
+    await expect(botao).toBeVisible();
+    if ((await botao.getAttribute("aria-expanded")) === "false") await botao.click();
+  };
   const trocar = async (id: string) => {
+    await page.goto("/app/dashboard");
     const seletor = page.getByTestId("tenant-switcher");
     await seletor.click();
     await page.getByTestId(`tenant-switcher-item-${id}`).click();
     await expect(seletor).toBeEnabled();
     await expect.poll(async () => (await page.context().cookies()).find((cookie) => cookie.name === "active_org")?.value).toBe(id);
+    await page.goto("/app/inbox");
+    await abrirFiltros();
   };
   const numero = page.getByRole("combobox", { name: "Filtrar por número de WhatsApp" });
   const naoLidos = page.getByRole("button", { name: "Não lidos", exact: true });
@@ -234,6 +242,7 @@ test("número e Não lidos sobrevivem à recarga e permanecem na sua organizaç�
     await naoLidos.click();
     await expect(naoLidos).toHaveAttribute("aria-pressed", "true");
     await page.reload();
+    await abrirFiltros();
     await expect(numero).toHaveText(canais[0]!.nome);
     await expect(naoLidos).toHaveAttribute("aria-pressed", "true");
 
@@ -252,11 +261,13 @@ test("número e Não lidos sobrevivem à recarga e permanecem na sua organizaç�
     const removido = await db.from("channel_sessions").delete().eq("organization_id", canais[1]!.org).eq("id", canais[1]!.id);
     expect(removido.error).toBeNull();
     await page.reload();
+    await abrirFiltros();
     await expect(numero).toHaveText("Número removido");
     mkdirSync("evidence/antigos-core-3402", { recursive: true });
     await page.screenshot({ path: "evidence/antigos-core-3402/numero-removido.png" });
     await page.getByRole("button", { name: "Limpar filtros", exact: true }).click();
     await page.reload();
+    await abrirFiltros();
     await expect(numero).toHaveText("Todos os números");
     await trocar(canais[0]!.org);
     await expect(numero).toHaveText(canais[0]!.nome);
@@ -269,6 +280,7 @@ test("número e Não lidos sobrevivem à recarga e permanecem na sua organizaç�
       Object.defineProperty(window, "localStorage", { configurable: true, get() { throw new DOMException("Bloqueado", "SecurityError"); } });
     });
     await page.reload();
+    await abrirFiltros();
     await expect(naoLidos).toHaveAttribute("aria-pressed", "false");
     await naoLidos.click();
     await expect(naoLidos).toHaveAttribute("aria-pressed", "true");

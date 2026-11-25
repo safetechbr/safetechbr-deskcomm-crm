@@ -180,6 +180,7 @@ describe("painel do inbox — o botão diz o que faz (issue #908)", () => {
     get.mockResolvedValue({ data: RESPOSTA });
     renderPainel();
 
+    await userEvent.click(screen.getByRole("button", { name: "Contato", exact: true }));
     const botao = await screen.findByRole("button", { name: "Novo Lead" });
     expect(screen.queryByRole("button", { name: "Lead" })).toBeNull();
 

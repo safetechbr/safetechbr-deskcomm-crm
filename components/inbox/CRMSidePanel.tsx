@@ -17,11 +17,12 @@ import type { PersonalizacaoProspeccao } from "@/lib/prospecting/personalizar";
 import { useAuth } from "@/hooks/auth/AuthProvider";
 import { roleAtLeast } from "@/lib/auth/types";
 import { useLocaleDeData } from "@/hooks/i18n/useLocaleDeData";
+import { useBlocoRecolhivel } from "@/hooks/inbox/useBlocoRecolhivel";
 
 import type { Locale } from "date-fns";
 import Link from "next/link";
 import { useT } from "@/hooks/i18n/useT";
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { Card } from "@/components/ui/card";
@@ -29,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Tag, Receipt, Users, ArrowRight, CaretDoubleLeft, CaretDoubleRight } from "@/lib/ui/icons";
+import { Tag, Receipt, Users, ArrowRight, CaretDoubleLeft, CaretDoubleRight, CaretDown, CaretRight } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
@@ -75,9 +76,8 @@ interface Props {
    */
   onAlternarRecolhido?: () => void;
   /** Ações da conversa (antes no cabeçalho): busca, abrir outra conversa. */
-  onBuscar?: () => void;
-  buscaAberta?: boolean;
-  botaoBuscaRef?: RefObject<HTMLButtonElement | null>;
+  onBuscar?: (termo: string) => void;
+  termoDaBusca?: string;
   onAbrirConversa?: (id: string) => void;
 }
 
@@ -792,8 +792,7 @@ export function CRMSidePanel({
   recolhido = false,
   onAlternarRecolhido,
   onBuscar,
-  buscaAberta,
-  botaoBuscaRef,
+  termoDaBusca,
   onAbrirConversa,
 }: Props) {
   const { user, activeOrg } = useAuth();
@@ -819,6 +818,12 @@ export function CRMSidePanel({
     (user.is_platform_admin && !user.support) || roleAtLeast(activeOrg?.role, "agent");
   const localeDaData = useLocaleDeData();
   const t = useT();
+  const idDoBlocoDeContato = useId();
+  const [contatoRecolhido, definirContatoRecolhido] = useBlocoRecolhivel(
+    "m-auto:inbox:contato-da-conversa:recolhido",
+    true,
+  );
+  const SetaDoContato = contatoRecolhido ? CaretRight : CaretDown;
   const contact = conversation?.contacts ?? null;
   const contactId = contact?.id ?? null;
   const [desfechoDraft, setDesfechoDraft] = useState<DesfechoDraft | null>(null);
@@ -1061,32 +1066,49 @@ export function CRMSidePanel({
   }
 
   return (
-    <aside className="flex h-full flex-col gap-4 overflow-y-auto border-l border-border bg-background p-4">
-      {/*
-        O CONTROLE DE RECOLHER, NO ALTO (issue #3004) — mesmo lugar do recolher
-        do menu da esquerda. `sticky` para não rolar para fora com o conteúdo, e
-        o `-mx-4 -mt-4` esticam a faixa até as bordas do painel cancelando o
-        padding do `<aside>`, para o controle encostar no alto sem empurrar a
-        primeira seção. Sem `onAlternarRecolhido` (o `Sheet` do celular) não
-        desenha nada: quem já tem o gesto de fechar não precisa deste.
-      */}
+    <aside
+      className={cn(
+        "flex h-full flex-col gap-4 overflow-y-auto border-l border-border bg-background px-4 pb-4",
+        !onAlternarRecolhido && "pt-4",
+      )}
+    >
+      {/* A faixa ocupa o topo da área de rolagem até a borda do painel. */}
       {onAlternarRecolhido && (
-        <div className="sticky top-0 z-10 -mx-4 -mt-4 flex shrink-0 justify-end border-b border-border bg-background px-4 py-1">
+        <div className="sticky top-0 z-10 -mx-4 flex shrink-0 justify-end border-b border-border bg-background px-4 py-1">
           <BotaoDeRecolherDoPainel recolhido={false} onAlternar={onAlternarRecolhido} />
         </div>
+      )}
+      {contactId && podeVerCarteira && (
+        <section data-testid="inbox-bloco-carteira">
+          <CartaoDaCarteira
+            contactId={contactId}
+            papelDoUsuario={activeOrg?.role ?? null}
+            conversationId={conversation.id}
+            assignedTo={conversation.assigned_to_user_id}
+            assignedName={conversation.assigned_to_user_name}
+          />
+        </section>
       )}
       <AcoesDaConversa
         key={conversation.id}
         conversation={conversation}
         onBuscar={onBuscar}
-        buscaAberta={buscaAberta}
-        botaoBuscaRef={botaoBuscaRef}
+        termoDaBusca={termoDaBusca}
         onAbrirConversa={onAbrirConversa}
       />
       <EstoqueDaConversa key={`estoque-${conversation.id}`} conversationId={conversation.id} />
-      <section>
-        <h3 className="text-xs font-semibold text-text">{t("Contato")}</h3>
-        <Card className="mt-2 space-y-2 p-3 text-sm">
+      <section className="rounded-lg border border-border bg-surface">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          aria-expanded={!contatoRecolhido}
+          aria-controls={idDoBlocoDeContato}
+          onClick={() => definirContatoRecolhido(!contatoRecolhido)}
+        >
+          <span>{t("Contato")}</span>
+          <SetaDoContato size={14} aria-hidden />
+        </button>
+        <div id={idDoBlocoDeContato} hidden={contatoRecolhido} className="space-y-2 border-t border-border/60 p-3 text-sm">
           <div className="flex flex-wrap items-center gap-2">
             <div className="font-medium">{displayName}</div>
             {/*
@@ -1158,37 +1180,8 @@ export function CRMSidePanel({
               tags={tags}
             />
           )}
-        </Card>
+        </div>
       </section>
-
-      {/* O BLOCO CARTEIRA NO PAINEL DO INBOX (#3026) — de quem é este cliente,
-          respondido onde quem atende está. Antes a carteira só aparecia nesta
-          tela como faixa de aviso (`FaixaDaCarteira`, no cabeçalho) e só quando
-          o dono era OUTRA pessoa; pôr o cliente na própria carteira exigia sair
-          da conversa, abrir o contato e voltar.
-
-          O componente é o MESMO da ficha (`CartaoDaCarteira`) e a gravação sai
-          pela MESMA porta (`PATCH /api/v1/contacts/[id]/carteira` ->
-          `fn_definir_carteira_do_cliente`): nada de segunda regra, nada de
-          segunda porta, nada de componente duplicado. Duas garantias vêm de
-          graça, e é por isso que reusar importa: leitura que FALHA não vira
-          "Sem carteira" (o cartão se abstém em vez de afirmar ausência) e o
-          seletor só é desenhado para `manager`+.
-
-          O `<section>` não tem título próprio de propósito: a manchete
-          "Carteira" mora DENTRO do cartão, então um erro de leitura não deixa
-          uma seção vazia anunciando conteúdo que não veio.
-
-          O piso do BLOCO é `agent`+ (`podeVerCarteira`), o mesmo da ficha e o
-          mesmo do `GET` da rota — `viewer` não vê o bloco em vez de levar 403.
-
-          Ordenação/escolha dos blocos do painel é o #3008; aqui a Carteira entra
-          no lugar certo (logo abaixo do contato), e a ordem fica com ele. */}
-      {contactId && podeVerCarteira && (
-        <section data-testid="inbox-bloco-carteira">
-          <CartaoDaCarteira contactId={contactId} papelDoUsuario={activeOrg?.role ?? null} conversationId={conversation.id} assignedTo={conversation.assigned_to_user_id} assignedName={conversation.assigned_to_user_name} />
-        </section>
-      )}
 
       {contactId && summaryContactId === contactId && !erro && (
         <AnuncioDoContato

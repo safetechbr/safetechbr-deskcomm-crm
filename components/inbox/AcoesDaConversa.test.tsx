@@ -245,19 +245,21 @@ describe("AcoesDaConversa — Fechar e Arquivar por AlertDialog", () => {
 });
 
 describe("AcoesDaConversa — busca dentro da conversa (#1793)", () => {
-  it("o botão só existe com quem o atenda, e só abre a busca — nenhuma ação de atendimento", async () => {
+  it("o campo fica sempre aberto quando há quem o atenda; cada tecla busca, Esc limpa", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<AcoesDaConversa conversation={conversa("open")} />);
-    expect(screen.queryByRole("button", { name: "Buscar nesta conversa" })).toBeNull();
+    expect(screen.queryByRole("searchbox")).toBeNull();
 
     const buscar = vi.fn();
-    rerender(
-      <AcoesDaConversa conversation={conversa("open")} onBuscar={buscar} buscaAberta={false} />,
-    );
-    const botao = screen.getByRole("button", { name: "Buscar nesta conversa" });
-    expect(botao).toHaveAttribute("aria-expanded", "false");
-    await user.click(botao);
-    expect(buscar).toHaveBeenCalledOnce();
+    rerender(<AcoesDaConversa conversation={conversa("open")} onBuscar={buscar} termoDaBusca="" />);
+    const campo = screen.getByRole("searchbox", { name: "Buscar nas mensagens carregadas" });
+    await user.type(campo, "b");
+    expect(buscar).toHaveBeenLastCalledWith("b");
+
+    rerender(<AcoesDaConversa conversation={conversa("open")} onBuscar={buscar} termoDaBusca="boleto" />);
+    expect(campo).toHaveValue("boleto");
+    await user.keyboard("{Escape}");
+    expect(buscar).toHaveBeenLastCalledWith("");
     expect(closeMutate).not.toHaveBeenCalled();
     expect(arquivarMutate).not.toHaveBeenCalled();
   });

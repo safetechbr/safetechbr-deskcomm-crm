@@ -71,27 +71,28 @@ const VALUE: InboxFiltersValue = { tab: "ai", search: "", onlyUnread: false };
 
 afterEach(cleanup);
 
-it("recolhe os filtros no celular e identifica quando há um filtro ativo", () => {
+it("oferece os atalhos de filtro mesmo com os filtros avançados recolhidos", () => {
   const onChange = vi.fn();
   const { rerender } = render(<InboxFilters value={VALUE} onChange={onChange} />);
   const botao = screen.getByRole("button", { name: "Filtros" });
   expect(botao).toHaveAttribute("aria-expanded", "false");
   const filtros = document.getElementById(botao.getAttribute("aria-controls") ?? "");
-  expect(filtros).toHaveClass("max-md:hidden");
+  expect(filtros).toHaveClass("hidden");
+
+  const naoLidos = screen.getByRole("button", { name: "Não lidos" });
+  fireEvent.click(naoLidos);
+  expect(onChange).toHaveBeenCalledWith({ ...VALUE, onlyUnread: true });
+  fireEvent.click(screen.getByRole("button", { name: "Grupos" }));
+  expect(onChange).toHaveBeenCalledWith({ ...VALUE, onlyGroups: true });
 
   fireEvent.click(botao);
   expect(botao).toHaveAttribute("aria-expanded", "true");
-  expect(filtros).not.toHaveClass("max-md:hidden");
-  fireEvent.click(screen.getByRole("button", { name: "Não lidos" }));
-  const filtrado = { ...VALUE, onlyUnread: true };
-  expect(onChange).toHaveBeenCalledWith(filtrado);
-
-  rerender(<InboxFilters value={filtrado} onChange={onChange} />);
+  expect(filtros).not.toHaveClass("hidden");
+  rerender(<InboxFilters value={{ ...VALUE, onlyUnread: true, assigned_to: "atendente-1" }} onChange={onChange} />);
   fireEvent.click(botao);
   expect(botao).toHaveAttribute("aria-expanded", "false");
   expect(botao).toHaveAccessibleName("Filtros ativos");
-  fireEvent.click(botao);
-  expect(screen.getByRole("button", { name: "Não lidos" })).toHaveAttribute("aria-pressed", "true");
+  expect(naoLidos).toHaveAttribute("aria-pressed", "true");
 });
 
 function faixa(): HTMLElement {

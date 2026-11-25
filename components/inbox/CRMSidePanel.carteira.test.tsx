@@ -80,8 +80,9 @@ vi.mock("@/hooks/contacts/useContactTagVocabulary", () => ({
 vi.mock("@/hooks/contacts/useUpdateContact", () => ({
   useUpdateContact: () => ({ mutate: vi.fn(), isPending: false }),
 }));
-// As ações da conversa têm teste próprio; aqui mede-se só a carteira.
-vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
+vi.mock("@/components/inbox/AcoesDaConversa", () => ({
+  AcoesDaConversa: () => <button type="button">Ações da conversa</button>,
+}));
 vi.mock("@/components/contacts/RoteirosDoContato", () => ({ RoteirosDoContato: () => null }));
 
 import { CRMSidePanel } from "./CRMSidePanel";
@@ -157,6 +158,31 @@ function montar() {
 }
 
 const urlsPedidas = () => cenario.get.mock.calls.map((c) => String(c[0]));
+
+describe("organização da ficha da conversa", () => {
+  it("coloca Atendimento acima das ações e permite abrir e recolher Contato", async () => {
+    const u = userEvent.setup();
+    const { unmount } = montar();
+    const atendimento = await screen.findByRole("heading", { name: "Atendimento" });
+    const acoes = screen.getByRole("button", { name: "Ações da conversa" });
+    expect(atendimento.compareDocumentPosition(acoes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const contato = screen.getByRole("button", { name: "Contato", exact: true });
+    expect(contato).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Ver contato" })).not.toBeInTheDocument();
+    await u.click(contato);
+    expect(contato).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("link", { name: "Ver contato" })).toBeVisible();
+
+    unmount();
+    montar();
+    const contatoReaberto = screen.getByRole("button", { name: "Contato", exact: true });
+    expect(contatoReaberto).toHaveAttribute("aria-expanded", "true");
+    await u.click(contatoReaberto);
+    expect(contatoReaberto).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "Ver contato" })).not.toBeInTheDocument();
+  });
+});
 
 describe("#3026 — o bloco Carteira no painel do contato do Inbox", () => {
   it("mostra o RESPONSÁVEL da carteira, pelo mesmo cartão da ficha", async () => {
