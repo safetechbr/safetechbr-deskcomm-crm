@@ -31,6 +31,7 @@ import {
   usaLaudoDeVistoria,
 } from "./laudo-vistoria";
 import { COMBUSTIVEIS, ITENS_DA_ENTREGA } from "./termo-entrega";
+import { DECLARACOES_DO_CLIENTE, ITENS_DO_RECEBIMENTO, PAGADORES_DOS_DEBITOS } from "./termo-recebimento";
 import { decidirVersaoDoContrato, type DecisaoDoContrato } from "./versao-do-contrato";
 
 // A hifenização automática do react-pdf parte palavras em português no lugar
@@ -519,6 +520,7 @@ function ConteudoDoAnexo({
   localDaLoja,
   laudo,
   termo,
+  recebimento,
   anexoDoEstado,
 }: {
   anexo: AnexoDoContrato;
@@ -530,6 +532,8 @@ function ConteudoDoAnexo({
   laudo?: ItemDoContrato[];
   /** Declarações do termo de entrega (só na venda). */
   termo?: ItemDoContrato[];
+  /** Declarações do termo de recebimento do VEÍCULO EM PAGAMENTO. */
+  recebimento?: ItemDoContrato[];
   /** Número do anexo do estado do veículo ("Anexo I"), citado no termo de entrega. */
   anexoDoEstado: string;
 }) {
@@ -644,19 +648,96 @@ function ConteudoDoAnexo({
         </>
       );
     }
-    case "termo_recebimento":
+    case "termo_recebimento": {
+      const t = d.termo_recebimento ?? {};
+      const p = t.entregue_por;
+      const quem = (x?: { nome?: string; cpf?: string }) =>
+        x?.nome?.trim() ? `${x.nome.trim()}${x.cpf?.trim() ? `, CPF ${x.cpf.trim()}` : ""}` : null;
+      const kmRecebido = d.recebimento_troca_km ?? n.troca?.km;
+      const db = t.debitos ?? {};
+      const larguras = ["42%", "14%", "44%"];
       return (
         <>
-          <Text style={s.paragrafo}>
-            A VENDEDORA declara ter recebido, em {data(d.recebimento_troca_em)}, às{" "}
-            {txt(d.recebimento_troca_hora)}, o VEÍCULO EM PAGAMENTO{" "}
-            {n.troca ? tituloDoVeiculoDaNegociacao(n.troca) : vazio}, com quilometragem de{" "}
-            {km(d.recebimento_troca_km ?? n.troca?.km)} km, as chaves (
-            {txt(d.recebimento_troca_chaves)} unidades) e os documentos listados neste contrato.
-          </Text>
+          {n.troca ? (
+            <Veiculo
+              v={n.troca}
+              titulo="Veículo em pagamento"
+              valor={formatarPreco(n.troca.valor_cents ?? 0, n.moeda || "BRL")}
+            />
+          ) : null}
+          <Text style={s.subtitulo}>1. Do recebimento</Text>
+          <Preenchidos
+            linhas={[
+              ["Data e hora", `${data(d.recebimento_troca_em)}, às ${txt(d.recebimento_troca_hora)}`],
+              ["Local", t.local?.trim() || localDaLoja],
+              ["Quilometragem no recebimento", kmRecebido == null ? null : `${km(kmRecebido)} km`],
+              ["Chaves recebidas", d.recebimento_troca_chaves == null ? null : String(d.recebimento_troca_chaves)],
+              ["Nível de combustível", t.combustivel ? rotuloDe(COMBUSTIVEIS, t.combustivel) : null],
+              ["Motor", n.troca?.motor],
+              ["Recebido por (VENDEDORA)", quem(t.funcionario) ?? representante],
+              ...(quem(p)
+                ? ([["Entregue por terceiro autorizado pelo COMPRADOR", quem(p)]] as [string, string | null][])
+                : []),
+            ]}
+          />
+          <View wrap={false}>
+            <Tabela colunas={["Item", "Recebido", "Observação"]} larguras={larguras}>
+              {ITENS_DO_RECEBIMENTO.map(([k, rotulo]) => {
+                const item = t.itens?.[k];
+                return (
+                  <Linha
+                    key={k}
+                    larguras={larguras}
+                    valores={[rotulo, simNao(item?.recebido), item?.obs?.trim() || "—"]}
+                  />
+                );
+              })}
+            </Tabela>
+          </View>
+          <Preenchidos
+            linhas={[
+              ["Fotos do recebimento", t.fotos == null ? null : String(t.fotos)],
+              ["Avarias ou observações no ato do recebimento", t.avarias?.trim() || null],
+            ]}
+          />
+          <View wrap={false}>
+            <Text style={s.subtitulo}>2. Declarações do COMPRADOR sobre o veículo</Text>
+            <Tabela colunas={["Declaração", "Resposta", "Detalhe"]} larguras={larguras}>
+              {DECLARACOES_DO_CLIENTE.map(([k, pergunta]) => {
+                const r = t.declaracoes?.[k];
+                return (
+                  <Linha
+                    key={k}
+                    larguras={larguras}
+                    valores={[pergunta, simNao(r?.resposta), r?.detalhe?.trim() || "—"]}
+                  />
+                );
+              })}
+            </Tabela>
+          </View>
+          <Text style={s.subtitulo}>3. Consulta de débitos</Text>
+          <Preenchidos
+            linhas={[
+              ["Data da consulta", db.consulta_em?.trim() ? data(db.consulta_em) : null],
+              ["IPVA", db.ipva?.trim() || null],
+              ["Licenciamento", db.licenciamento?.trim() || null],
+              ["Multas", db.multas?.trim() || null],
+              ["Restrições", db.restricoes?.trim() || null],
+              ["Débitos apontados pagos por", db.pagos_por ? rotuloDe(PAGADORES_DOS_DEBITOS, db.pagos_por) : null],
+            ]}
+          />
+          {recebimento?.length ? (
+            <>
+              <Text style={s.subtitulo}>4. Das declarações</Text>
+              {recebimento.map((it, i) => (
+                <Item key={i} numero={`4.${i + 1}`} item={it} />
+              ))}
+            </>
+          ) : null}
           {fecho(d.recebimento_troca_em)}
         </>
       );
+    }
     case "indicacao_condutor":
       return (
         <>
@@ -1049,6 +1130,7 @@ export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: Decisa
               localDaLoja={endereco(e)}
               laudo={fixas.laudo}
               termo={fixas.termo}
+              recebimento={fixas.recebimento}
               anexoDoEstado={
                 fixas.anexos.find((x) => x.chave === "estado_veiculo")?.numero ??
                 "anexo do estado do veículo"

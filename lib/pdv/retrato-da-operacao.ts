@@ -21,6 +21,7 @@ import { PRAZO_DA_GARANTIA } from "./modelo-contrato";
 import { faltasDaVistoria, usaLaudoDeVistoria } from "./laudo-vistoria";
 import { faltasDaNota, temNotaPromissoria } from "./nota-promissoria";
 import { faltasDoTermoDeEntrega } from "./termo-entrega";
+import { faltasDoTermoDeRecebimento } from "./termo-recebimento";
 import {
   pendenciasDaPessoaFiscal,
   pendenciasDoVeiculoFiscal,
@@ -130,6 +131,8 @@ export interface RetratoDaOperacao {
    * deve fazer a minuta do contrato.
    */
   termo_entrega?: PendenciaDoDocumento[];
+  /** O que falta no termo de recebimento do VEÍCULO EM PAGAMENTO; aviso, como o termo de entrega. */
+  termo_recebimento?: PendenciaDoDocumento[];
   /**
    * O que impede emitir as notas promissórias. Presente só quando a venda tem
    * promissória ou crediário. Fica fora de `pendencias`: a nota não faz a
@@ -598,6 +601,20 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
     ...(venda
       ? {
           termo_entrega: faltasDoTermoDeEntrega(contrato?.termo_entrega ?? {}).map((f) => ({
+            onde: "contrato" as const,
+            campo: f.campo,
+            gravidade: "aviso" as const,
+            mensagem: f.mensagem,
+            setor: "Entrega e transferência" as const,
+          })),
+        }
+      : {}),
+    ...(venda && blocos.troca
+      ? {
+          termo_recebimento: faltasDoTermoDeRecebimento(contrato?.termo_recebimento ?? {}, {
+            hora: contrato?.recebimento_troca_hora,
+            km: contrato?.recebimento_troca_km,
+          }).map((f) => ({
             onde: "contrato" as const,
             campo: f.campo,
             gravidade: "aviso" as const,

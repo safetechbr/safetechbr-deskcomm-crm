@@ -27,6 +27,14 @@ import {
   type ItemDaEntrega,
   type TermoDeEntrega,
 } from "@/lib/pdv/termo-entrega";
+import {
+  DECLARACOES_DO_CLIENTE,
+  ITENS_DO_RECEBIMENTO,
+  PAGADORES_DOS_DEBITOS,
+  type DeclaracaoDoCliente,
+  type ItemDoRecebimento,
+  type TermoDeRecebimento,
+} from "@/lib/pdv/termo-recebimento";
 
 const estilo = "mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm";
 /** Asterisco por CSS: fica fora do nome acessível do campo, que já leva `aria-required`. */
@@ -279,6 +287,236 @@ function EditorDoTermoDeEntrega({
 }
 
 /** Laudo de vistoria da venda (Anexo I). Campos simples; o visual fica para depois. */
+/** Termo de recebimento do VEÍCULO EM PAGAMENTO, preenchido no ato do recebimento. */
+function EditorDoTermoDeRecebimento({
+  valor: t,
+  mudar,
+}: {
+  valor: TermoDeRecebimento;
+  mudar: (t: TermoDeRecebimento) => void;
+}) {
+  const set = (p: Partial<TermoDeRecebimento>) => mudar({ ...t, ...p });
+  const fun = t.funcionario ?? {};
+  const ent = t.entregue_por ?? {};
+  const deb = t.debitos ?? {};
+  const [terceiro, setTerceiro] = useState(Boolean(ent.nome || ent.cpf));
+  const item = (k: ItemDoRecebimento) => t.itens?.[k] ?? {};
+  const setItem = (k: ItemDoRecebimento, p: Partial<ReturnType<typeof item>>) =>
+    set({ itens: { ...t.itens, [k]: { ...item(k), ...p } } });
+  const decl = (k: DeclaracaoDoCliente) => t.declaracoes?.[k] ?? {};
+  const setDecl = (k: DeclaracaoDoCliente, p: Partial<ReturnType<typeof decl>>) =>
+    set({ declaracoes: { ...t.declaracoes, [k]: { ...decl(k), ...p } } });
+  const setDeb = (p: Partial<typeof deb>) => set({ debitos: { ...deb, ...p } });
+  const opcao = (ativo: boolean) =>
+    `px-3 py-1.5 ${ativo ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`;
+  const obs = "w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs @md:w-56";
+  return (
+    <div className="@container space-y-4 border-t pt-4" data-testid="pdv-termo-recebimento">
+      <div>
+        <p className="text-sm">Termo de recebimento do veículo em pagamento</p>
+        <p className="text-xs text-muted-foreground">
+          Preencha no ato do recebimento. Data, hora, km e chaves ficam nos campos do recebimento acima.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 @md:grid-cols-3">
+        <Escolha
+          nome="Nível de combustível"
+          campo="contrato.termo_recebimento.combustivel"
+          valor={t.combustivel}
+          opcoes={COMBUSTIVEIS}
+          mudar={(combustivel) => set({ combustivel })}
+        />
+        <Campo
+          nome="Local do recebimento"
+          placeholder="Em branco: endereço da loja"
+          valor={t.local}
+          mudar={(local) => set({ local })}
+        />
+        <Campo
+          nome="Fotos do recebimento (quantidade)"
+          tipo="number"
+          min={0}
+          max={500}
+          valor={t.fotos}
+          mudar={(v) => set({ fotos: numeroOuNada(v) })}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
+        <Campo
+          nome="Funcionário que recebe"
+          placeholder="Em branco: representante da loja"
+          valor={fun.nome}
+          mudar={(nome) => set({ funcionario: { ...fun, nome } })}
+        />
+        <Campo
+          nome="CPF do funcionário"
+          valor={fun.cpf}
+          mudar={(cpf) => set({ funcionario: { ...fun, cpf } })}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={terceiro}
+            onChange={(e) => {
+              setTerceiro(e.target.checked);
+              if (!e.target.checked) set({ entregue_por: undefined });
+            }}
+          />
+          Outra pessoa entrega o veículo no lugar do comprador
+        </label>
+        {terceiro ? (
+          <div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
+            <Campo
+              nome="Nome de quem entrega"
+              valor={ent.nome}
+              mudar={(nome) => set({ entregue_por: { ...ent, nome } })}
+            />
+            <Campo
+              nome="CPF de quem entrega"
+              campo="contrato.termo_recebimento.entregue_por.cpf"
+              valor={ent.cpf}
+              mudar={(cpf) => set({ entregue_por: { ...ent, cpf } })}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <fieldset className="rounded-lg border" data-campo="contrato.termo_recebimento.itens">
+        <legend className="ml-2 px-1 text-xs text-muted-foreground">
+          Itens recebidos com o veículo
+        </legend>
+        <ul className="divide-y">
+          {ITENS_DO_RECEBIMENTO.map(([k, rotulo]) => {
+            const it = item(k);
+            return (
+              <li key={k} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                <span className="min-w-0 flex-1 text-sm">{rotulo}</span>
+                <div
+                  role="group"
+                  aria-label={rotulo}
+                  className="flex overflow-hidden rounded-md border text-xs"
+                >
+                  {([true, false] as const).map((sim) => (
+                    <button
+                      key={String(sim)}
+                      type="button"
+                      aria-pressed={it.recebido === sim}
+                      className={opcao(it.recebido === sim)}
+                      onClick={() =>
+                        setItem(k, { recebido: it.recebido === sim ? undefined : sim })
+                      }
+                    >
+                      {sim ? "Recebido" : "Não recebido"}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  aria-label={`Observação: ${rotulo}`}
+                  placeholder="Observação"
+                  className={obs}
+                  value={it.obs ?? ""}
+                  onChange={(e) => setItem(k, { obs: e.target.value })}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </fieldset>
+
+      <label className="block text-xs text-muted-foreground">
+        Avarias ou observações no ato do recebimento
+        <textarea
+          className={estilo}
+          rows={2}
+          value={t.avarias ?? ""}
+          onChange={(e) => set({ avarias: e.target.value })}
+        />
+      </label>
+
+      <fieldset className="rounded-lg border" data-campo="contrato.termo_recebimento.declaracoes">
+        <legend className="ml-2 px-1 text-xs text-muted-foreground">
+          Declarações do comprador sobre o veículo (pergunte e registre a resposta)
+        </legend>
+        <ul className="divide-y">
+          {DECLARACOES_DO_CLIENTE.map(([k, pergunta]) => {
+            const d = decl(k);
+            return (
+              <li
+                key={k}
+                className="flex flex-wrap items-center gap-2 px-3 py-2"
+                data-campo={`contrato.termo_recebimento.declaracoes.${k}`}
+              >
+                <span className="min-w-0 flex-1 text-sm">{pergunta}</span>
+                <div
+                  role="group"
+                  aria-label={pergunta}
+                  className="flex overflow-hidden rounded-md border text-xs"
+                >
+                  {([true, false] as const).map((sim) => (
+                    <button
+                      key={String(sim)}
+                      type="button"
+                      aria-pressed={d.resposta === sim}
+                      className={opcao(d.resposta === sim)}
+                      onClick={() =>
+                        setDecl(k, { resposta: d.resposta === sim ? undefined : sim })
+                      }
+                    >
+                      {sim ? "Sim" : "Não"}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  aria-label={`Detalhe: ${pergunta}`}
+                  placeholder="Detalhe"
+                  className={obs}
+                  value={d.detalhe ?? ""}
+                  onChange={(e) => setDecl(k, { detalhe: e.target.value })}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </fieldset>
+
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">Consulta de débitos do veículo recebido</p>
+        <div className="grid grid-cols-1 gap-3 @md:grid-cols-3">
+          <Campo
+            nome="Consulta feita em"
+            tipo="date"
+            valor={deb.consulta_em}
+            mudar={(consulta_em) => setDeb({ consulta_em })}
+          />
+          <Campo nome="IPVA" placeholder="Ex.: quitado" valor={deb.ipva} mudar={(ipva) => setDeb({ ipva })} />
+          <Campo
+            nome="Licenciamento"
+            valor={deb.licenciamento}
+            mudar={(licenciamento) => setDeb({ licenciamento })}
+          />
+          <Campo nome="Multas" valor={deb.multas} mudar={(multas) => setDeb({ multas })} />
+          <Campo
+            nome="Restrições"
+            valor={deb.restricoes}
+            mudar={(restricoes) => setDeb({ restricoes })}
+          />
+          <Escolha
+            nome="Débitos encontrados são pagos por"
+            valor={deb.pagos_por}
+            opcoes={PAGADORES_DOS_DEBITOS}
+            mudar={(pagos_por) => setDeb({ pagos_por })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EditorDaVistoria({
   valor: v,
   mudar,
@@ -1061,6 +1299,12 @@ export function EditorDoContrato({
           <EditorDoTermoDeEntrega
             valor={c.termo_entrega ?? {}}
             mudar={(termo_entrega) => mudar({ termo_entrega })}
+          />
+        ) : null}
+        {venda && blocos?.troca ? (
+          <EditorDoTermoDeRecebimento
+            valor={c.termo_recebimento ?? {}}
+            mudar={(termo_recebimento) => mudar({ termo_recebimento })}
           />
         ) : null}
       </Setor>

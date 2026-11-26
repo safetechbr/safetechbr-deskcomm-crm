@@ -59,6 +59,8 @@ export interface ClausulasFixas {
   laudo?: ItemDoContrato[];
   /** Item 2 (declarações) do termo de entrega; só na venda. */
   termo?: ItemDoContrato[];
+  /** Item 4 (declarações) do termo de recebimento do VEÍCULO EM PAGAMENTO; só na venda com ele. */
+  recebimento?: ItemDoContrato[];
 }
 
 const LACUNA = "________________";
@@ -307,7 +309,54 @@ export function clausulasFixas(n: Negociacao, blocos: BlocosDaOperacao): Clausul
       garantia: `${secoes.indexOf(garantia) + 3}ª`,
       condutor: ref("indicacao_condutor"),
     }),
+    ...(troca
+      ? {
+          recebimento: declaracoesDoRecebimento(n, {
+            entrega: `${secoes.indexOf(entrega) + 3}ª`,
+            transferencia: `${secoes.indexOf(transferencia) + 3}ª`,
+            condutor: ref("indicacao_condutor"),
+            quitacao: blocos.quitacao_da_troca,
+            email: txt(d.email_lgpd || e?.email),
+          }),
+        }
+      : {}),
   };
+}
+
+/** Item 4 do termo de recebimento: o que o recebimento do VEÍCULO EM PAGAMENTO significa. */
+function declaracoesDoRecebimento(
+  n: Negociacao,
+  c: { entrega: string; transferencia: string; condutor: string; quitacao: boolean; email: string },
+): ItemDoContrato[] {
+  const d = n.contrato ?? {};
+  const pagos = d.termo_recebimento?.debitos?.pagos_por;
+  const quemPaga =
+    pagos === "cliente"
+      ? "serão pagos pelo COMPRADOR antes da transferência"
+      : pagos === "loja_desconta"
+        ? "serão pagos pela VENDEDORA, que desconta o valor da avaliação do VEÍCULO EM PAGAMENTO"
+        : `serão pagos por ${LACUNA}`;
+  return [
+    "A VENDEDORA declara que recebeu o VEÍCULO EM PAGAMENTO e os itens marcados como recebidos, conferidos no ato e na presença das partes. Item não marcado não se presume entregue.",
+    "O COMPRADOR declara que as respostas do item 2 são verdadeiras e sabe que a avaliação do VEÍCULO EM PAGAMENTO foi feita com base nelas.",
+    lim(
+      "O COMPRADOR responde por vício oculto do VEÍCULO EM PAGAMENTO (arts. 441 a 446 do Código Civil) e pela evicção (arts. 447 a 457 do Código Civil). As avarias e os itens registrados neste termo foram considerados na avaliação e não podem ser usados para revê-la.",
+    ),
+    lim(
+      `Até a data e a hora deste termo, o COMPRADOR responde, civil e administrativamente, pelas multas, pontuação, pedágios, danos e tributos relativos ao VEÍCULO EM PAGAMENTO; a partir delas, a VENDEDORA (Cláusula ${c.entrega}).`,
+    ),
+    `Infração cometida depois do recebimento e antes da transferência terá o condutor indicado pela VENDEDORA com o formulário do ${c.condutor} (art. 257, § 7º, do Código de Trânsito Brasileiro e Resolução CONTRAN 918/2022); a parte notificada avisa a outra em até 5 (cinco) dias. Quem pagar valor que cabia à outra parte será reembolsado, com o comprovante, com correção pelo IPCA. A responsabilidade penal por fato na condução do veículo é pessoal de quem o conduzia.`,
+    lim(
+      `Débito descoberto depois do recebimento fica a cargo do COMPRADOR se o fato gerador for anterior à data e à hora deste termo e a VENDEDORA apresentar o comprovante; o COMPRADOR paga em até 10 (dez) dias da comunicação. Os débitos apontados na consulta do item 3 ${quemPaga}.`,
+    ),
+    ...(c.quitacao
+      ? [
+          "A VENDEDORA quitará o financiamento que grava o VEÍCULO EM PAGAMENTO no prazo da Cláusula 2ª e responde por negativação do COMPRADOR ou busca e apreensão causadas por atraso seu nessa quitação. A ATPV-e só será emitida depois da baixa do gravame.",
+        ]
+      : []),
+    `O COMPRADOR emitirá a ATPV-e do VEÍCULO EM PAGAMENTO em favor da VENDEDORA (Resolução CONTRAN 809/2020) no prazo da Cláusula ${c.transferencia}.${d.usa_renave ? " A VENDEDORA registrará a entrada do veículo no seu estoque no RENAVE." : ""}`,
+    `Os dados de quem entrega e de quem recebe o veículo são tratados apenas para comprovar o recebimento, transferir o veículo, quitar o gravame e indicar o condutor, e são compartilhados só com o Detran, a Senatran, o credor do financiamento, o despachante e o provedor de assinatura eletrônica (Lei 13.709/2018). O titular exerce seus direitos pelo e-mail ${c.email}.`,
+  ];
 }
 
 /** Item 2 do termo de entrega: o que o recebimento significa. Recebe os números das cláusulas citadas. */

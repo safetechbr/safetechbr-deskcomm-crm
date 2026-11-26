@@ -111,6 +111,18 @@ function termoDeEntrega(r: RetratoDaOperacao): ItemDaPasta {
   };
 }
 
+/** Como o termo de entrega: o que falta é preenchido no ato do recebimento. */
+function termoDeRecebimento(r: RetratoDaOperacao): ItemDaPasta {
+  const faltam = r.termo_recebimento ?? [];
+  if (!faltam.length) return anexo("termo_recebimento");
+  return {
+    ...anexo("termo_recebimento"),
+    situacao: "aguarda_evento",
+    motivo: `${NO_CONTRATO} Complete no ato do recebimento.`,
+    pendencias: faltam,
+  };
+}
+
 /** Uma nota por parcela de promissória ou crediário; boleto e cheque já são o título. */
 function notaPromissoria(r: RetratoDaOperacao, parcelasALoja: boolean): ItemDaPasta {
   const faltam = r.nota_promissoria;
@@ -169,7 +181,7 @@ export function manifestoDaPasta(r: RetratoDaOperacao): ManifestoDaPasta {
       : item("laudo_vistoria", "nao_aplica", "Entrada por compra usa vistoria de entrada própria."),
     venda ? termoDeEntrega(r) : item("termo_entrega", "nao_aplica", "Compra pela loja não tem entrega."),
     venda && b.troca
-      ? anexo("termo_recebimento")
+      ? termoDeRecebimento(r)
       : item(
           "termo_recebimento",
           b.troca || !venda ? "aplica" : "nao_aplica",
