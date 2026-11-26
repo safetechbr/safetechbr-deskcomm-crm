@@ -6,7 +6,7 @@
  *   - body = base64url(JSON({invite_id, email, organization_id, role, exp}))
  *   - sig  = base64url(HMAC_SHA256(secret, body))
  *
- * Secret resolution: INVITE_TOKEN_SECRET → INTERNAL_SECRET → "dev-fallback".
+ * Secret resolution: INVITE_TOKEN_SECRET → INTERNAL_SECRET → "dev-fallback" (only outside production; production throws).
  * Production deployments MUST set one of the first two. Verification uses
  * `timingSafeEqual` to avoid timing oracles.
  */
@@ -14,8 +14,15 @@ import { z } from "zod";
 import { interfaceSettingsSchema, type InterfaceSettings } from "@/lib/navigation/interface";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const SECRET = (): string =>
-  process.env.INVITE_TOKEN_SECRET ?? process.env.INTERNAL_SECRET ?? "dev-fallback";
+const SECRET = (): string => {
+  const secret = process.env.INVITE_TOKEN_SECRET || process.env.INTERNAL_SECRET;
+  if (secret) return secret;
+  // Em produção, um segredo conhecido deixaria qualquer um forjar convite para qualquer org.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("INVITE_TOKEN_SECRET/INTERNAL_SECRET ausente: convite não pode ser assinado");
+  }
+  return "dev-fallback";
+};
 
 export interface InvitePayload {
   interface_settings?: InterfaceSettings;
