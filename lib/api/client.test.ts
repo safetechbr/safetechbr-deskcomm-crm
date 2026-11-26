@@ -35,6 +35,22 @@ describe("apiClient", () => {
     );
   });
 
+  it("t14: 401 unauthenticated (corrida de refresh entre abas) repete uma vez e passa", async () => {
+    const unauth = () =>
+      jsonResponse(401, { error: { code: "unauthenticated", message: "Authentication required" } });
+    fetchMock.mockResolvedValueOnce(unauth()).mockResolvedValueOnce(jsonResponse(200, { ok: 1 }));
+    await expect(apiClient.post("/x", { a: 1 })).resolves.toEqual({ ok: 1 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("t15: 401 unauthenticated duas vezes seguidas desiste com ApiError", async () => {
+    const unauth = () =>
+      jsonResponse(401, { error: { code: "unauthenticated", message: "Authentication required" } });
+    fetchMock.mockResolvedValueOnce(unauth()).mockResolvedValueOnce(unauth());
+    await expect(apiClient.get("/x")).rejects.toMatchObject({ status: 401, code: "unauthenticated" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("t2: GET injects X-Request-Id but NOT Idempotency-Key", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { ok: true } }));
     await apiClient.get("/x");

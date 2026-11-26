@@ -38,7 +38,7 @@ export function Stepper({ passos }: { passos: PassoVisivel[] }) {
   return (
     <ol
       aria-label="onboarding steps"
-      className="flex w-full items-center justify-between gap-2 px-2 py-3"
+      className="flex w-full items-start gap-2 px-2 py-3"
     >
       {passos.map((p, i) => {
         const isActive = i === idx;
@@ -46,7 +46,7 @@ export function Stepper({ passos }: { passos: PassoVisivel[] }) {
           <li
             key={p.segmento}
             aria-current={isActive ? "step" : undefined}
-            className="flex flex-1 flex-col items-center text-xs"
+            className="flex min-w-0 flex-1 flex-col items-center text-center text-xs"
           >
             <div
               className={cn(
@@ -67,7 +67,7 @@ export function Stepper({ passos }: { passos: PassoVisivel[] }) {
                 `sr-only` mantém ele lido por leitor de tela mesmo escondido. */}
             <span
               className={cn(
-                "sr-only mt-1 truncate sm:not-sr-only",
+                "sr-only mt-1 sm:not-sr-only sm:wrap-anywhere",
                 isActive ? "font-medium text-foreground" : "text-muted-foreground",
               )}
             >

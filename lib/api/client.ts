@@ -69,6 +69,7 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const MUTATION_TIMEOUT_MS = 30_000;
 
 const MAX_ATTEMPTS = 3;
+const AUTH_RETRY_DELAY_MS = 400;
 const RETRYABLE_STATUSES = new Set([429, 503]);
 const MUTATING_METHODS = new Set<HttpMethod>(["POST", "PATCH", "PUT", "DELETE"]);
 
@@ -275,6 +276,7 @@ async function request<T>(
     opts.timeoutMs ?? (MUTATING_METHODS.has(method) ? MUTATION_TIMEOUT_MS : DEFAULT_TIMEOUT_MS);
 
   let lastError: unknown;
+  let retriedAuth = false;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const timeoutController = new AbortController();
@@ -325,6 +327,23 @@ async function request<T>(
 
       // Non-retry error: parse and throw
       const errBody = await readBodySafe(res);
+
+      // Várias abas renovam a sessão ao mesmo tempo com o mesmo refresh token;
+      // a que perde a corrida recebe 401 do `proxy.ts`, mas o cookie novo da
+      // vencedora já é compartilhado. Uma segunda tentativa curta passa. Seguro
+      // até em escrita: `unauthenticated` só sai do proxy, antes da rota rodar.
+      if (
+        res.status === 401 &&
+        !retriedAuth &&
+        attempt < MAX_ATTEMPTS &&
+        isApiErrorBody(errBody) &&
+        errBody.error.code === "unauthenticated"
+      ) {
+        retriedAuth = true;
+        await sleep(AUTH_RETRY_DELAY_MS, opts.signal);
+        continue;
+      }
+
       if (isApiErrorBody(errBody)) {
         const e = errBody.error;
         // Ver o bloco `MARCA_DE_RECARGA` acima. O `throw` continua acontecendo:

@@ -75,6 +75,9 @@ const nextConfig: NextConfig = {
       "./node_modules/.pnpm/pdfjs-dist@*/node_modules/pdfjs-dist/**",
     ],
   },
+  // Dev: `localhost:3000` pode cair em outro projeto (IPv6); sem isto o Next
+  // bloqueia os assets de dev em 127.0.0.1 e a página não hidrata.
+  allowedDevOrigins: ["127.0.0.1"],
   reactStrictMode: true,
   poweredByHeader: false,
   // typedRoutes moved out of experimental in Next 15.5+
