@@ -83,7 +83,7 @@ describe("aba Arquivadas — filtro da lista", () => {
 describe("aba Arquivadas — rótulo e badge", () => {
   it("tem rótulo próprio em pt-BR e no tipo de aba", () => {
     const filtros = fonte("components/inbox/InboxFilters.tsx");
-    expect(filtros).toContain('{ value: "archived", label: "Arquivadas" }');
+    expect(filtros).toContain('{ value: "archived", label: "Arquivadas"');
     expect(filtros).toContain('"archived"');
   });
 

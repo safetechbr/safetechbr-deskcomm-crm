@@ -167,7 +167,7 @@ describe("organização da ficha da conversa", () => {
     const acoes = screen.getByRole("button", { name: "Ações da conversa" });
     expect(atendimento.compareDocumentPosition(acoes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-    const contato = screen.getByRole("button", { name: "Contato", exact: true });
+    const contato = screen.getByRole("button", { name: "Contato" });
     expect(contato).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("link", { name: "Ver contato" })).not.toBeInTheDocument();
     await u.click(contato);
@@ -176,7 +176,7 @@ describe("organização da ficha da conversa", () => {
 
     unmount();
     montar();
-    const contatoReaberto = screen.getByRole("button", { name: "Contato", exact: true });
+    const contatoReaberto = screen.getByRole("button", { name: "Contato" });
     expect(contatoReaberto).toHaveAttribute("aria-expanded", "true");
     await u.click(contatoReaberto);
     expect(contatoReaberto).toHaveAttribute("aria-expanded", "false");

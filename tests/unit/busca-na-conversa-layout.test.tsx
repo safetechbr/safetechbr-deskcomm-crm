@@ -120,7 +120,7 @@ function montar() {
 
 /** Há dois painéis (gaveta e coluna) no DOM de teste; qualquer um serve. */
 async function campo() {
-  return (await screen.findAllByRole("searchbox", { name: CAMPO }))[0];
+  return (await screen.findAllByRole("searchbox", { name: CAMPO }))[0]!;
 }
 
 describe("busca dentro da conversa: o campo", () => {

@@ -221,7 +221,7 @@ describe("Inbox — recolher o painel do contato (#3004)", () => {
     window.innerWidth = 1097;
     try {
       montar();
-      const gatilho = await screen.findByRole("button", { name: "Ficha", exact: true });
+      const gatilho = await screen.findByRole("button", { name: "Ficha" });
       expect(gatilho).toHaveAttribute("aria-pressed", "false");
       await userEvent.click(gatilho);
       expect(gatilho).toHaveAttribute("aria-pressed", "true");
