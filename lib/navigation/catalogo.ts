@@ -1278,6 +1278,16 @@ export const NAV_CATALOG = [
     // SEM `sidebar`: só no hub, pelo mesmo motivo de Marca (o menu já estoura a dobra).
   },
   {
+    href: "/app/settings/renave",
+    label: "RENAVE",
+    description: "Ligue a Renave Fácil para registrar entrada e saída dos carros no RENAVE.",
+    icon: "ShieldCheck",
+    group: "organizacao",
+    section: "Sua empresa",
+    minRole: "manager",
+    // SEM `sidebar`: só no hub, como Notas Fiscais.
+  },
+  {
     href: "/app/settings/billing",
     // Spec da cobrança §9: as mensagens de limite e a Central mandam para
     // "Configurações › Plano e cobrança" — o item precisa ter esse nome.

@@ -105,7 +105,7 @@ create view public.renave_integracoes_safe
   with (security_invoker = true)
   as
   select id, organization_id, integradora, api_key_last4 as last4,
-         (api_key_ciphertext is not null) as tem_chave,
+         (api_key_last4 is not null) as tem_chave, -- last4 é gravado junto com a chave; ler o ciphertext daria permission denied ao invoker
          cnpj, url_plataforma, ativo, limite_creditos_aviso,
          bloquear_venda_sem_confirmacao, created_at, updated_at
   from public.renave_integracoes;

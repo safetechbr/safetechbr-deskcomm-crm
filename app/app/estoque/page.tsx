@@ -14,6 +14,8 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+import type { RenaveDoVeiculo } from "@/lib/renave/situacao";
+
 import { EstoqueClient } from "./_client";
 
 export const dynamic = "force-dynamic";
@@ -64,8 +66,21 @@ export default async function EstoquePage() {
     }
   }
 
+  // RENAVE: só aparece no estoque quando a integração está ativa na loja.
+  const { data: cfgRenave } = await createAdminClient().from("renave_integracoes_safe")
+    .select("ativo, url_plataforma").eq("organization_id", activeOrg.orgId).eq("integradora", "renave_facil").maybeSingle();
+  const renave: Record<string, RenaveDoVeiculo> = {};
+  if (cfgRenave?.ativo && veiculos.length > 0) {
+    const { data: linhas } = await supabase.from("renave_veiculos")
+      .select("veiculo_id, situacao, documentos, ultimo_erro")
+      .eq("organization_id", activeOrg.orgId).eq("integradora", "renave_facil")
+      .in("veiculo_id", veiculos.map((v) => v.id));
+    for (const l of linhas ?? []) renave[l.veiculo_id as string] = l as unknown as RenaveDoVeiculo;
+  }
+
   return (
     <EstoqueClient
+      renave={cfgRenave?.ativo ? { porVeiculo: renave, urlPlataforma: (cfgRenave.url_plataforma as string | null) ?? null } : null}
       inicial={veiculos}
       urlsDasFotos={urlsDasFotos}
       podeEditar={podeEditar}

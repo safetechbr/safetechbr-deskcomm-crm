@@ -160,6 +160,7 @@ CRONS="
 # Rede de seguranca do webhook da Focus: notas fiscais presas em 'processando'.
 */5 * * * *|60|api/v1/cron/fiscal-consulta
 */5 * * * *|60|api/v1/cron/renave-fila
+*/15 * * * *|120|api/v1/cron/renave-status
 0 11 * * *|120|api/v1/cron/fiscal-pacote-mensal
 # AS RECORRÊNCIAS. Uma vez ao dia é o bastante: o que ela gera é uma conta a
 # pagar, e a diferença entre nascer às 5h ou às 17h não muda nada para quem paga.

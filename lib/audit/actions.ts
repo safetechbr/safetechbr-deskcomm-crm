@@ -1432,6 +1432,11 @@ export const AUDIT_ACTIONS = [
   "fiscal.pacote_mensal",
   "fiscal.arquivo_guardado",
   "fiscal.entrega_comprador",
+  // RENAVE via integradora (Renave Fácil). Nunca carregam a chave de API.
+  "renave.config_salva",
+  "renave.conexao_testada",
+  "renave.veiculo_enviado",
+  "renave.situacao_mudou",
 ] as const;
 
 /** Um código de auditoria. Derivado de `AUDIT_ACTIONS` — não redigite a lista. */

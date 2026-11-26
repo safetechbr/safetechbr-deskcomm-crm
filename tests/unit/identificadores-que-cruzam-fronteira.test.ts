@@ -209,6 +209,7 @@ const SITES: { arquivo: string; fronteira: string; papel?: "gerador" | "validado
   // RENAVE: chave `{org}/{veiculo}/{tipo}-{n}.pdf` — org e veículo uuids do banco, tipo de um conjunto fechado, n índice numérico.
   { arquivo: "lib/renave/servico.ts", fronteira: "storage.chave-de-objeto" },
   // Chave de idempotência: os geradores (manda UUID) e os validadores (exige UUID).
+  { arquivo: "app/app/estoque/_renave.tsx", fronteira: "api.idempotency-key", papel: "gerador" },
   { arquivo: "app/onboarding/connect-whatsapp/_client.tsx", fronteira: "api.idempotency-key", papel: "gerador" },
   { arquivo: "components/extensions/ExtensionsManager.tsx", fronteira: "api.idempotency-key", papel: "gerador" },
   { arquivo: "components/modulos/ModulosManager.tsx", fronteira: "api.idempotency-key", papel: "gerador" },

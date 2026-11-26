@@ -1,6 +1,8 @@
 "use client";
 import { EditorRegularizacao } from "@/components/pdv/dados-do-contrato";
 import { reservaAtiva } from "@/lib/veiculos/reservas";
+import { pendenteNoRenave, type RenaveDoVeiculo } from "@/lib/renave/situacao";
+import { BlocoRenave } from "./_renave";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -148,7 +150,9 @@ export function EstoqueClient({
   podeEditar,
   titulo,
   subtitulo,
+  renave,
 }: {
+  renave: { porVeiculo: Record<string, RenaveDoVeiculo>; urlPlataforma: string | null } | null;
   inicial: Veiculo[];
   urlsDasFotos: Record<string, string>;
   podeEditar: boolean;
@@ -162,7 +166,9 @@ export function EstoqueClient({
   const [editando, setEditando] = React.useState<Veiculo | "novo" | null>(null);
 
   const visiveis = inicial.filter((v) => {
-    if (status !== "todos" && (reservaAtiva(v.reserva) ? "reservado" : v.status) !== status) return false;
+    if (status === "pendencias_renave") {
+      if (!renave || !pendenteNoRenave(renave.porVeiculo[v.id], v.status)) return false;
+    } else if (status !== "todos" && (reservaAtiva(v.reserva) ? "reservado" : v.status) !== status) return false;
     const q = busca.trim().toLowerCase();
     return !q || `${v.codigo} ${tituloDoVeiculo(v)} ${v.cor ?? ""}`.toLowerCase().includes(q);
   });
@@ -218,6 +224,7 @@ export function EstoqueClient({
               {t(ROTULO_DO_STATUS[s])}
             </option>
           ))}
+          {renave ? <option value="pendencias_renave">{t("Pendências RENAVE")}</option> : null}
         </select>
         <span className="self-center text-sm text-muted-foreground">
           {visiveis.length} {t("veículo(s)")}
@@ -281,6 +288,14 @@ export function EstoqueClient({
                     {v.fotos.length} {t("foto(s)")}
                     {poucas ? ` — ${t("recomendado")}: ${MINIMO_RECOMENDADO_DE_FOTOS}+` : ""}
                   </div>
+                  {renave ? (
+                    <BlocoRenave
+                      veiculoId={v.id}
+                      statusDoVeiculo={v.status}
+                      renave={renave.porVeiculo[v.id]}
+                      urlPlataforma={renave.urlPlataforma}
+                    />
+                  ) : null}
                   {podeEditar ? (
                     <div className="mt-2 flex items-center gap-2 border-t border-border/50 pt-3">
                       <select
