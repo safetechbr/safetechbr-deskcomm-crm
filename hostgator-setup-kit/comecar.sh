@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# DeskcommCRM — a porta de entrada.
+# M Auto — a porta de entrada.
 #
 # Diferente do install.sh, este script roda no SEU computador (macOS, Linux ou
 # WSL), antes de existir servidor. Ele responde a única pergunta que trava quem

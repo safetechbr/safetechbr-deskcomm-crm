@@ -1,4 +1,4 @@
-# DeskcommCRM self-hosted — instalação em VPS (com agente de IA)
+# M Auto self-hosted — instalação em VPS (com agente de IA)
 
 > Sistema operacional de vendas open source com agente SDR de IA integrado
 > (WhatsApp via WAHA) — pra qualquer negócio que vende conversando.
@@ -23,7 +23,7 @@
 ## 1. Clonar e configurar
 
 ```bash
-git clone https://github.com/melgarafael/DeskcommCRM.git && cd DeskcommCRM
+git clone https://github.com/melgarafael/DeskcommCRM.git m-auto && cd m-auto
 cp .env.hostgator.example .env   # o template de produção (o .env.example é o de dev)
 ```
 

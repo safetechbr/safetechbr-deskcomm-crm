@@ -3,11 +3,11 @@
 [🇧🇷 Português](README.md) · 🇺🇸 English · [🇪🇸 Español](README.es.md)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/deskcomm-logo-dark.svg">
-  <img src="docs/brand/deskcomm-logo.svg" alt="Deskcomm CRM" width="420">
+  <source media="(prefers-color-scheme: dark)" srcset="logo-m-auto/logo-horizontal-branco.svg">
+  <img src="logo-m-auto/logo-horizontal-vermelho.svg" alt="M Auto" width="420">
 </picture>
 
-# 🛠️ DeskcommCRM — The open-source AI Sales OS for WhatsApp
+# 🛠️ M Auto — The open-source AI Sales OS for WhatsApp
 
 **AI agents that answer, qualify and sell on WhatsApp — inside an open-source CRM running on your own server.**
 **No subscription, no gated features, your data stays yours. The open alternative to Kommo, Octadesk and Intercom.**
@@ -35,7 +35,7 @@
 > **[👉 Get the Hostinger VPS with my link](https://www.hostg.xyz/aff_c?offer_id=6&aff_id=221622&url_id=5038&source=deskcomm)** —
 > **KVM 2** plan (2 vCPU / 8 GB), with a datacenter in Brazil.
 >
-> 📘 **[Full guide (Portuguese): DeskcommCRM on Hostinger, step by step](docs/deploy-hostinger/README.md)**
+> 📘 **[Full guide (Portuguese): M Auto on Hostinger, step by step](docs/deploy-hostinger/README.md)**
 >
 > **No server yet?** Run this **on your own computer** (macOS, Linux or WSL). It tells you which
 > plan to buy and hands you the exact command for your case:
@@ -74,8 +74,8 @@ That is not a freeze: the terminal is hiding your password. Type (or paste) it a
 Once inside the VPS:
 
 ```bash
-git clone https://github.com/melgarafael/DeskcommCRM.git
-cd DeskcommCRM
+git clone https://github.com/melgarafael/DeskcommCRM.git m-auto
+cd m-auto
 bash hostgator-setup-kit/install.sh
 ```
 
@@ -185,7 +185,7 @@ broken app back.
 ### From the terminal
 
 ```bash
-cd /path/to/DeskcommCRM
+cd /path/to/m-auto
 bash hostgator-setup-kit/update.sh
 ```
 
@@ -235,7 +235,7 @@ backup back over the database in use: it only restores into an empty database (s
 
 ## ✨ What is it
 
-**Deskcomm** comes from **Desk** + **comm** (commerce): your entire sales operation on a single desk, run by people and AI agents working together.
+**M Auto** brings sales operations into one system, with people and AI agents working together.
 
 The project was born as an e-commerce CRM — and the open-source community took it much further: today it runs in **clinics, real-estate agencies, info-product businesses, agencies, stores and service providers** — any business that sells over WhatsApp. The product followed that shift and became a **sales operating system**: AI agents with per-tenant RAG answer customers, qualify leads, move them through the pipeline, trigger automations and know when to hand off to a human — with the whole CRM exposed via **MCP** so agents can truly operate it. The full story is in [`VISION.md`](VISION.md).
 
@@ -304,8 +304,8 @@ Details: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 > This section is for people who will change the code.
 
 ```bash
-git clone https://github.com/melgarafael/DeskcommCRM.git
-cd DeskcommCRM
+git clone https://github.com/melgarafael/DeskcommCRM.git m-auto
+cd m-auto
 
 nvm use                     # Node 22
 npm install -g pnpm && pnpm install
@@ -333,7 +333,7 @@ App: <http://localhost:3000> · Health check: <http://localhost:3000/api/v1/heal
 ## 📁 Structure
 
 ```
-DeskcommCRM/
+m-auto/
 ├── app/                    # Next.js App Router
 │   ├── (admin)/            # super-admin routes (impersonate, tenants)
 │   ├── (public)/           # Login, recovery
@@ -465,7 +465,7 @@ For **security vulnerabilities**, **do NOT open a public issue** — use [privat
 
 ### 🔮 Next
 
-- **Public MCP** — CRM capabilities exposed to the agent ecosystem: plug in any agent and it operates Deskcomm.
+- **Public MCP** — CRM capabilities exposed to the agent ecosystem: plug in any agent and it operates M Auto.
 - **Niche templates** — ready-made pipelines and vocabularies for clinics, real estate, info-products and services (e-commerce already shipped).
 - **Integrations** — VTEX and Shopify via the adapter pattern (Nuvemshop already shipped).
 - **Probabilistic identity** — contact unification across channels.
@@ -505,7 +505,7 @@ This is a **self-hosted** project: each person runs the CRM on their **own infra
 - **HostGator** — the infrastructure partnership that made one-command self-hosting possible.
 - **Anthropic**, **OpenAI** and **OpenRouter** — the AI providers the CRM knows how to use.
 - **shadcn/ui** — component base.
-- The community that took Deskcomm from e-commerce to clinics, real estate, info-products and beyond — you defined what this project is.
+- The community that took M Auto from e-commerce to clinics, real estate, info-products and beyond — you defined what this project is.
 
 ---
 

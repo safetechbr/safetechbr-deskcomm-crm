@@ -8,6 +8,15 @@ import { DEFAULT_APP_NAME, resolveBranding } from "@/lib/branding";
 const RAIZ = process.cwd();
 
 describe("resolveBranding", () => {
+  it.each(["Deskcomm", "DeskcommCRM", " Deskcomm CRM ", "DESKCOMM-CRM"])(
+    "atualiza a marca anterior (%s)",
+    (nome) => expect(resolveBranding(nome, null).name).toBe(DEFAULT_APP_NAME),
+  );
+
+  it("preserva nomes personalizados que incluem a marca anterior", () => {
+    expect(resolveBranding("Deskcomm Serviços", null).name).toBe("Deskcomm Serviços");
+  });
+
   it("cai no padrão quando não há marca configurada", () => {
     expect(resolveBranding(undefined, undefined)).toEqual({
       name: DEFAULT_APP_NAME,
@@ -208,6 +217,11 @@ type EntradaDeMarca = {
 };
 
 const MARCA_CONGELADA: Record<string, EntradaDeMarca> = {
+  "lib/branding.ts": {
+    categoria: "INFRA",
+    motivo: "reconhece a marca anterior em configurações existentes para exibir a marca atual.",
+    marcas: ["deskcomm"],
+  },
   // ─── INFRA — chaves de storage/evento do bloco recolhível do Inbox. ───
   "components/inbox/AcoesDaConversa.tsx": {
     categoria: "INFRA",
@@ -728,8 +742,8 @@ describe("catraca de marca no que o GoTrue renderiza", () => {
     "supabase/config.toml": {
       categoria: "DEV",
       motivo:
-        "config do Supabase LOCAL (o `supabase start` de dev e do CI). NÃO embarca na imagem e NÃO alcança clone nenhum: um self-hoster usa um projeto na nuvem do Supabase, cuja config de auth vem do marca-emails.sh, ou um GoTrue próprio, que lê env. `project_id` ainda nomeia os contêineres locais (supabase_auth_deskcomm-crm) e os assuntos são o que a suíte local envia",
-      marcas: ["deskcomm-crm", "deskcommcrm", "deskcommcrm"],
+        "config do Supabase LOCAL (o `supabase start` de dev e do CI). NÃO embarca na imagem e NÃO alcança clone nenhum: um self-hoster usa um projeto na nuvem do Supabase, cuja config de auth vem do marca-emails.sh, ou um GoTrue próprio, que lê env. `project_id` ainda nomeia os contêineres locais (supabase_auth_deskcomm-crm) para preservar a instância e os volumes existentes",
+      marcas: ["deskcomm-crm"],
     },
   };
 

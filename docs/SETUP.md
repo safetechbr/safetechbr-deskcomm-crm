@@ -1,4 +1,4 @@
-# Guia de Setup — DeskcommCRM
+# Guia de Setup — M Auto
 
 > **Pra quem é este doc?** Você acabou de clonar o repo, copiou `.env.example` pra `.env.local`, abriu o arquivo e bateu o desespero: "o que é cada uma dessas chaves e onde eu pego?". Este guia resolve isso. Sem pular etapas, sem assumir que você já configurou nada antes.
 >
@@ -451,7 +451,7 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 
 1. Acesse <https://partners.tiendanube.com/> → **Sign up** como parceiro (gratuito).
 2. No dashboard de parceiro → **Apps → Create new app**.
-   - **App name:** `DeskcommCRM Dev`.
+   - **App name:** `M Auto Dev`.
    - **Redirect URI:** `https://<sua-url-ngrok>.ngrok-free.app/api/v1/integrations/nuvemshop/callback` (o callback da Nuvemshop precisa de URL pública: instale o [ngrok](https://ngrok.com), rode `ngrok http 3000` e use a URL `https://` que ele mostra).
    - **Scopes:** marque tudo relacionado a `read_orders`, `read_customers`, `read_products`, `write_orders` (pra atualizar status).
 3. Após criar, a tela do app mostra:

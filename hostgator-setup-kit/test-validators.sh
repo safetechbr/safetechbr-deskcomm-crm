@@ -2891,7 +2891,7 @@ STUB
 
   # 1. Recusa. O sintoma do defeito era instalar em silêncio; qualquer coisa que
   #    não seja parar aqui é o defeito de volta.
-  if ! grep -q 'Já existe um DeskcommCRM NO AR' <<<"$saida"; then
+  if ! grep -q 'Já existe um M Auto NO AR' <<<"$saida"; then
     printf '  ✗ NÃO recusou a instalação por cima da que está no ar\n'
     printf '     últimas linhas: %s\n' "$(printf '%s' "$saida" | tail -3 | tr '\n' ' ')"; exit 1
   fi
@@ -2932,7 +2932,7 @@ STUB2
   chmod +x "$VPS_RAIZ/bin/docker-inner"
   saida="$(rodar install.sh --yes)"
   chegou_na_deteccao || exit 1
-  if grep -q 'Já existe um DeskcommCRM NO AR' <<<"$saida"; then
+  if grep -q 'Já existe um M Auto NO AR' <<<"$saida"; then
     printf '  ✗ bloqueou a RE-EXECUÇÃO legítima (mesma árvore) — o kit manda rodar de novo\n'; exit 1
   fi
   printf '  ✓ e a re-execução de dentro da própria árvore continua passando\n'

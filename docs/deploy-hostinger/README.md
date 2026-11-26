@@ -1,4 +1,4 @@
-# Como subir o seu DeskcommCRM na Hostinger (passo a passo, sem enrolação)
+# Como subir o seu M Auto na Hostinger (passo a passo, sem enrolação)
 
 Este guia leva você do zero — sem servidor, sem nada — até o seu CRM no ar numa **VPS da
 Hostinger**, com WhatsApp conectado e IA respondendo. **Não precisa saber programar.** Se travar
@@ -16,7 +16,7 @@ em algum passo, o assistente do Claude Code faz por você (veja o [Caminho fáci
 ## Visão geral (o que vamos montar)
 
 ```
-Seu domínio  →  Servidor VPS (Hostinger)  →  DeskcommCRM rodando
+Seu domínio  →  Servidor VPS (Hostinger)  →  M Auto rodando
                         │
                         ├─ o CRM (site + painel)
                         ├─ o WhatsApp (conectado por QR)
@@ -159,7 +159,7 @@ Escolha um dos dois caminhos:
 1. Conecte no servidor por SSH e **abra o Claude Code lá dentro** (na VPS, não no seu PC).
 2. Escreva pra ele exatamente isto:
 
-   > *"Clone https://github.com/melgarafael/DeskcommCRM e me instale o DeskcommCRM nesta VPS
+   > *"Clone https://github.com/melgarafael/DeskcommCRM e me instale o M Auto nesta VPS
    > da Hostinger seguindo o `hostgator-setup-kit/install.sh`. Me pergunte as chaves uma por
    > uma e resolva os erros você mesmo."*
 
@@ -171,8 +171,8 @@ Escolha um dos dois caminhos:
 No servidor, baixe o projeto e rode o instalador:
 
 ```bash
-git clone https://github.com/melgarafael/DeskcommCRM.git
-cd DeskcommCRM
+git clone https://github.com/melgarafael/DeskcommCRM.git m-auto
+cd m-auto
 bash hostgator-setup-kit/install.sh
 ```
 
@@ -237,7 +237,7 @@ Se você pulou a chave da IA na instalação, cadastre em **IA › Credenciais**
 
 ## Deu tudo certo? Cuide do seu CRM
 
-| Quero... | Comando (no servidor, dentro da pasta `DeskcommCRM`) |
+| Quero... | Comando (no servidor, dentro da pasta `m-auto`) |
 |---|---|
 | Atualizar pra versão nova | pela tela: menu → rodapé → **"Nova versão"** · ou `bash hostgator-setup-kit/update.sh` |
 | Ver se está tudo no ar | `bash hostgator-setup-kit/healthcheck.sh` |
@@ -265,5 +265,5 @@ servidor e resolve.
 
 ---
 
-*Guia da edição Hostinger por Thalena Lima. O DeskcommCRM é um projeto open source (MIT) de
+*Guia da edição Hostinger por Thalena Lima. O M Auto é um projeto open source (MIT) de
 [melgarafael/DeskcommCRM](https://github.com/melgarafael/DeskcommCRM).*

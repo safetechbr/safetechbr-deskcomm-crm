@@ -3,11 +3,11 @@
 🇧🇷 Português · [🇺🇸 English](README.en.md) · [🇪🇸 Español](README.es.md)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/deskcomm-logo-dark.svg">
-  <img src="docs/brand/deskcomm-logo.svg" alt="Deskcomm CRM" width="420">
+  <source media="(prefers-color-scheme: dark)" srcset="logo-m-auto/logo-horizontal-branco.svg">
+  <img src="logo-m-auto/logo-horizontal-vermelho.svg" alt="M Auto" width="420">
 </picture>
 
-# 🛠️ DeskcommCRM — o Sistema Operacional de Vendas com IA, open source, pro WhatsApp
+# 🛠️ M Auto — o Sistema Operacional de Vendas com IA, open source, pro WhatsApp
 
 **Agentes de IA que atendem, qualificam e vendem no WhatsApp — dentro de um CRM open source rodando no seu servidor.**
 **Sem mensalidade, sem feature travada, seus dados com você. A alternativa aberta a Kommo, Octadesk e Intercom.**
@@ -35,7 +35,7 @@
 > **[👉 Assinar a VPS Hostinger com o meu link](https://www.hostg.xyz/aff_c?offer_id=6&aff_id=221622&url_id=5038&source=deskcomm)** —
 > plano **KVM 2** (2 vCPU / 8 GB), com datacenter no Brasil.
 >
-> 📘 **[Guia completo: DeskcommCRM na Hostinger, passo a passo](docs/deploy-hostinger/README.md)**
+> 📘 **[Guia completo: M Auto na Hostinger, passo a passo](docs/deploy-hostinger/README.md)**
 >
 > **Ainda não tem servidor?** Rode isto **no seu computador** (macOS, Linux ou WSL). Ele diz
 > qual plano contratar e te devolve o comando certo pro seu caso:
@@ -74,8 +74,8 @@ travamento: é o terminal escondendo a senha. Digite (ou cole) e dê Enter.
 Já dentro da VPS:
 
 ```bash
-git clone https://github.com/melgarafael/DeskcommCRM.git
-cd DeskcommCRM
+git clone https://github.com/melgarafael/DeskcommCRM.git m-auto
+cd m-auto
 bash hostgator-setup-kit/install.sh
 ```
 
@@ -190,7 +190,7 @@ volta no `.env` — sem isso, o próximo restart traria o app quebrado de novo, 
 ### Pelo terminal
 
 ```bash
-cd /caminho/do/DeskcommCRM
+cd /caminho/do/m-auto
 bash hostgator-setup-kit/update.sh
 ```
 
@@ -264,7 +264,7 @@ só quando a instalação tiver um `COMPOSE_PROJECT_NAME` personalizado que não
 
 ## ✨ O que é
 
-**Deskcomm** vem de **Desk** (mesa) + **comm** (comércio): **o comercial de mesa** — toda a operação de vendas do seu negócio numa mesa só, operada por pessoas e agentes de IA juntos.
+**M Auto** reúne a operação de vendas em um sistema, com pessoas e agentes de IA trabalhando juntos.
 
 O projeto nasceu como CRM de e-commerce e a comunidade o levou muito além: hoje roda em **clínicas, imobiliárias, infoprodutos, agências, lojas e prestadores de serviço** — qualquer negócio que vende pelo WhatsApp. O produto acompanhou essa virada e virou um **sistema operacional de vendas**: agentes de IA com RAG por tenant atendem, qualificam, movem leads no funil, disparam automações e sabem a hora de passar pra um humano — com o CRM inteiro exposto via **MCP** pros agentes operarem de verdade. A história completa está em [`VISION.md`](VISION.md).
 
@@ -333,8 +333,8 @@ Detalhes: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 > Esta seção é pra quem vai mexer no código.
 
 ```bash
-git clone https://github.com/melgarafael/DeskcommCRM.git
-cd DeskcommCRM
+git clone https://github.com/melgarafael/DeskcommCRM.git m-auto
+cd m-auto
 
 nvm use                     # Node 22
 npm install -g pnpm && pnpm install
@@ -370,7 +370,7 @@ App: <http://localhost:3000> · Health check: <http://localhost:3000/api/v1/heal
 ## 📁 Estrutura
 
 ```
-DeskcommCRM/
+m-auto/
 ├── app/                    # Next.js App Router
 │   ├── (admin)/            # Rotas super-admin (impersonate, tenants)
 │   ├── (public)/           # Login, recovery
@@ -508,7 +508,7 @@ Pra **vulnerabilidades de segurança**, **NÃO abra issue pública** — use o [
 
 ### 🔮 Próximo
 
-- **MCP público** — capabilities do CRM expostas pro ecossistema de agentes: plugue o agente que quiser e ele opera o Deskcomm.
+- **MCP público** — capabilities do CRM expostas pro ecossistema de agentes: plugue o agente que quiser e ele opera o M Auto.
 - **Templates por nicho** — pipelines e vocabulários prontos pra clínica, imobiliária, infoproduto e serviços (e-commerce já entregue).
 - **Integrações** — VTEX e Shopify via adapter pattern (Nuvemshop já entregue).
 - **Identity probabilística** — unificação de contatos entre canais.

@@ -3,11 +3,11 @@
 [🇧🇷 Português](README.md) · [🇺🇸 English](README.en.md) · 🇪🇸 Español
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/deskcomm-logo-dark.svg">
-  <img src="docs/brand/deskcomm-logo.svg" alt="Deskcomm CRM" width="420">
+  <source media="(prefers-color-scheme: dark)" srcset="logo-m-auto/logo-horizontal-branco.svg">
+  <img src="logo-m-auto/logo-horizontal-vermelho.svg" alt="M Auto" width="420">
 </picture>
 
-# 🛠️ DeskcommCRM — el Sistema Operativo de Ventas con IA, open source, para WhatsApp
+# 🛠️ M Auto — el Sistema Operativo de Ventas con IA, open source, para WhatsApp
 
 **Agentes de IA que atienden, califican y venden en WhatsApp — dentro de un CRM open source que corre en tu propio servidor.**
 **Sin mensualidad, sin funciones bloqueadas, tus datos siguen siendo tuyos. La alternativa abierta a Kommo, Octadesk e Intercom.**
@@ -35,7 +35,7 @@
 > **[👉 Contratar el VPS de Hostinger con mi enlace](https://www.hostg.xyz/aff_c?offer_id=6&aff_id=221622&url_id=5038&source=deskcomm)** —
 > plan **KVM 2** (2 vCPU / 8 GB), con datacenter en Brasil.
 >
-> 📘 **[Guía completa (en portugués): DeskcommCRM en Hostinger, paso a paso](docs/deploy-hostinger/README.md)**
+> 📘 **[Guía completa (en portugués): M Auto en Hostinger, paso a paso](docs/deploy-hostinger/README.md)**
 >
 > **¿Todavía no tienes servidor?** Ejecuta esto **en tu propia computadora** (macOS, Linux o WSL).
 > Te dice qué plan contratar y te devuelve el comando exacto para tu caso:
@@ -75,8 +75,8 @@ presiona Enter.
 Ya dentro del VPS:
 
 ```bash
-git clone https://github.com/melgarafael/DeskcommCRM.git
-cd DeskcommCRM
+git clone https://github.com/melgarafael/DeskcommCRM.git m-auto
+cd m-auto
 bash hostgator-setup-kit/install.sh
 ```
 
@@ -134,7 +134,7 @@ onboarding, escanea el código QR con el WhatsApp de tu número.
 ### 🤖 ¿Prefieres que una IA lo instale por ti?
 
 Suelta la carpeta `hostgator-setup-kit/` en el chat de **Claude Code** corriendo dentro del VPS
-y dile *"instálame el DeskcommCRM"*. Lee el [`CLAUDE.md`](hostgator-setup-kit/CLAUDE.md) del kit
+y dile *"instálame el M Auto"*. Lee el [`CLAUDE.md`](hostgator-setup-kit/CLAUDE.md) del kit
 — que trae el paso a paso y las trampas ya mapeadas — y conduce todo.
 
 ---
@@ -161,7 +161,7 @@ vuelta en el `.env` — sin eso, el siguiente reinicio traería la app rota de n
 ### Desde la terminal
 
 ```bash
-cd /ruta/al/DeskcommCRM
+cd /ruta/al/m-auto
 bash hostgator-setup-kit/update.sh
 ```
 
@@ -212,7 +212,7 @@ base de datos en uso: solo restaura en una base de datos vacía (ver [`hostgator
 
 ## ✨ Qué es
 
-**Deskcomm** viene de **Desk** (escritorio) + **comm** (comercio): toda la operación de ventas de tu negocio en un solo escritorio, operada por personas y agentes de IA trabajando juntos.
+**M Auto** reúne la operación de ventas en un solo sistema, con personas y agentes de IA trabajando juntos.
 
 El proyecto nació como CRM de e-commerce y la comunidad lo llevó mucho más lejos: hoy corre en **clínicas, inmobiliarias, infoproductos, agencias, tiendas y prestadores de servicios** — cualquier negocio que venda por WhatsApp. El producto acompañó ese giro y se convirtió en un **sistema operativo de ventas**: agentes de IA con RAG por tenant atienden, califican, mueven leads en el embudo, disparan automatizaciones y saben cuándo pasarle la conversación a una persona — con todo el CRM expuesto vía **MCP** para que los agentes lo operen de verdad. La historia completa está en [`VISION.md`](VISION.md).
 
@@ -281,8 +281,8 @@ Detalles: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 > Esta sección es para quien va a tocar el código.
 
 ```bash
-git clone https://github.com/melgarafael/DeskcommCRM.git
-cd DeskcommCRM
+git clone https://github.com/melgarafael/DeskcommCRM.git m-auto
+cd m-auto
 
 nvm use                     # Node 22
 npm install -g pnpm && pnpm install
@@ -417,7 +417,7 @@ Para **vulnerabilidades de seguridad**, **NO abras un issue público** — usa e
 
 ### 🔮 Próximo
 
-- **MCP público** — capacidades del CRM expuestas al ecosistema de agentes: enchufa el agente que quieras y opera el Deskcomm.
+- **MCP público** — capacidades del CRM expuestas al ecosistema de agentes: enchufa el agente que quieras y opera el M Auto.
 - **Plantillas por nicho** — embudos y vocabularios listos para clínicas, inmobiliarias, infoproductos y servicios (e-commerce ya entregado).
 - **Integraciones** — VTEX y Shopify vía adapter pattern (Nuvemshop ya entregado).
 - **Identidad probabilística** — unificación de contactos entre canales.
