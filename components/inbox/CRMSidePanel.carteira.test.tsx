@@ -255,7 +255,7 @@ describe("#3026 — definir a carteira pela MESMA porta da ficha", () => {
     cenario.papel = "viewer";
     montar();
 
-    await screen.findByTestId("inbox-demandas");
+    await screen.findByTestId("estoque-da-conversa");
     expect(screen.queryByTestId("inbox-bloco-carteira")).toBeNull();
     expect(screen.queryByTestId("carteira-do-contato")).toBeNull();
     // Nada é pedido ao servidor: o bloco não oferece o que levaria 403.

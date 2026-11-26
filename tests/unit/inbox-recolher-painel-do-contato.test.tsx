@@ -239,7 +239,7 @@ describe("Inbox — recolher o painel do contato (#3004)", () => {
 
   it("aberto: o painel desenha o conteúdo e o controle no alto", async () => {
     montar();
-    await screen.findByTestId("inbox-demandas");
+    await screen.findByTestId("estoque-da-conversa");
     expect(screen.queryByTestId("inbox-painel-recolhido")).toBeNull();
     expect(grade().className).toContain(trilhaDaFicha);
     expect(grade().className).not.toContain(trilhaDoTrilho);
@@ -250,12 +250,12 @@ describe("Inbox — recolher o painel do contato (#3004)", () => {
   it("clicar recolhe o painel inteiro: só o trilho fica, e a conversa ganha a largura", async () => {
     const user = userEvent.setup();
     montar();
-    await screen.findByTestId("inbox-demandas");
+    await screen.findByTestId("estoque-da-conversa");
 
     await user.click(botaoRecolher());
 
     // O conteúdo do painel sumiu — não é uma seção interna, é o painel todo.
-    expect(screen.queryByTestId("inbox-demandas")).toBeNull();
+    expect(screen.queryByTestId("estoque-da-conversa")).toBeNull();
     expect(screen.queryByText("Leads recentes")).toBeNull();
     // E ficou o trilho, com a porta de volta.
     expect(screen.getByTestId("inbox-painel-recolhido")).toBeInTheDocument();
@@ -271,7 +271,7 @@ describe("Inbox — recolher o painel do contato (#3004)", () => {
   it("clicar de novo traz o painel de volta, com a ficha na largura de antes", async () => {
     const user = userEvent.setup();
     montar();
-    await screen.findByTestId("inbox-demandas");
+    await screen.findByTestId("estoque-da-conversa");
 
     await user.click(botaoRecolher());
     await waitFor(() => expect(screen.getByTestId("inbox-painel-recolhido")).toBeInTheDocument());
@@ -280,7 +280,7 @@ describe("Inbox — recolher o painel do contato (#3004)", () => {
 
     // O painel inteiro volta.
     expect(screen.queryByTestId("inbox-painel-recolhido")).toBeNull();
-    expect(await screen.findByTestId("inbox-demandas")).toBeInTheDocument();
+    expect(await screen.findByTestId("estoque-da-conversa")).toBeInTheDocument();
     await waitFor(() => expect(grade().className).toContain(trilhaDaFicha));
     expect(grade().className).not.toContain(trilhaDoTrilho);
     // Segundo clique: grava o estado ATUAL já recolhido.
@@ -293,7 +293,7 @@ describe("Inbox — recolher o painel do contato (#3004)", () => {
     // depois da hidratação.
     montar(true);
     expect(await screen.findByTestId("inbox-painel-recolhido")).toBeInTheDocument();
-    expect(screen.queryByTestId("inbox-demandas")).toBeNull();
+    expect(screen.queryByTestId("estoque-da-conversa")).toBeNull();
     expect(grade().className).toContain(trilhaDoTrilho);
     // Nada foi gravado só por abrir a tela.
     expect(togglePainelDoContato).not.toHaveBeenCalled();
@@ -302,7 +302,7 @@ describe("Inbox — recolher o painel do contato (#3004)", () => {
   it("a divisória da ficha some quando não há ficha para ajustar", async () => {
     const user = userEvent.setup();
     montar();
-    await screen.findByTestId("inbox-demandas");
+    await screen.findByTestId("estoque-da-conversa");
     // Duas alças abertas (lista + ficha).
     expect(screen.getAllByRole("separator")).toHaveLength(2);
 

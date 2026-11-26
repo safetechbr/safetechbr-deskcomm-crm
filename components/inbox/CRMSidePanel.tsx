@@ -25,14 +25,12 @@ import { format } from "date-fns";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Tag, Users, ArrowRight, CaretDoubleLeft, CaretDoubleRight, CaretDown, CaretRight } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
 import { soChavesAlteradas } from "@/lib/leads/custom-fields-so-diff";
-import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
 import { FollowupDoContato } from "./FollowupDoContato";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
@@ -50,7 +48,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { PROXIMO_PASSO_DA_MENSAGEM_NOVA } from "@/lib/atendimento/proximo-passo-padrao";
 import { rotuloParaAEquipe } from "@/lib/contacts/rotulo-do-contato";
 import { phoneForDisplay } from "@/lib/channels/phone-variants";
 
@@ -1204,116 +1201,6 @@ export function CRMSidePanel({
       )}
 
       <Separator />
-
-      {!readonly && (
-        <ConversationTagsEditor
-          conversationId={conversation.id}
-          orgId={conversation.organization_id}
-          tags={conversation.tags ?? []}
-        />
-      )}
-
-      <Separator />
-
-      {/* ANTES dos negócios de propósito (doutrina cap. 5): lead é o negócio,
-          conversa é o canal, demanda é o que precisa acabar. Quem abre esta
-          conversa está atendendo alguém que pediu alguma coisa — a primeira
-          pergunta a responder é o que ainda está pendente, não quanto vale. */}
-      <section data-testid="inbox-demandas">
-        <h3 className="text-xs font-semibold text-text">{t("Demandas abertas")}</h3>
-        {sectionsLoading ? (
-          <Skeleton className="mt-2 h-14 w-full" />
-        ) : demandas && demandas.length > 0 ? (
-          <ul className="mt-2 space-y-1.5">
-            {demandas.map((d) => {
-              const semPasso = !d.proximo_passo;
-              return (
-                <li
-                  key={d.id}
-                  data-testid={semPasso ? "demanda-sem-proximo-passo" : "demanda-com-proximo-passo"}
-                  className={cn(
-                    "rounded-md border p-2 text-xs",
-                    semPasso ? "border-warning-border bg-warning-bg/40" : "border-border",
-                  )}
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate font-medium">
-                      {t(ESTADO_LEGIVEL[d.estado] ?? d.estado)}
-                    </span>
-                    <span className="shrink-0 text-muted-foreground tabular-nums">
-                      {t("há {tempo}").replace("{tempo}", `${horasDesde(d.aberta_em)}h`)}
-                    </span>
-                  </div>
-                  {/* O invariante 4 na frase, não só na cor: quem enxerga mal
-                      cor precisa ler a mesma informação. */}
-                  <div className={cn("mt-0.5", semPasso ? "font-medium" : "text-muted-foreground")}>
-                    {d.proximo_passo === PROXIMO_PASSO_DA_MENSAGEM_NOVA
-                      ? t("Responder à nova mensagem do cliente")
-                      : (d.proximo_passo ?? t("Sem próximo passo definido"))}
-                  </div>
-                  {/* A SAÍDA. Sem ela esta seção só denunciava: o atendente via o
-                      vazamento e tinha de sair da tela para resolver — peça que
-                      só recebe é ilha pelo invariante 1, e foi o gate dos mapas
-                      de arquitetura que apontou isso. */}
-                  {d.id === conversation.current_demanda_id && (
-                    <Badge variant="outline">{t("Demanda vigente neste canal")}</Badge>
-                  )}
-                  {!readonly && (
-                    <EncerrarDemanda
-                      draft={
-                        desfechoDraft?.conversationId === conversation.id &&
-                        desfechoDraft.contactId === contactId &&
-                        desfechoDraft.demandaId === d.id
-                          ? desfechoDraft
-                          : null
-                      }
-                      onAbrir={() => {
-                        if (contactId)
-                          setDesfechoDraft({
-                            conversationId: conversation.id,
-                            contactId,
-                            demandaId: d.id,
-                            revision: d.revision,
-                            desfecho: "resolvida",
-                            salvando: false,
-                          });
-                      }}
-                      onAlterar={(patch) =>
-                        setDesfechoDraft((current) =>
-                          current?.conversationId === conversation.id &&
-                          current.contactId === contactId &&
-                          current.demandaId === d.id
-                            ? { ...current, ...patch }
-                            : current,
-                        )
-                      }
-                      onFechar={() =>
-                        setDesfechoDraft((current) =>
-                          current?.conversationId === conversation.id &&
-                          current.contactId === contactId &&
-                          current.demandaId === d.id
-                            ? null
-                            : current,
-                        )
-                      }
-                      onPronto={recarregar}
-                    />
-                  )}
-                  {semPasso && !readonly ? (
-                    <MarcarProximoPasso demandaId={d.id} onPronto={recarregar} />
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <SemLista
-            vazio="Nenhuma demanda aberta."
-            erro={erro}
-            onTentarDeNovo={() => setTentativa((n) => n + 1)}
-          />
-        )}
-      </section>
 
       {/* O FOLLOW-UP NA CONVERSA (#3178): qual fluxo está rodando neste contato,
           a porta para iniciar um e parar o que está de pé — sem sair do painel.
