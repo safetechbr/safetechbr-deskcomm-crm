@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { CRMSidePanel } from "@/components/inbox/CRMSidePanel";
@@ -55,6 +56,8 @@ describe("painel do inbox — o botão de tags diz de quem é a tag", () => {
       </QueryClientProvider>,
     );
 
+    // A seção do contato abre recolhida; o botão mora dentro dela.
+    await userEvent.click(await screen.findByRole("button", { name: "Contato" }));
     expect(await screen.findByRole("button", { name: "Tags do contato" })).toBeTruthy();
     // Guarda contra a volta do rótulo ambíguo: "Tag" exato, não o prefixo.
     expect(screen.queryByRole("button", { name: "Tag" })).toBeNull();

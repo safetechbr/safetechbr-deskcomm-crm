@@ -59,6 +59,6 @@ describe("filtro por atendente — as setas de aba", () => {
     const onChange = vi.fn();
     render(<InboxFilters value={{ ...COM_ATENDENTE, tab: "all" }} onChange={onChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Próxima aba" }));
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ tab: "closed", assigned_to: ATENDENTE }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ tab: "archived", assigned_to: ATENDENTE }));
   });
 });

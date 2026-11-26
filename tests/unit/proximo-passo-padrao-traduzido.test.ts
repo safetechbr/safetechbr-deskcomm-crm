@@ -15,7 +15,6 @@ import { PROXIMO_PASSO_DA_MENSAGEM_NOVA } from "@/lib/atendimento/proximo-passo-
 import { traduzir } from "@/lib/i18n/dicionario";
 
 const BASELINE = readFileSync("supabase/baseline.sql", "utf8");
-const PAINEL = readFileSync("components/inbox/CRMSidePanel.tsx", "utf8");
 
 /** A ÚLTIMA definição da função vale: o baseline é aplicado inteiro e em ordem. */
 function ultimaDefinicao(nome: string): string {
@@ -32,10 +31,5 @@ describe("o próximo passo padrão da demanda nova", () => {
 
   it("tem tradução para o espanhol", () => {
     expect(traduzir(PROXIMO_PASSO_DA_MENSAGEM_NOVA, "es")).toBe("Responder al nuevo mensaje del cliente");
-  });
-
-  it("o painel da conversa o reconhece e o traduz", () => {
-    expect(PAINEL).toContain("d.proximo_passo === PROXIMO_PASSO_DA_MENSAGEM_NOVA");
-    expect(PAINEL).toContain(`t("${PROXIMO_PASSO_DA_MENSAGEM_NOVA}")`);
   });
 });

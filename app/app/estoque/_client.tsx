@@ -645,7 +645,7 @@ function FormularioDoVeiculo({
                       aoDigitarModelo(m);
                       setListaModelosAberta(false);
                     }}
-                    className={`cursor-pointer rounded px-2 py-1.5 ${i === destaqueModelo ? "bg-accent" : "hover:bg-accent"}`}
+                    className={`cursor-pointer rounded-md px-2 py-1.5 ${i === destaqueModelo ? "bg-accent" : "hover:bg-accent"}`}
                   >
                     {m}
                   </li>

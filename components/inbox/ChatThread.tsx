@@ -306,7 +306,7 @@ export function ChatThread({
             <CaretUp aria-hidden className="size-4" />
           </Button>
           <Button size="icon" variant="ghost" className="size-7" aria-label={t("Próximo resultado")}
-            disabled={atual >= ordem.length - 1} onClick={() => irPara(atual + 1)}>
+            onClick={() => irPara(atual + 1)} disabled={atual >= ordem.length - 1}>
             <CaretDown aria-hidden className="size-4" />
           </Button>
         </div>

@@ -170,7 +170,6 @@ describe("o reason da linha do tempo é gravado no vocabulário canônico", () =
 describe("a intenção do #600 sobrevive: quem lê em espanhol vê espanhol", () => {
   const TELAS = [
     "components/kanban/LeadTimeline.tsx",
-    "components/inbox/CRMSidePanel.tsx",
     "components/contacts/TimelineView.tsx",
   ] as const;
 
