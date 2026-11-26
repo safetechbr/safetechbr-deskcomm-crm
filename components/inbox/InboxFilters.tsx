@@ -6,7 +6,6 @@ import {
   CaretLeft,
   CaretRight,
   ChatCircle,
-  CheckCircle,
   EnvelopeSimple,
   Funnel,
   MagnifyingGlass,
@@ -69,10 +68,8 @@ const INBOX_TABS: { value: InboxTab; label: string; icone?: typeof ChatCircle }[
   { value: "unassigned", label: "Fila" },
   { value: "mine", label: "Minhas" },
   { value: "all", label: "Todas", icone: ChatCircle },
-  { value: "closed", label: "Fechadas", icone: CheckCircle },
-  // "Arquivadas" fica ao lado de "Fechadas" porque as duas são passado — e
-  // separada dela porque são passados diferentes (#923): fechada é atendimento
-  // encerrado, arquivada é o que saiu da fila de trabalho sem ser destruído.
+  // "Fechadas" saiu da faixa a pedido do produto: o `?filter=closed` segue
+  // funcionando por link, só não tem mais botão. "Arquivadas" guarda o passado.
   { value: "archived", label: "Arquivadas", icone: Archive },
 ];
 

@@ -174,6 +174,7 @@ async function book(page: Page, f: Fixture) {
   await inbound(f, "Quero marcar minha reunião");
   await login(page, f);
   await page.goto(`/app/inbox/${f.conversation}`);
+  await page.getByRole("button", { name: "Contato", exact: true }).click();
   await page.getByRole("link", { name: "Marcar compromisso", exact: true }).click();
   await expect(page.getByTestId("painel-de-marcacao")).toBeVisible();
   await expect(page.getByTestId("quem-sera-atendido")).toHaveAttribute("data-contact-id", f.contact);

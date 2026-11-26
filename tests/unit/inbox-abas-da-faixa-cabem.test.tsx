@@ -123,14 +123,14 @@ describe("faixa da Inbox — quebra em vez de esconder aba (#2745)", () => {
     ).toContain("gap-x-1");
   });
 
-  it("as SEIS abas estão na faixa, com os rótulos inteiros", () => {
+  it("as CINCO abas estão na faixa, com os rótulos inteiros", () => {
     render(<InboxFilters value={VALUE} onChange={() => {}} />);
     // Guarda de vacuidade do caso acima e defesa do outro lado do defeito:
     // a saída fácil para \"não cabe\" é encurtar rótulo ou tirar aba, e aí a
     // catraca de classe continua verde com a tela errada.
     const abas = screen.getAllByRole("tab");
-    expect(abas).toHaveLength(6);
-    for (const rotulo of ["Automático", "Fila", "Minhas", "Todas", "Fechadas", "Arquivadas"]) {
+    expect(abas).toHaveLength(5);
+    for (const rotulo of ["Automático", "Fila", "Minhas", "Todas", "Arquivadas"]) {
       expect(
         screen.getByRole("tab", { name: new RegExp(rotulo) }),
         `a aba "${rotulo}" não está na faixa`,
@@ -156,7 +156,6 @@ describe("faixa da Inbox — quebra em vez de esconder aba (#2745)", () => {
       "unassigned",
       "mine",
       "all",
-      "closed",
       "archived",
     ]);
     expect(screen.getAllByRole("tab").map((a) => a.textContent?.replace(/\s+/g, ""))).toEqual([
@@ -164,7 +163,6 @@ describe("faixa da Inbox — quebra em vez de esconder aba (#2745)", () => {
       "Fila47",
       "Minhas8",
       "Todas130",
-      "Fechadas25",
       "Arquivadas9",
     ]);
   });

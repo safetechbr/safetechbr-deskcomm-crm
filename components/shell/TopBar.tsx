@@ -6,9 +6,10 @@ import { TenantSwitcher } from "./TenantSwitcher";
 import { UserMenu } from "./UserMenu";
 import { SearchTrigger } from "./SearchTrigger";
 
-export function TopBar() {
+export function TopBar({ oculta = false }: { oculta?: boolean }) {
+  // Ocultar o cabeçalho mantém o atalho da busca e os avisos em portal.
   return (
-    <header className="app-topbar sticky top-[var(--faixas-de-cima,0px)] z-20 flex h-16 items-center justify-between gap-2 bg-background/80 px-3 backdrop-blur-md backdrop-saturate-150 md:gap-4 md:px-6">
+    <header className="app-topbar sticky top-[var(--faixas-de-cima,0px)] z-20 flex h-16 items-center justify-between gap-2 bg-background/80 px-3 backdrop-blur-md backdrop-saturate-150 md:gap-4 md:px-6" hidden={oculta}>
       <div className="flex min-w-0 items-center gap-2">
         <MobileSidebar />
         <TenantSwitcher />

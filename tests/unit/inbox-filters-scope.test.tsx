@@ -144,7 +144,7 @@ describe("InboxFilters render — 3 visões + escopo", () => {
       expect(screen.getByRole("button", { name: "Aba anterior" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Próxima aba" })).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "Próxima aba" }));
-      expect(onChange).toHaveBeenCalledWith({ ...VALUE, tab: "closed" });
+      expect(onChange).toHaveBeenCalledWith({ ...VALUE, tab: "archived" });
 
       width = 260;
       act(() => onResize([], {} as ResizeObserver));
@@ -199,13 +199,12 @@ describe("InboxFilters — seções da central", () => {
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Fila3", "Minhas2"]);
   });
 
-  it("Conversas reúne o histórico geral, automático, fechadas e arquivadas", () => {
+  it("Conversas reúne o histórico geral, automático e arquivadas", () => {
     setOrg("manager", "all");
     render(<InboxFilters value={{ ...VALUE, tab: "all" }} onChange={() => {}} visao="conversas" />);
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "Todas5",
       "Automático",
-      "Fechadas",
       "Arquivadas",
     ]);
   });
@@ -226,11 +225,11 @@ describe("InboxFilters — seções da central", () => {
       "active",
     );
     expect(screen.queryByRole("tab", { name: /^Todas/ })).not.toBeInTheDocument();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Fechadas" }), {
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Arquivadas" }), {
       button: 0,
       ctrlKey: false,
     });
-    expect(onChange).toHaveBeenCalledWith({ ...value, tab: "closed" });
+    expect(onChange).toHaveBeenCalledWith({ ...value, tab: "archived" });
   });
 });
 

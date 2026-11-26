@@ -199,6 +199,7 @@ test("fechar canal preserva demanda, desfecho explícito e nova entrada volta à
     // longo — se ele quebrar a fileira ou sumir, é aqui que aparece. Cabe nesta
     // spec, e não numa nova, porque o painel já está montado neste ponto: spec
     // nova custaria mais um login e mais um seed ao relógio do CI.
+    await page.getByRole("button", { name: "Contato", exact: true }).click();
     await expect(page.getByRole("button", { name: "Novo Lead", exact: true })).toBeVisible();
     // Fechar não é mais `window.confirm()` (bloqueado em iframe, ignora o
     // tema) — é o `AlertDialog` da casa. O botão que abre e o que confirma

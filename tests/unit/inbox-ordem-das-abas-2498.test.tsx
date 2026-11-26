@@ -67,15 +67,14 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("as seis abas, na ordem pedida pela #2498", () => {
-  it("Automático, Fila, Minhas, Todas, Fechadas, Arquivadas — nessa ordem", () => {
+describe("as cinco abas, na ordem pedida pela #2498 (sem Fechadas)", () => {
+  it("Automático, Fila, Minhas, Todas, Arquivadas — nessa ordem", () => {
     render(<InboxFilters value={VALUE} onChange={() => {}} />);
     expect(abasRenderizadas()).toEqual([
       "Automático",
       "Fila",
       "Minhas",
       "Todas",
-      "Fechadas",
       "Arquivadas",
     ]);
   });
@@ -84,10 +83,10 @@ describe("as seis abas, na ordem pedida pela #2498", () => {
     // Pares lidos da FONTE, e não da tela: `value` é o que a rota recebe
     // (`?filter=ai`) e nenhum deles é exposto como atributo no `TabsTrigger`.
     // Um par trocado de rótulo nasceria um filtro que a rota não lê, e um par
-    // a mais nasceria uma aba que ninguém tem contador — por isso os 6, um por
+    // a mais nasceria uma aba que ninguém tem contador — por isso os 5, um por
     // um, na ordem nova.
     const fonte = readFileSync("components/inbox/InboxFilters.tsx", "utf8");
-    const pares = [...fonte.matchAll(/\{\s*value:\s*"(\w+)",\s*label:\s*"([^"]+)"\s*\}/g)].map(
+    const pares = [...fonte.matchAll(/\{\s*value:\s*"(\w+)",\s*label:\s*"([^"]+)"[^}]*\}/g)].map(
       ([, value, label]) => `${value}=${label}`,
     );
     expect(pares).toEqual([
@@ -95,7 +94,6 @@ describe("as seis abas, na ordem pedida pela #2498", () => {
       "unassigned=Fila",
       "mine=Minhas",
       "all=Todas",
-      "closed=Fechadas",
       "archived=Arquivadas",
     ]);
   });
@@ -106,51 +104,48 @@ describe("as seis abas, na ordem pedida pela #2498", () => {
     expect(screen.getByRole("tab", { name: /^Fila/ })).toHaveTextContent("3");
     expect(screen.getByRole("tab", { name: /^Minhas/ })).toHaveTextContent("2");
     expect(screen.getByRole("tab", { name: /^Todas/ })).toHaveTextContent("5");
-    expect(screen.getByRole("tab", { name: /^Fechadas/ })).toHaveTextContent("4");
+    expect(screen.queryByRole("tab", { name: /^Fechadas/ })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^Arquivadas/ })).toHaveTextContent("1");
   });
 });
 
 describe("só a ordem muda — as permissões continuam quem eram", () => {
-  it("manager vê as seis, com 'Todas' no meio", () => {
+  it("manager vê as cinco, com 'Todas' no meio", () => {
     expect(visibleInboxTabs("manager", "all")).toEqual([
       "ai",
       "unassigned",
       "mine",
       "all",
-      "closed",
       "archived",
     ]);
   });
 
-  it("agent em modo own* segue SEM 'Todas' — e com as outras cinco na ordem nova", () => {
+  it("agent em modo own* segue SEM 'Todas' — e com as outras quatro na ordem nova", () => {
     // A regra de visão é filtrar, não reordenar: quem perde 'all' perde só ela,
     // e a ordem que sobra é a mesma que todo mundo vê.
     expect(visibleInboxTabs("agent", "own")).toEqual([
       "ai",
       "unassigned",
       "mine",
-      "closed",
       "archived",
     ]);
   });
 
-  it("agent com visibility 'all' tem as seis, 'Todas' na posição dela", () => {
+  it("agent com visibility 'all' tem as cinco, 'Todas' na posição dela", () => {
     expect(visibleInboxTabs("agent", "all")).toEqual([
       "ai",
       "unassigned",
       "mine",
       "all",
-      "closed",
       "archived",
     ]);
   });
 
-  it("a aba ativa continua podendo ser QUALQUER uma das seis", () => {
+  it("a aba ativa continua podendo ser QUALQUER uma das cinco", () => {
     // A faixa é navegável por seta (`moveTab` anda pelo array): uma ordem nova
     // que embaralhasse os índices devolveria o operador à vizinha errada.
-    render(<InboxFilters value={{ ...VALUE, tab: "closed" }} onChange={() => {}} />);
+    render(<InboxFilters value={{ ...VALUE, tab: "archived" }} onChange={() => {}} />);
     const ativa = screen.getByRole("tab", { selected: true });
-    expect(ativa.textContent ?? "").toMatch(/^Fechadas/);
+    expect(ativa.textContent ?? "").toMatch(/^Arquivadas/);
   });
 });
