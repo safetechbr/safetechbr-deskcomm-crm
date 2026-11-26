@@ -2,10 +2,8 @@
 
 import { CartaoDaCarteira } from "@/components/contacts/CartaoDaCarteira";
 import { RoteirosDoContato } from "@/components/contacts/RoteirosDoContato";
-import { AcervoSearch } from "./AcervoSearch";
 import { AcoesDaConversa } from "./AcoesDaConversa";
 import { EstoqueDaConversa } from "./EstoqueDaConversa";
-import { LeadEnrichment } from "./LeadEnrichment";
 import {
   AnuncioDoContato,
   type AnuncioDeOrigem,
@@ -25,20 +23,17 @@ import { useT } from "@/hooks/i18n/useT";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ChipDeEtiqueta } from "@/components/tags/ChipDeEtiqueta";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Tag, Receipt, Users, ArrowRight, CaretDoubleLeft, CaretDoubleRight, CaretDown, CaretRight } from "@/lib/ui/icons";
+import { Tag, Users, ArrowRight, CaretDoubleLeft, CaretDoubleRight, CaretDown, CaretRight } from "@/lib/ui/icons";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
 import type { ConversationWithContact } from "@/hooks/inbox/useConversationsRealtime";
-import { activityLabel, actorLabel, actorShape } from "@/lib/leads/activity-vocabulary";
 import { soChavesAlteradas } from "@/lib/leads/custom-fields-so-diff";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
-import { TarefasDaDemanda } from "./TarefasDaDemanda";
 import { FollowupDoContato } from "./FollowupDoContato";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
 import { LoseLeadDialog } from "@/components/kanban/LoseLeadDialog";
@@ -1191,16 +1186,6 @@ export function CRMSidePanel({
         />
       )}
 
-      <LeadEnrichment
-        data={
-          summaryContactId === contactId && !erro && !contact?.is_anonymized ? enrichment : null
-        }
-        loading={sectionsLoading}
-        error={erro || (summaryContactId === contactId && enrichmentError)}
-        onRetry={recarregar}
-        sobrescritaVocabulario={personalizacao?.vocabulario ?? null}
-      />
-
       {contactId && defaultPipeline.data && (
         <NewLeadDialog
           open={leadDialogOpen}
@@ -1330,25 +1315,6 @@ export function CRMSidePanel({
         )}
       </section>
 
-      {/* A TAREFA DO ATENDIMENTO (#2818): o combinado que o atendente faz no
-          meio da conversa deixa de morrer em nota de texto e ganha prazo,
-          responsável e situação — sem sair da tela. Fica logo DEPOIS da
-          demanda porque é dela que a tarefa pende: a seção só se desenha com
-          demanda vigente no canal — e traz o PRÓPRIO divisor, que por isso não
-          é escrito aqui (sem demanda, o divisor ficaria órfão e dois traços
-          ficariam em pé seguidos). */}
-      {/* Só a demanda vigente AINDA ABERTA: `current_demanda_id` continua
-          apontando a demanda depois de "Encerrar demanda", e a seção ficaria
-          oferecendo "Nova tarefa" ao lado de "Nenhuma demanda aberta" (#2842).
-          A régua de aberta é a da lista acima (`fechada_em is null`, na rota).
-          ponytail: a lista traz até 5 abertas; vigente fora delas não mostra a seção. */}
-      <TarefasDaDemanda
-        demandaId={demandas?.find((d) => d.id === conversation.current_demanda_id)?.id ?? null}
-        contactId={contactId}
-        leadId={negocioAtivoId}
-        podeEditar={podeCriarTarefa}
-      />
-
       {/* O FOLLOW-UP NA CONVERSA (#3178): qual fluxo está rodando neste contato,
           a porta para iniciar um e parar o que está de pé — sem sair do painel.
           Fica ao lado da demanda porque é dela que o follow-up é o outro lado:
@@ -1370,66 +1336,11 @@ export function CRMSidePanel({
 
       <Separator />
 
-      <section data-testid="inbox-memoria">
-        <h3 className="text-xs font-semibold">{t("Memória do contato")}</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("Fatos duráveis registrados nas notas. Pendências pertencem à demanda vigente.")}
-        </p>
-        {!sectionsLoading &&
-          fatos.map((f) => (
-            <details key={f.id} className="mt-2 text-xs">
-              <summary className="wrap-anywhere">{f.headline}</summary>
-              <p className="mt-1 wrap-anywhere whitespace-pre-wrap">{f.body}</p>
-            </details>
-          ))}
-        {!sectionsLoading && fatos.length === 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {t("Nenhum fato durável registrado.")}
-          </p>
-        )}
-        {!sectionsLoading && historico.length > 0 && (
-          <div className="mt-3 text-xs">
-            <h4>{t("Histórico encerrado — sem tarefas pendentes")}</h4>
-            {historico.map((h) => (
-              <p key={h.id}>
-                {t(DESFECHO_LEGIVEL[h.desfecho] ?? h.desfecho)}
-                {h.fechada_em ? ` · ${shortDate(h.fechada_em, localeDaData)}` : ""}
-              </p>
-            ))}
-          </div>
-        )}
-      </section>
-      <Separator />
-
       {/* O que os roteiros de atendimento coletaram (módulo opcional; desligado
           ou sem roteiro, não desenha nada). */}
       {contactId && !contact?.is_anonymized && (
         <RoteirosDoContato contactId={contactId} variante="painel" />
       )}
-
-      <section data-testid="inbox-campos-lead">
-        <h3 className="text-xs font-semibold text-text">{t("Leads recentes")}</h3>
-        {sectionsLoading ? (
-          <Skeleton className="mt-2 h-14 w-full" />
-        ) : leads && leads.length > 0 ? (
-          <fieldset disabled={readonly}>
-            <InboxLeadEditor
-              leads={leads}
-              selecionadoId={leadAtivoId}
-              onSelecionar={setLeadAtivoId}
-              onSalvo={recarregar}
-              podeLevarParaOutroFunil={podeLevarParaOutroFunil}
-              onTrocouDeNegocio={aoTrocarDeNegocio}
-            />
-          </fieldset>
-        ) : (
-          <SemLista
-            vazio="Sem leads."
-            erro={erro}
-            onTentarDeNovo={() => setTentativa((n) => n + 1)}
-          />
-        )}
-      </section>
 
       {/* AS ÚLTIMAS COMPRAS (issue #3179): o que este cliente JÁ comprou — negócios
           ganhos em TODOS os funis, com data, título, valor, os campos escolhidos
@@ -1437,101 +1348,6 @@ export function CRMSidePanel({
           a pergunta mais comum do atendimento ("para onde esse cliente já foi?"),
           e ela não tinha resposta no painel onde a equipe atende. */}
       {contactId && !contact?.is_anonymized && <UltimasComprasDoContato contactId={contactId} />}
-
-      <Separator />
-
-      <section>
-        <h3 className="text-xs font-semibold text-text">{t("Pedidos recentes")}</h3>
-        {sectionsLoading ? (
-          <Skeleton className="mt-2 h-14 w-full" />
-        ) : orders && orders.length > 0 ? (
-          <ul className="mt-2 space-y-1.5">
-            {orders.map((o) => (
-              <li
-                key={o.id}
-                className="flex items-center justify-between rounded-md border border-border p-2 text-xs"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1 truncate font-medium">
-                    <Receipt size={11} weight="regular" aria-hidden />
-                    {o.external_id ?? o.id.slice(0, 8)}
-                  </div>
-                  <div className="text-muted-foreground">
-                    {o.status ?? "—"} · {formatMoney(o.total_cents, o.currency)}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <SemLista
-            vazio="Sem pedidos."
-            erro={erro}
-            onTentarDeNovo={() => setTentativa((n) => n + 1)}
-          />
-        )}
-      </section>
-
-      <Separator />
-
-      <section>
-        <h3 className="text-xs font-semibold text-text">{t("Atividade")}</h3>
-        {sectionsLoading ? (
-          <Skeleton className="mt-2 h-14 w-full" />
-        ) : activities && activities.length > 0 ? (
-          <ul className="mt-2 space-y-1.5">
-            {activities.map((a) => (
-              <li key={a.id} className="rounded-md border border-border p-2 text-xs">
-                {/* Rótulo do vocabulário único (activity-vocabulary), nunca o
-                    tipo cru: a tela e o banco divergiram justamente por manter
-                    duas listas. Marcador por ator, forma e não cor (§5). */}
-                <div className="flex items-center gap-1.5 font-medium">
-                  <span
-                    className={cn(
-                      "h-2 w-2 shrink-0",
-                      actorShape(a.actor_kind) === "filled" && "rounded-full bg-accent",
-                      actorShape(a.actor_kind) === "ring" &&
-                        "rounded-full border border-accent bg-surface",
-                      actorShape(a.actor_kind) === "dashed" &&
-                        "rounded-full border border-dashed border-border-strong",
-                    )}
-                    aria-hidden
-                  />
-                  {t(activityLabel(a.type))}
-                </div>
-                {a.reason && (
-                  <div className="mt-0.5 truncate text-muted-foreground">{t(a.reason)}</div>
-                )}
-                <div className="text-muted-foreground">
-                  {a.performed_by_name ?? t(actorLabel(a.actor_kind))} ·{" "}
-                  {shortDate(a.performed_at, localeDaData)}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <SemLista
-            vazio="Sem atividade."
-            erro={erro}
-            onTentarDeNovo={() => setTentativa((n) => n + 1)}
-          />
-        )}
-      </section>
-
-      <Separator />
-
-      {/* Perguntar ao acervo — a MESMA busca que a IA faz, com a origem de cada
-          trecho. Não é busca própria: o componente só pergunta e mostra, e quem
-          decide limiar/top-K é a rota, que chama `buscarConhecimento`. Colocada
-          DEPOIS das seções de trabalho: é consulta, não é o que o atendente abre
-          a conversa para fazer. */}
-      <section>
-        <h3 className="text-xs font-semibold">{t("Acervo")}</h3>
-        <p className="mt-1 mb-2 text-xs text-muted-foreground">
-          {t("Pergunte como a IA perguntaria — a resposta vem com a origem de cada trecho.")}
-        </p>
-        <AcervoSearch />
-      </section>
     </aside>
   );
 }

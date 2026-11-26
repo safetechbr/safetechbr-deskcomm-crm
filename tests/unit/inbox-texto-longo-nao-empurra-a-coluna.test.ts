@@ -89,28 +89,6 @@ describe("inbox — texto longo não empurra a coluna (#1802)", () => {
     ).toEqual([]);
   });
 
-  it("régua 2: o fato da Memória do contato quebra em qualquer ponto, e não volta break-words", () => {
-    const fonte = ler(PAINEL);
-    const linhas = fonte.split("\n");
-    const i = linhas.findIndex((l) => l.includes("f.headline"));
-    expect(i, `não achei o bloco de fatos em ${PAINEL}`).toBeGreaterThanOrEqual(0);
-    // O formatador pode pôr o <summary> e o <p> em linhas vizinhas.
-    const linha = linhas.slice(i, i + 3).join("\n");
-
-    const summary = linha!.match(/<summary[^>]*>/)?.[0] ?? "";
-    expect(summary, `o <summary> do fato precisa de wrap-anywhere: ${summary}`).toContain(
-      "wrap-anywhere",
-    );
-
-    const paragrafo = linha!.match(/<p[^>]*>/)?.[0] ?? "";
-    expect(paragrafo, `o <p> do fato precisa de wrap-anywhere: ${paragrafo}`).toContain(
-      "wrap-anywhere",
-    );
-    // Mesma armadilha do 8e6220a: as duas regras com a mesma especificidade e
-    // o break-word vencendo a quebra forçada.
-    expect(paragrafo).not.toContain("break-words");
-  });
-
   it("régua 3: as colunas que podem vazar para a página têm min-w-0", () => {
     const fonte = ler(LAYOUT);
 

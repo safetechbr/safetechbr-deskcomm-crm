@@ -340,7 +340,7 @@ describe("painel do Inbox", () => {
       return Promise.resolve({ data: RESUMO });
     });
     comProvider(<CRMSidePanel conversation={conversa} />);
-    await waitFor(() => expect(screen.getByTestId("inbox-campos-lead")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("inbox-demandas")).toBeTruthy());
     expect(screen.queryByTestId("ultimas-compras")).toBeNull();
   });
 });

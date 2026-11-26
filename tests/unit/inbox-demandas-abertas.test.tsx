@@ -225,17 +225,6 @@ describe("painel do inbox — demandas abertas", () => {
     expect(campo.value).toBe("Ligar amanhã");
   });
 
-  it("a demanda vem ANTES do negócio — a unidade é ela (cap. 5)", async () => {
-    get.mockResolvedValue({ data: RESPOSTA });
-    renderPainel();
-
-    const secao = await screen.findByTestId("inbox-demandas");
-    const leads = screen.getByText("Leads recentes");
-    // `compareDocumentPosition` mede a ordem no documento, não a aparência —
-    // medida por ferramenta, nunca a olho.
-    const posicao = secao.compareDocumentPosition(leads);
-    expect(posicao & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
 });
 
 vi.mock("@/components/inbox/AcoesDaConversa", () => ({ AcoesDaConversa: () => null }));
@@ -279,18 +268,4 @@ describe("desfecho — rascunho atravessa somente lacuna transitória do mesmo c
     expect(screen.queryByLabelText("Desfecho da demanda")).toBeNull();
     expect(patch).not.toHaveBeenCalled();
   });
-});
-
-it("mostra enriquecimento do contato e esconde ao trocar para outra conversa", async () => {
-  get.mockResolvedValue({ data: { ...RESPOSTA, enrichment: { name: "Empresa enriquecida", category: "Clínica", address: "Rua Exemplo", website: "https://example.com", maps_url: "javascript:alert(1)", rating: 4.9, reviews: 123, emails: ["comercial@example.com"], socials: ["https://instagram.com/exemplo", "javascript:alert(1)"], collected_at: "2026-09-16T12:00:00Z" } } });
-  const view = renderPainel();
-  expect(await screen.findByText("Empresa enriquecida")).toBeTruthy();
-  expect(screen.getByRole("link", { name: "example.com" }).getAttribute("href")).toBe("https://example.com/");
-  expect(screen.queryByRole("link", { name: "Ver no Google Maps" })).toBeNull();
-  expect(screen.getByText("comercial@example.com")).toBeTruthy();
-  view.mudarConversa({ ...conversation!, contacts: { ...conversation!.contacts!, is_anonymized: true } });
-  expect(screen.queryByText("Empresa enriquecida")).toBeNull();
-  get.mockImplementation(() => new Promise(() => {}));
-  view.mudarConversa({ ...conversation!, id: "cv-2", contacts: { ...conversation!.contacts!, id: "contact-2" } });
-  expect(screen.queryByText("Empresa enriquecida")).toBeNull();
 });
