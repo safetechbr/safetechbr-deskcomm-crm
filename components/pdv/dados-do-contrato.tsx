@@ -12,6 +12,21 @@ import {
 import { ROTULO_DA_FORMA, type PagamentoDaNegociacao } from "@/lib/pdv/regras";
 import type { BlocosDaOperacao } from "@/lib/pdv/retrato-da-operacao";
 import type { z } from "zod";
+import {
+  CONFERENCIAS,
+  ITENS_DA_VISTORIA,
+  RESULTADOS_DA_CAUTELAR,
+  SITUACOES,
+  SULCO_MINIMO_MM,
+  usaLaudoDeVistoria,
+  type Vistoria,
+} from "@/lib/pdv/laudo-vistoria";
+import {
+  COMBUSTIVEIS,
+  ITENS_DA_ENTREGA,
+  type ItemDaEntrega,
+  type TermoDeEntrega,
+} from "@/lib/pdv/termo-entrega";
 
 const estilo = "mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm";
 /** Asterisco por CSS: fica fora do nome acessível do campo, que já leva `aria-required`. */
@@ -104,6 +119,411 @@ function Escolha<T extends string>({
         ))}
       </select>
     </label>
+  );
+}
+
+const numeroOuNada = (t: string) => (t.trim() === "" ? undefined : Number(t));
+
+/** Termo de entrega (Anexo II da venda), preenchido no ato da entrega. */
+function EditorDoTermoDeEntrega({
+  valor: t,
+  mudar,
+}: {
+  valor: TermoDeEntrega;
+  mudar: (t: TermoDeEntrega) => void;
+}) {
+  const set = (p: Partial<TermoDeEntrega>) => mudar({ ...t, ...p });
+  const fun = t.funcionario ?? {};
+  const ret = t.retirada_por ?? {};
+  const [terceiro, setTerceiro] = useState(Boolean(ret.nome || ret.cpf || ret.cnh));
+  const item = (k: ItemDaEntrega) => t.itens?.[k] ?? {};
+  const setItem = (k: ItemDaEntrega, p: Partial<ReturnType<typeof item>>) =>
+    set({ itens: { ...t.itens, [k]: { ...item(k), ...p } } });
+  const opcao = (ativo: boolean) =>
+    `px-3 py-1.5 ${ativo ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`;
+  return (
+    <div className="@container space-y-4 border-t pt-4" data-testid="pdv-termo-entrega">
+      <div>
+        <p className="text-sm">Termo de entrega e responsabilidade (Anexo II do contrato)</p>
+        <p className="text-xs text-muted-foreground">
+          Preencha no ato da entrega. A quilometragem vem da vistoria.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 @md:grid-cols-3">
+        <Escolha
+          nome="Nível de combustível"
+          campo="contrato.termo_entrega.combustivel"
+          valor={t.combustivel}
+          opcoes={COMBUSTIVEIS}
+          mudar={(combustivel) => set({ combustivel })}
+        />
+        <Campo
+          nome="Local da entrega"
+          placeholder="Em branco: endereço da loja"
+          valor={t.local}
+          mudar={(local) => set({ local })}
+        />
+        <Campo
+          nome="Fotos da entrega (quantidade)"
+          tipo="number"
+          min={0}
+          max={500}
+          valor={t.fotos}
+          mudar={(v) => set({ fotos: numeroOuNada(v) })}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 @md:grid-cols-2">
+        <Campo
+          nome="Funcionário que entrega"
+          placeholder="Em branco: representante da loja"
+          valor={fun.nome}
+          mudar={(nome) => set({ funcionario: { ...fun, nome } })}
+        />
+        <Campo
+          nome="CPF do funcionário"
+          valor={fun.cpf}
+          mudar={(cpf) => set({ funcionario: { ...fun, cpf } })}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={terceiro}
+            onChange={(e) => {
+              setTerceiro(e.target.checked);
+              if (!e.target.checked) set({ retirada_por: undefined });
+            }}
+          />
+          Outra pessoa retira o veículo no lugar do comprador
+        </label>
+        {terceiro ? (
+          <div className="grid grid-cols-1 gap-3 @md:grid-cols-3">
+            <Campo
+              nome="Nome de quem retira"
+              valor={ret.nome}
+              mudar={(nome) => set({ retirada_por: { ...ret, nome } })}
+            />
+            <Campo
+              nome="CPF de quem retira"
+              campo="contrato.termo_entrega.retirada_por.cpf"
+              valor={ret.cpf}
+              mudar={(cpf) => set({ retirada_por: { ...ret, cpf } })}
+            />
+            <Campo
+              nome="CNH de quem retira"
+              valor={ret.cnh}
+              mudar={(cnh) => set({ retirada_por: { ...ret, cnh } })}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <fieldset className="rounded-lg border" data-campo="contrato.termo_entrega.itens">
+        <legend className="ml-2 px-1 text-xs text-muted-foreground">
+          Itens entregues com o veículo
+        </legend>
+        <ul className="divide-y">
+          {ITENS_DA_ENTREGA.map(([k, rotulo]) => {
+            const it = item(k);
+            return (
+              <li key={k} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                <span className="min-w-0 flex-1 text-sm">{rotulo}</span>
+                <div
+                  role="group"
+                  aria-label={rotulo}
+                  className="flex overflow-hidden rounded-md border text-xs"
+                >
+                  {([true, false] as const).map((sim) => (
+                    <button
+                      key={String(sim)}
+                      type="button"
+                      aria-pressed={it.entregue === sim}
+                      className={opcao(it.entregue === sim)}
+                      onClick={() =>
+                        setItem(k, { entregue: it.entregue === sim ? undefined : sim })
+                      }
+                    >
+                      {sim ? "Entregue" : "Não entregue"}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  aria-label={`Observação: ${rotulo}`}
+                  placeholder="Observação"
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs @md:w-56"
+                  value={it.obs ?? ""}
+                  onChange={(e) => setItem(k, { obs: e.target.value })}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      </fieldset>
+
+      <label className="block text-xs text-muted-foreground">
+        Avarias ou observações no ato da entrega
+        <textarea
+          className={estilo}
+          rows={2}
+          placeholder="Além do que já consta no laudo de vistoria"
+          value={t.avarias ?? ""}
+          onChange={(e) => set({ avarias: e.target.value })}
+        />
+      </label>
+    </div>
+  );
+}
+
+/** Laudo de vistoria da venda (Anexo I). Campos simples; o visual fica para depois. */
+function EditorDaVistoria({
+  valor: v,
+  mudar,
+  f,
+}: {
+  valor: Vistoria;
+  mudar: (v: Vistoria) => void;
+  f: (campo: string) => boolean | undefined;
+}) {
+  const id = v.identificacao ?? {};
+  const set = (p: Partial<Vistoria>) => mudar({ ...v, ...p });
+  const setId = (p: Partial<typeof id>) => set({ identificacao: { ...id, ...p } });
+  const item = (k: (typeof ITENS_DA_VISTORIA)[number][0]) => v.itens?.[k] ?? {};
+  const setItem = (k: (typeof ITENS_DA_VISTORIA)[number][0], p: Partial<ReturnType<typeof item>>) =>
+    set({ itens: { ...v.itens, [k]: { ...item(k), ...p } } });
+  const avarias = v.avarias ?? [];
+  const cautelar = v.cautelar ?? {};
+  const setCautelar = (p: Partial<typeof cautelar>) => set({ cautelar: { ...cautelar, ...p } });
+  return (
+    <div className="space-y-3" data-testid="pdv-vistoria">
+      <p className="text-sm">Laudo de vistoria e estado do veículo (Anexo I do contrato)</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Campo
+          nome="Data da vistoria"
+          tipo="date"
+          obrigatorio
+          falta={f("vistoria.data")}
+          campo="contrato.vistoria.data"
+          valor={v.data}
+          mudar={(data) => set({ data: data || undefined })}
+        />
+        <Campo nome="Hora" tipo="time" valor={v.hora} mudar={(hora) => set({ hora })} />
+        <Campo
+          nome="Vistoriador (em branco: representante da loja)"
+          falta={f("vistoria.vistoriador")}
+          campo="contrato.vistoria.vistoriador"
+          valor={v.vistoriador}
+          mudar={(vistoriador) => set({ vistoriador })}
+        />
+        <Escolha
+          nome="O comprador acompanhou?"
+          obrigatorio
+          falta={f("vistoria.comprador_acompanhou")}
+          campo="contrato.vistoria.comprador_acompanhou"
+          valor={
+            v.comprador_acompanhou == null ? undefined : v.comprador_acompanhou ? "sim" : "nao"
+          }
+          opcoes={
+            [
+              ["sim", "Sim"],
+              ["nao", "Não"],
+            ] as const
+          }
+          mudar={(r) => set({ comprador_acompanhou: r == null ? undefined : r === "sim" })}
+        />
+        <Campo
+          nome="Km conferida"
+          tipo="number"
+          min={0}
+          obrigatorio
+          falta={f("vistoria.km")}
+          campo="contrato.vistoria.km"
+          valor={v.km}
+          mudar={(km) => set({ km: numeroOuNada(km) })}
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">Identificação conferida com o documento</p>
+      {f("vistoria.identificacao") ? (
+        <p role="alert" className="text-sm text-destructive">
+          Chassi ou motor divergente, ou com sinal de remarcação: não conclua a venda e verifique a
+          origem do veículo.
+        </p>
+      ) : null}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {(["placa", "chassi", "motor", "renavam"] as const).map((k) => (
+          <Escolha
+            key={k}
+            nome={
+              { placa: "Placa", chassi: "Chassi", motor: "Número do motor", renavam: "Renavam" }[k]
+            }
+            obrigatorio
+            falta={f(`vistoria.identificacao.${k}`)}
+            campo={`contrato.vistoria.identificacao.${k}`}
+            valor={id[k]}
+            opcoes={CONFERENCIAS}
+            mudar={(r) => setId({ [k]: r })}
+          />
+        ))}
+        <Escolha
+          nome="Sinal de remarcação"
+          obrigatorio
+          falta={f("vistoria.identificacao.remarcacao")}
+          campo="contrato.vistoria.identificacao.remarcacao"
+          valor={id.remarcacao}
+          opcoes={
+            [
+              ["nao", "Não"],
+              ["sim", "Sim"],
+            ] as const
+          }
+          mudar={(remarcacao) => setId({ remarcacao })}
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Itens (A = avaria: descreva; NV = não verificado: justifique)
+      </p>
+      <div className="space-y-2">
+        {ITENS_DA_VISTORIA.map(([k, , rotulo]) => {
+          const it = item(k);
+          return (
+            <div key={k} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Escolha
+                nome={rotulo}
+                obrigatorio
+                falta={f(`vistoria.itens.${k}`)}
+                campo={`contrato.vistoria.itens.${k}`}
+                valor={it.estado}
+                opcoes={SITUACOES}
+                mudar={(estado) => setItem(k, { estado })}
+              />
+              <Campo
+                nome={it.estado === "A" ? "Descrição da avaria" : "Observação"}
+                valor={it.obs}
+                mudar={(obs) => setItem(k, { obs })}
+              />
+              {it.estado === "NV" ? (
+                <Campo
+                  nome="Justificativa"
+                  valor={it.justificativa}
+                  mudar={(justificativa) => setItem(k, { justificativa })}
+                />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Campo
+          nome={`Menor sulco dos pneus (mm; mínimo ${SULCO_MINIMO_MM})`}
+          tipo="number"
+          min={0}
+          step="0.1"
+          valor={v.sulco_mm}
+          mudar={(t) => set({ sulco_mm: numeroOuNada(t) })}
+        />
+        <Campo
+          nome="Fotos (quantidade)"
+          tipo="number"
+          min={0}
+          valor={v.fotos?.quantidade}
+          mudar={(t) => set({ fotos: { ...v.fotos, quantidade: numeroOuNada(t) } })}
+        />
+        <Campo
+          nome="Fotos (onde estão)"
+          placeholder="ex.: WhatsApp do cliente"
+          valor={v.fotos?.meio}
+          mudar={(meio) => set({ fotos: { ...v.fotos, meio } })}
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Outras avarias (as marcadas A nos itens já entram no laudo)
+      </p>
+      {avarias.map((a, i) => (
+        <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Campo
+            nome={`Avaria ${i + 1}`}
+            valor={a.descricao}
+            mudar={(descricao) =>
+              set({ avarias: avarias.map((x, j) => (i === j ? { ...x, descricao } : x)) })
+            }
+          />
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={a.loja_repara}
+              onChange={(e) =>
+                set({
+                  avarias: avarias.map((x, j) =>
+                    i === j ? { ...x, loja_repara: e.target.checked } : x,
+                  ),
+                })
+              }
+            />
+            Loja repara antes da entrega
+          </label>
+          <button
+            type="button"
+            className="text-left text-xs underline"
+            onClick={() => set({ avarias: avarias.filter((_, j) => j !== i) })}
+          >
+            Remover
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="text-xs underline"
+        onClick={() => set({ avarias: [...avarias, { descricao: "", loja_repara: false }] })}
+      >
+        Adicionar avaria
+      </button>
+
+      <details className="space-y-3">
+        <summary className="cursor-pointer text-sm">Laudo cautelar (opcional)</summary>
+        {cautelar.resultado === "reprovado" ? (
+          <p role="alert" className="text-sm font-semibold text-destructive">
+            Laudo cautelar REPROVADO: o comprador vai declarar no contrato que sabe disso e decidiu
+            prosseguir.
+          </p>
+        ) : null}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Campo
+            nome="Empresa"
+            valor={cautelar.empresa}
+            mudar={(empresa) => setCautelar({ empresa })}
+          />
+          <Campo nome="CNPJ" valor={cautelar.cnpj} mudar={(cnpj) => setCautelar({ cnpj })} />
+          <Campo
+            nome="Número do laudo"
+            valor={cautelar.numero}
+            mudar={(numero) => setCautelar({ numero })}
+          />
+          <Campo
+            nome="Data"
+            tipo="date"
+            valor={cautelar.data}
+            mudar={(data) => setCautelar({ data: data || undefined })}
+          />
+          <Escolha
+            nome="Resultado"
+            valor={cautelar.resultado}
+            opcoes={RESULTADOS_DA_CAUTELAR}
+            mudar={(resultado) => setCautelar({ resultado })}
+          />
+          <Campo
+            nome="Apontamentos"
+            valor={cautelar.apontamentos}
+            mudar={(apontamentos) => setCautelar({ apontamentos })}
+          />
+        </div>
+      </details>
+    </div>
   );
 }
 
@@ -426,8 +846,7 @@ export function EditorDoContrato({
     mudar({ testemunhas: lista.filter((t) => t.nome.trim() || t.cpf.trim()) });
   }
   const estado = c.estado_veiculo ?? {};
-  const mudarEstado = (v: Partial<typeof estado>) =>
-    mudar({ estado_veiculo: { ...estado, ...v } });
+  const mudarEstado = (v: Partial<typeof estado>) => mudar({ estado_veiculo: { ...estado, ...v } });
   const garantia = c.garantia_contratual ?? { prazo: "", componentes: "" };
   function mudarGarantia(v: Partial<typeof garantia>) {
     const g = { ...garantia, ...v };
@@ -435,7 +854,9 @@ export function EditorDoContrato({
   }
   return (
     <section className="space-y-3" data-testid="pdv-dados-contrato">
-      {mostrarTitulo && <h3 className="text-sm font-normal text-muted-foreground">Dados do contrato</h3>}
+      {mostrarTitulo && (
+        <h3 className="text-sm font-normal text-muted-foreground">Dados do contrato</h3>
+      )}
       <p className="text-xs text-muted-foreground">
         Campos com <span className="text-destructive">*</span> são obrigatórios para concluir. Os
         demais saem em branco no contrato, para preenchimento à mão.
@@ -636,6 +1057,12 @@ export function EditorDoContrato({
             }
           />
         </div>
+        {venda ? (
+          <EditorDoTermoDeEntrega
+            valor={c.termo_entrega ?? {}}
+            mudar={(termo_entrega) => mudar({ termo_entrega })}
+          />
+        ) : null}
       </Setor>
 
       <Setor id="pdv-setor-contrato" titulo="Contrato">
@@ -763,52 +1190,60 @@ export function EditorDoContrato({
           </div>
         </details>
 
-        <div className="space-y-3" data-testid="pdv-estado-veiculo">
-          <p className="text-sm">Estado do veículo na assinatura (anexo do contrato)</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Campo
-              nome="Lataria e pintura"
-              placeholder="ex.: sem amassados, risco no para-choque"
-              obrigatorio
-              falta={f("estado_veiculo.lataria")}
-              campo="contrato.estado_veiculo.lataria"
-              valor={estado.lataria}
-              mudar={(lataria) => mudarEstado({ lataria })}
-            />
-            <Campo
-              nome="Interior"
-              placeholder="ex.: bancos sem rasgos, painel íntegro"
-              obrigatorio
-              falta={f("estado_veiculo.interior")}
-              campo="contrato.estado_veiculo.interior"
-              valor={estado.interior}
-              mudar={(interior) => mudarEstado({ interior })}
-            />
-            <Campo
-              nome="Pneus"
-              placeholder="ex.: 4 pneus meia-vida, estepe novo"
-              obrigatorio
-              falta={f("estado_veiculo.pneus")}
-              campo="contrato.estado_veiculo.pneus"
-              valor={estado.pneus}
-              mudar={(pneus) => mudarEstado({ pneus })}
-            />
-            <Campo
-              nome="Itens e acessórios"
-              placeholder="ex.: manual, chave de roda, macaco, triângulo"
-              obrigatorio
-              falta={f("estado_veiculo.itens")}
-              campo="contrato.estado_veiculo.itens"
-              valor={estado.itens}
-              mudar={(itens) => mudarEstado({ itens })}
-            />
-            <Campo
-              nome="Observações"
-              valor={estado.observacoes}
-              mudar={(observacoes) => mudarEstado({ observacoes })}
-            />
+        {venda && usaLaudoDeVistoria(c) ? (
+          <EditorDaVistoria
+            valor={c.vistoria ?? {}}
+            mudar={(vistoria) => mudar({ vistoria })}
+            f={f}
+          />
+        ) : (
+          <div className="space-y-3" data-testid="pdv-estado-veiculo">
+            <p className="text-sm">Estado do veículo na assinatura (anexo do contrato)</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Campo
+                nome="Lataria e pintura"
+                placeholder="ex.: sem amassados, risco no para-choque"
+                obrigatorio
+                falta={f("estado_veiculo.lataria")}
+                campo="contrato.estado_veiculo.lataria"
+                valor={estado.lataria}
+                mudar={(lataria) => mudarEstado({ lataria })}
+              />
+              <Campo
+                nome="Interior"
+                placeholder="ex.: bancos sem rasgos, painel íntegro"
+                obrigatorio
+                falta={f("estado_veiculo.interior")}
+                campo="contrato.estado_veiculo.interior"
+                valor={estado.interior}
+                mudar={(interior) => mudarEstado({ interior })}
+              />
+              <Campo
+                nome="Pneus"
+                placeholder="ex.: 4 pneus meia-vida, estepe novo"
+                obrigatorio
+                falta={f("estado_veiculo.pneus")}
+                campo="contrato.estado_veiculo.pneus"
+                valor={estado.pneus}
+                mudar={(pneus) => mudarEstado({ pneus })}
+              />
+              <Campo
+                nome="Itens e acessórios"
+                placeholder="ex.: manual, chave de roda, macaco, triângulo"
+                obrigatorio
+                falta={f("estado_veiculo.itens")}
+                campo="contrato.estado_veiculo.itens"
+                valor={estado.itens}
+                mudar={(itens) => mudarEstado({ itens })}
+              />
+              <Campo
+                nome="Observações"
+                valor={estado.observacoes}
+                mudar={(observacoes) => mudarEstado({ observacoes })}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         <details className="space-y-3">
           <summary className="cursor-pointer text-sm">Garantia contratual (opcional)</summary>
@@ -854,7 +1289,9 @@ export function EditorDoContrato({
 
         {detalhesDosPagamentos.length > 0 && (
           <details className="space-y-3">
-            <summary className="cursor-pointer text-sm">Detalhes contratuais dos pagamentos</summary>
+            <summary className="cursor-pointer text-sm">
+              Detalhes contratuais dos pagamentos
+            </summary>
             {detalhesDosPagamentos.map(({ p, indice, campos }) => (
               <div key={indice} className="space-y-2 rounded-lg border p-3">
                 <p className="text-xs font-medium">
@@ -872,7 +1309,9 @@ export function EditorDoContrato({
                     nome="Data de emissão"
                     tipo="date"
                     valor={p.data_emissao}
-                    mudar={(data_emissao) => pagamento(indice, { data_emissao: data_emissao || null })}
+                    mudar={(data_emissao) =>
+                      pagamento(indice, { data_emissao: data_emissao || null })
+                    }
                   />
                 )}
                 {campos.previsao && (
@@ -880,7 +1319,9 @@ export function EditorDoContrato({
                     nome="Data de pagamento / previsão"
                     tipo="date"
                     valor={p.data_pagamento}
-                    mudar={(data_pagamento) => pagamento(indice, { data_pagamento: data_pagamento || null })}
+                    mudar={(data_pagamento) =>
+                      pagamento(indice, { data_pagamento: data_pagamento || null })
+                    }
                   />
                 )}
                 {campos.intervalo && (

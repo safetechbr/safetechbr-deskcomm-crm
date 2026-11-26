@@ -21,6 +21,16 @@ import {
   type ItemDoContrato,
   type SecaoDoContrato,
 } from "./clausulas-fixas";
+import {
+  avariasDoLaudo,
+  ITENS_DA_VISTORIA,
+  kmDaVistoria,
+  RESULTADOS_DA_CAUTELAR,
+  SITUACOES,
+  SULCO_MINIMO_MM,
+  usaLaudoDeVistoria,
+} from "./laudo-vistoria";
+import { COMBUSTIVEIS, ITENS_DA_ENTREGA } from "./termo-entrega";
 import { decidirVersaoDoContrato, type DecisaoDoContrato } from "./versao-do-contrato";
 
 // A hifenização automática do react-pdf parte palavras em português no lugar
@@ -359,6 +369,147 @@ function Lacunas({ campos }: { campos: string[] }) {
     </>
   );
 }
+const rotuloDe = (lista: readonly (readonly [string, string])[], k?: string | null) =>
+  lista.find(([v]) => v === k)?.[1] ?? vazio;
+const simNao = (b?: boolean | null) => (b == null ? vazio : b ? "Sim" : "Não");
+
+/** Anexo I da venda nova: laudo de vistoria em três itens (vistoria, estado, declarações). */
+function LaudoDeVistoria({
+  n,
+  declaracoes,
+  representante,
+}: {
+  n: Negociacao;
+  declaracoes: ItemDoContrato[];
+  representante: string | null;
+}) {
+  const v = n.contrato?.vistoria ?? {};
+  const id = v.identificacao ?? {};
+  const avarias = avariasDoLaudo(v);
+  const c = v.cautelar;
+  const confere = (k?: string) =>
+    rotuloDe(
+      [
+        ["confere", "Confere"],
+        ["divergente", "Divergente"],
+      ],
+      k,
+    );
+  const grupos = [...new Set(ITENS_DA_VISTORIA.map(([, g]) => g))];
+  return (
+    <>
+      <Text style={s.subtitulo}>1. Da vistoria</Text>
+      <Preenchidos
+        linhas={[
+          ["Data e hora", `${data(v.data)}, às ${txt(v.hora)}`],
+          ["Vistoriador", v.vistoriador?.trim() || representante],
+          [
+            "O COMPRADOR acompanhou a vistoria",
+            v.comprador_acompanhou == null ? null : simNao(v.comprador_acompanhou),
+          ],
+          ["Quilometragem conferida", v.km == null ? null : `${km(v.km)} km`],
+        ]}
+      />
+      <View wrap={false}>
+        <Tabela
+          colunas={["Identificação", "Conferência com o documento"]}
+          larguras={["50%", "50%"]}
+        >
+          <Linha larguras={["50%", "50%"]} valores={["Placa", confere(id.placa)]} />
+          <Linha larguras={["50%", "50%"]} valores={["Chassi", confere(id.chassi)]} />
+          <Linha larguras={["50%", "50%"]} valores={["Número do motor", confere(id.motor)]} />
+          <Linha larguras={["50%", "50%"]} valores={["Renavam", confere(id.renavam)]} />
+          <Linha
+            larguras={["50%", "50%"]}
+            valores={[
+              "Sinal de remarcação de chassi ou motor",
+              rotuloDe(
+                [
+                  ["nao", "Não"],
+                  ["sim", "Sim"],
+                ],
+                id.remarcacao,
+              ),
+            ]}
+          />
+        </Tabela>
+      </View>
+
+      <Text style={s.subtitulo}>2. Do estado do veículo</Text>
+      <Text style={s.paragrafo}>
+        Legenda: {SITUACOES.map(([k, r]) => `${k} = ${r}`).join("; ")}.
+      </Text>
+      {grupos.map((g) => (
+        <View key={g} wrap={false}>
+          <Tabela colunas={[g, "Situação", "Observação"]} larguras={["42%", "14%", "44%"]}>
+            {ITENS_DA_VISTORIA.filter(([, gi]) => gi === g).map(([k, , rotulo]) => {
+              const item = v.itens?.[k];
+              const obs = [item?.obs, item?.estado === "NV" ? item?.justificativa : ""]
+                .filter((t) => t?.trim())
+                .join(" — ");
+              return (
+                <Linha
+                  key={k}
+                  larguras={["42%", "14%", "44%"]}
+                  valores={[rotulo, item?.estado ?? vazio, obs || "—"]}
+                />
+              );
+            })}
+          </Tabela>
+        </View>
+      ))}
+      <Preenchidos
+        linhas={[
+          [
+            `Menor sulco medido nos pneus (mínimo legal ${SULCO_MINIMO_MM.toLocaleString("pt-BR")} mm)`,
+            v.sulco_mm == null ? null : `${v.sulco_mm.toLocaleString("pt-BR")} mm`,
+          ],
+          [
+            "Fotos da vistoria",
+            v.fotos?.quantidade == null
+              ? null
+              : `${v.fotos.quantidade}${v.fotos.meio?.trim() ? `, ${v.fotos.meio.trim()}` : ""}`,
+          ],
+        ]}
+      />
+      <View wrap={false}>
+        <Tabela
+          colunas={["Avarias descritas", "Loja repara antes da entrega"]}
+          larguras={["75%", "25%"]}
+        >
+          {avarias.length ? (
+            avarias.map((a, i) => (
+              <Linha
+                key={i}
+                larguras={["75%", "25%"]}
+                valores={[a.descricao, simNao(a.loja_repara)]}
+              />
+            ))
+          ) : (
+            <Linha larguras={["75%", "25%"]} valores={["Nenhuma avaria descrita.", "—"]} />
+          )}
+        </Tabela>
+      </View>
+      {c?.empresa?.trim() || c?.resultado ? (
+        <Preenchidos
+          linhas={[
+            [
+              "Laudo cautelar",
+              `${txt(c.empresa)}, CNPJ ${txt(c.cnpj)}, nº ${txt(c.numero)}, de ${data(c.data)}`,
+            ],
+            ["Resultado do laudo cautelar", rotuloDe(RESULTADOS_DA_CAUTELAR, c.resultado)],
+          ]}
+        />
+      ) : null}
+
+      <Text style={s.subtitulo}>3. Das declarações</Text>
+      {declaracoes.map((it, i) => (
+        <Item key={i} numero={`3.${i + 1}`} item={it} />
+      ))}
+    </>
+  );
+}
+
 /** Corpo de cada anexo impresso depois das assinaturas. */
 function ConteudoDoAnexo({
   anexo,
@@ -366,12 +517,21 @@ function ConteudoDoAnexo({
   partes,
   representante,
   localDaLoja,
+  laudo,
+  termo,
+  anexoDoEstado,
 }: {
   anexo: AnexoDoContrato;
   n: Negociacao;
   partes: Parte[];
   representante: string | null;
   localDaLoja: string;
+  /** Declarações do laudo de vistoria; ausente, sai o anexo antigo. */
+  laudo?: ItemDoContrato[];
+  /** Declarações do termo de entrega (só na venda). */
+  termo?: ItemDoContrato[];
+  /** Número do anexo do estado do veículo ("Anexo I"), citado no termo de entrega. */
+  anexoDoEstado: string;
 }) {
   const d = n.contrato!;
   const e = d.empresa!;
@@ -387,6 +547,18 @@ function ConteudoDoAnexo({
   );
   switch (anexo.chave) {
     case "estado_veiculo":
+      if (laudo)
+        return (
+          <>
+            <Veiculo
+              v={n.veiculo}
+              titulo="Veículo vendido"
+              valor={formatarPreco(n.valor_cents, n.moeda || "BRL")}
+            />
+            <LaudoDeVistoria n={n} declaracoes={laudo} representante={representante} />
+            {fecho(d.assinatura_em)}
+          </>
+        );
       return (
         <>
           <Veiculo
@@ -409,17 +581,69 @@ function ConteudoDoAnexo({
           {fecho(d.assinatura_em)}
         </>
       );
-    case "termo_entrega":
+    case "termo_entrega": {
+      const t = d.termo_entrega ?? {};
+      const kmDaEntrega = usaLaudoDeVistoria(d)
+        ? kmDaVistoria(d.entrega_km ?? undefined, d.vistoria?.km, n.veiculo.km)
+        : (d.entrega_km ?? n.veiculo.km);
+      const r = t.retirada_por;
+      const terceiro = [r?.nome, r?.cpf, r?.cnh].some((x) => x?.trim());
+      const quem = (p?: { nome?: string; cpf?: string }) =>
+        p?.nome?.trim() ? `${p.nome.trim()}${p.cpf?.trim() ? `, CPF ${p.cpf.trim()}` : ""}` : null;
       return (
         <>
           <Text style={s.paragrafo}>
-            O COMPRADOR declara ter recebido, em {data(d.entrega_em)}, às {txt(d.entrega_hora)}, o
-            veículo {veiculo}, com quilometragem de {km(d.entrega_km ?? n.veiculo.km)} km, o manual do
-            proprietário e as chaves ({txt(d.entrega_chaves)} unidades), no estado descrito no Anexo do estado do veículo.
+            Veículo: {veiculo}. Estado descrito no {anexoDoEstado}.
           </Text>
+          <Text style={s.subtitulo}>1. Da entrega</Text>
+          <Preenchidos
+            linhas={[
+              ["Data e hora", `${data(d.entrega_em)}, às ${txt(d.entrega_hora)}`],
+              ["Local", t.local?.trim() || localDaLoja],
+              ["Quilometragem na entrega", kmDaEntrega == null ? null : `${km(kmDaEntrega)} km`],
+              ["Chaves entregues", d.entrega_chaves == null ? null : String(d.entrega_chaves)],
+              ["Nível de combustível", t.combustivel ? rotuloDe(COMBUSTIVEIS, t.combustivel) : null],
+              ["Entregue por (VENDEDORA)", quem(t.funcionario) ?? representante],
+              ...(terceiro
+                ? ([
+                    ["Retirado por terceiro autorizado pelo COMPRADOR", quem(r)],
+                    ["CNH do terceiro", r?.cnh],
+                  ] as [string, string | null | undefined][])
+                : []),
+            ]}
+          />
+          <View wrap={false}>
+            <Tabela colunas={["Item", "Entregue", "Observação"]} larguras={["42%", "14%", "44%"]}>
+              {ITENS_DA_ENTREGA.map(([k, rotulo]) => {
+                const item = t.itens?.[k];
+                return (
+                  <Linha
+                    key={k}
+                    larguras={["42%", "14%", "44%"]}
+                    valores={[rotulo, simNao(item?.entregue), item?.obs?.trim() || "—"]}
+                  />
+                );
+              })}
+            </Tabela>
+          </View>
+          <Preenchidos
+            linhas={[
+              ["Fotos da entrega", t.fotos == null ? null : String(t.fotos)],
+              ["Avarias ou observações no ato da entrega", t.avarias?.trim() || null],
+            ]}
+          />
+          {termo?.length ? (
+            <>
+              <Text style={s.subtitulo}>2. Das declarações</Text>
+              {termo.map((it, i) => (
+                <Item key={i} numero={`2.${i + 1}`} item={it} />
+              ))}
+            </>
+          ) : null}
           {fecho(d.entrega_em)}
         </>
       );
+    }
     case "termo_recebimento":
       return (
         <>
@@ -474,7 +698,7 @@ function ConteudoDoAnexo({
             "Manual e chave reserva",
           ].map((x) => (
             <Text key={x} style={s.lacunas}>
-              (   ) {x}
+              ( ) {x}
             </Text>
           ))}
           {fecho(d.recebimento_troca_em)}
@@ -595,8 +819,16 @@ export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: Decisa
   }).format(new Date(assinada));
   // Papel definido uma vez na qualificação e repetido igual nas assinaturas.
   const partes: Parte[] = [
-    { papel: venda ? "VENDEDORA" : "VENDEDOR(A)", nome: venda ? txt(e.razao_social) : txt(c.nome), loja: venda },
-    { papel: venda ? "COMPRADOR" : "COMPRADORA", nome: venda ? txt(c.nome) : txt(e.razao_social), loja: !venda },
+    {
+      papel: venda ? "VENDEDORA" : "VENDEDOR(A)",
+      nome: venda ? txt(e.razao_social) : txt(c.nome),
+      loja: venda,
+    },
+    {
+      papel: venda ? "COMPRADOR" : "COMPRADORA",
+      nome: venda ? txt(c.nome) : txt(e.razao_social),
+      loja: !venda,
+    },
   ];
   return (
     <Document title={`Contrato de Compra e Venda ${n.numero}`}>
@@ -614,8 +846,7 @@ export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: Decisa
             <Text style={s.minuta}>Minuta para conferência. Não é a versão para assinatura.</Text>
           ) : null}
           <Text style={s.paragrafo}>
-            De um lado, {venda ? loja : cliente}, doravante{" "}
-            {venda ? "denominada" : "denominado(a)"}{" "}
+            De um lado, {venda ? loja : cliente}, doravante {venda ? "denominada" : "denominado(a)"}{" "}
             <Text style={s.negrito}>{partes[0]!.papel}</Text>.
           </Text>
           <Text style={s.paragrafo}>
@@ -694,7 +925,10 @@ export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: Decisa
             {blocos.troca ? (
               <Linha
                 larguras={["78%", "22%"]}
-                valores={["VEÍCULO EM PAGAMENTO (valor líquido)", preco(resumo.troca_liquida_cents)]}
+                valores={[
+                  "VEÍCULO EM PAGAMENTO (valor líquido)",
+                  preco(resumo.troca_liquida_cents),
+                ]}
               />
             ) : null}
             {n.pagamentos.map((p, i) => (
@@ -813,6 +1047,12 @@ export function ContratoModelo({ n, decisao }: { n: Negociacao; decisao?: Decisa
               partes={partes}
               representante={representante}
               localDaLoja={endereco(e)}
+              laudo={fixas.laudo}
+              termo={fixas.termo}
+              anexoDoEstado={
+                fixas.anexos.find((x) => x.chave === "estado_veiculo")?.numero ??
+                "anexo do estado do veículo"
+              }
             />
           </View>
         </Page>

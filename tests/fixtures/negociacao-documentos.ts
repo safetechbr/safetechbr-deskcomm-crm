@@ -1,5 +1,6 @@
 import { exemploDeContrato } from "@/tests/fixtures/negociacao-contrato";
 import type { Negociacao } from "@/lib/pdv/regras";
+import { ITENS_DA_VISTORIA } from "@/lib/pdv/laudo-vistoria";
 
 /** Venda simples com todos os dados que o modelo imprime. Dados sintéticos. */
 export function vendaCompleta(): Negociacao {
@@ -70,5 +71,53 @@ export function comTroca(n: Negociacao, quitacao = 500_000): Negociacao {
       { forma: "pix", valor_cents: 500_000, parcelas: 1 },
     ],
     contrato: { ...n.contrato!, recebimento_troca_em: "2026-11-12", recebimento_troca_chaves: 1 },
+  };
+}
+
+/** Venda nova, com o laudo de vistoria completo no lugar do anexo antigo. Dados sintéticos. */
+export function comVistoria(n: Negociacao): Negociacao {
+  const itens = Object.fromEntries(ITENS_DA_VISTORIA.map(([k]) => [k, { estado: "B" as const }]));
+  return {
+    ...n,
+    contrato: {
+      ...n.contrato!,
+      estado_veiculo: undefined,
+      vistoria: {
+        data: "2026-11-10",
+        hora: "10:00",
+        vistoriador: "",
+        comprador_acompanhou: true,
+        km: 10000,
+        identificacao: {
+          placa: "confere",
+          chassi: "confere",
+          motor: "confere",
+          renavam: "confere",
+          remarcacao: "nao",
+        },
+        itens,
+      },
+    },
+  };
+}
+
+/** Venda com o termo de entrega preenchido no ato. Dados sintéticos. */
+export function comTermoEntrega(n: Negociacao): Negociacao {
+  return {
+    ...n,
+    contrato: {
+      ...n.contrato!,
+      termo_entrega: {
+        combustivel: "1/2",
+        funcionario: { nome: "Funcionário de Teste", cpf: "000.000.000-00" },
+        itens: {
+          chave_principal: { entregue: true },
+          chave_reserva: { entregue: true },
+          manual_proprietario: { entregue: false, obs: "não veio de fábrica" },
+          estepe: { entregue: true },
+        },
+        fotos: 4,
+      },
+    },
   };
 }

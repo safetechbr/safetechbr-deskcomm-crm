@@ -19,6 +19,7 @@ import { formatarPreco } from "@/lib/veiculos/regras";
 import { formatarDocumento, type Negociacao } from "./regras";
 import type { BlocosDaOperacao } from "./retrato-da-operacao";
 import { inteiroPorExtenso } from "./valor-por-extenso";
+import { avariasDoLaudo, kmDaVistoria, usaLaudoDeVistoria } from "./laudo-vistoria";
 
 /** Item de cláusula; `limitativa` sai em negrito, dentro de caixa. */
 export type ItemDoContrato = string | { texto: string; limitativa?: boolean };
@@ -54,6 +55,10 @@ export interface ClausulasFixas {
   secoes: SecaoDoContrato[];
   /** Anexos impressos depois das assinaturas, já numerados. */
   anexos: AnexoDoContrato[];
+  /** Item 3 (declarações) do laudo de vistoria; ausente nas vendas com o anexo antigo. */
+  laudo?: ItemDoContrato[];
+  /** Item 2 (declarações) do termo de entrega; só na venda. */
+  termo?: ItemDoContrato[];
 }
 
 const LACUNA = "________________";
@@ -72,15 +77,18 @@ const diasUteis = (n: number) => `${n} (${inteiroPorExtenso(n)}) dia(s) útil(ei
 /** Canal efetivo; o booleano antigo ainda vale para contratos já fotografados. */
 export function canalDaVenda(n: Negociacao): "presencial" | "fora_do_estabelecimento" {
   const d = n.contrato ?? {};
-  return d.canal_venda ?? (d.venda_fora_do_estabelecimento ? "fora_do_estabelecimento" : "presencial");
+  return (
+    d.canal_venda ?? (d.venda_fora_do_estabelecimento ? "fora_do_estabelecimento" : "presencial")
+  );
 }
 
 /** Anexos que a venda gera, na ordem de impressão. A compra não tem anexos. */
 export function anexosDaVenda(n: Negociacao, blocos: BlocosDaOperacao): AnexoDoContrato[] {
   if (n.tipo !== "venda") return [];
   const troca = blocos.troca && !!n.troca;
+  const laudo = usaLaudoDeVistoria(n.contrato ?? {});
   const lista: [ChaveDoAnexo, string, boolean][] = [
-    ["estado_veiculo", "Estado do veículo", true],
+    ["estado_veiculo", laudo ? "Laudo de vistoria e estado do veículo" : "Estado do veículo", true],
     ["termo_entrega", "Termo de entrega", true],
     ["termo_recebimento", "Termo de recebimento do VEÍCULO EM PAGAMENTO", troca],
     ["indicacao_condutor", "Indicação de condutor", true],
@@ -148,14 +156,16 @@ export function clausulasFixas(n: Negociacao, blocos: BlocosDaOperacao): Clausul
   ];
 
   const deb = d.debitos ?? {};
-  const km = n.veiculo.km == null ? LACUNA : n.veiculo.km.toLocaleString("pt-BR");
+  const laudo = usaLaudoDeVistoria(d);
+  const kmConferida = laudo ? kmDaVistoria(d.vistoria?.km, undefined, n.veiculo.km) : n.veiculo.km;
+  const km = kmConferida == null ? LACUNA : kmConferida.toLocaleString("pt-BR");
   const regularidade: SecaoDoContrato = {
     titulo: "Da regularidade do veículo",
     itens: [
       `A VENDEDORA informa, em atenção à Lei 13.111/2015 e ao art. 31 do Código de Defesa do Consumidor, o resultado da consulta realizada em ${data(d.consulta_debitos_em)}: IPVA e licenciamento: ${txt(deb.ipva_licenciamento)}; multas: ${txt(deb.multas)}; restrições: ${txt(deb.restricoes)}; leilão ou sinistro: ${txt(deb.leilao_sinistro)}; recall pendente: ${txt(deb.recall)}. Os débitos com fato gerador anterior à entrega ficam a cargo ${deb.responsavel === "comprador" ? "do COMPRADOR" : deb.responsavel === "vendedora" ? "da VENDEDORA" : `de ${LACUNA}`}.`,
-      `O estado de conservação, os itens e os acessórios do veículo são os descritos no ${ref("estado_veiculo")}, conferidos pelo COMPRADOR.`,
+      `O estado de conservação, os itens e os acessórios do veículo são os descritos no ${ref("estado_veiculo")}, conferidos pelo COMPRADOR.${laudo ? " As avarias descritas de forma específica nesse anexo foram consideradas na formação do preço." : ""}`,
       `${d.test_drive === "fez" ? "O COMPRADOR realizou test-drive do veículo." : d.test_drive === "dispensou" ? "O COMPRADOR optou por não realizar test-drive." : `Test-drive: ${LACUNA}.`} A avaliação prévia não exclui a garantia legal por vício oculto.`,
-      `A VENDEDORA declara que a quilometragem informada na Cláusula 1ª (${km} km) corresponde à indicada no hodômetro na data deste contrato e que não tem conhecimento de adulteração.`,
+      `A VENDEDORA declara que a quilometragem ${laudo ? `conferida na vistoria do ${ref("estado_veiculo")}` : "informada na Cláusula 1ª"} (${km} km) corresponde à indicada no hodômetro na data deste contrato e que não tem conhecimento de adulteração.`,
       ...(troca
         ? [
             "O COMPRADOR declara que o VEÍCULO EM PAGAMENTO é de sua propriedade, está livre de ônus não informados neste contrato, e responde pelos débitos, multas e restrições com fato gerador anterior à entrega dele à VENDEDORA.",
@@ -168,9 +178,13 @@ export function clausulasFixas(n: Negociacao, blocos: BlocosDaOperacao): Clausul
     titulo: "Da entrega",
     itens: [
       `O veículo será entregue em ${data(d.entrega_em)}, às ${txt(d.entrega_hora)}, mediante termo de entrega (${ref("termo_entrega")})${troca ? `; o VEÍCULO EM PAGAMENTO será recebido pela VENDEDORA em ${data(d.recebimento_troca_em)}, às ${txt(d.recebimento_troca_hora)}, mediante termo de recebimento (${ref("termo_recebimento")})` : ""}.`,
-      lim("A partir da entrega, o COMPRADOR responde pela guarda, pelo uso, pelos tributos e pelas infrações relativas ao veículo."),
+      lim(
+        "A partir da entrega, o COMPRADOR responde pela guarda, pelo uso, pelos tributos e pelas infrações relativas ao veículo.",
+      ),
       ...(troca
-        ? ["Até a entrega do VEÍCULO EM PAGAMENTO, o COMPRADOR responde por ele; a partir do recebimento, a VENDEDORA."]
+        ? [
+            "Até a entrega do VEÍCULO EM PAGAMENTO, o COMPRADOR responde por ele; a partir do recebimento, a VENDEDORA.",
+          ]
         : []),
       `Infração cometida entre a entrega e a transferência de propriedade terá o condutor indicado nos termos do art. 257, § 7º, do Código de Trânsito Brasileiro e da Resolução CONTRAN 918/2022, com o formulário do ${ref("indicacao_condutor")}; a parte notificada avisa a outra em até 5 (cinco) dias.`,
       "A parte que pagar multa ou débito de responsabilidade da outra será reembolsada em até 10 (dez) dias do aviso, com o comprovante.",
@@ -272,11 +286,78 @@ export function clausulasFixas(n: Negociacao, blocos: BlocosDaOperacao): Clausul
     ],
   };
 
+  const secoes = [
+    regularidade,
+    entrega,
+    transferencia,
+    garantia,
+    inadimplemento,
+    gerais,
+    secaoAnexos,
+  ];
   return {
     pagamento,
-    secoes: [regularidade, entrega, transferencia, garantia, inadimplemento, gerais, secaoAnexos],
+    secoes,
     anexos,
+    ...(laudo ? { laudo: declaracoesDoLaudo(n, `${secoes.indexOf(garantia) + 3}ª`) } : {}),
+    termo: declaracoesDoTermo({
+      regularidade: `${secoes.indexOf(regularidade) + 3}ª`,
+      entrega: `${secoes.indexOf(entrega) + 3}ª`,
+      transferencia: `${secoes.indexOf(transferencia) + 3}ª`,
+      garantia: `${secoes.indexOf(garantia) + 3}ª`,
+      condutor: ref("indicacao_condutor"),
+    }),
   };
+}
+
+/** Item 2 do termo de entrega: o que o recebimento significa. Recebe os números das cláusulas citadas. */
+function declaracoesDoTermo(c: {
+  regularidade: string;
+  entrega: string;
+  transferencia: string;
+  garantia: string;
+  condutor: string;
+}): ItemDoContrato[] {
+  return [
+    "O COMPRADOR declara que recebeu o veículo e os itens conferidos acima. O recebimento confirma o estado aparente do veículo e não impede reclamar de vício oculto, cujo prazo conta de quando ele se manifestar (art. 26, § 3º, do Código de Defesa do Consumidor).",
+    lim(
+      `A partir da data e da hora deste termo, o COMPRADOR responde pela guarda, pelo uso, pelos tributos e pelas infrações relativas ao veículo (Cláusula ${c.entrega}). Infração cometida antes desse momento fica a cargo da VENDEDORA.`,
+    ),
+    `Os débitos com fato gerador anterior à entrega seguem o que foi ajustado na Cláusula ${c.regularidade}.`,
+    `Infração cometida depois da entrega e antes da transferência terá o condutor indicado com o formulário do ${c.condutor}; a parte notificada avisa a outra em até 5 (cinco) dias. Quem pagar valor que cabia à outra parte será reembolsado com correção pelo IPCA.`,
+    "A contratação de seguro do veículo a partir da entrega é decisão do COMPRADOR.",
+    `A data deste termo é a data da entrega para os prazos de garantia da Cláusula ${c.garantia}.`,
+    lim(
+      `O COMPRADOR registrará a transferência no prazo da Cláusula ${c.transferencia} (art. 123, § 1º, do Código de Trânsito Brasileiro).`,
+    ),
+    "Os dados de quem entrega e de quem recebe o veículo são tratados apenas para comprovar a entrega, nos termos das disposições gerais do contrato (Lei 13.709/2018).",
+  ];
+}
+
+/** Item 3 do laudo: o que as partes declaram sobre a vistoria. `garantia` é a cláusula da garantia ("6ª"). */
+function declaracoesDoLaudo(n: Negociacao, garantia: string): ItemDoContrato[] {
+  const v = n.contrato?.vistoria ?? {};
+  const reparo = avariasDoLaudo(v).some((a) => a.loja_repara);
+  const c = v.cautelar;
+  return [
+    `A vistoria foi feita em ${data(v.data)}, às ${txt(v.hora)}, ${v.comprador_acompanhou === true ? "com o acompanhamento do COMPRADOR" : v.comprador_acompanhou === false ? "sem o acompanhamento do COMPRADOR, que recebeu este laudo para conferência antes de assinar" : LACUNA}, e o COMPRADOR declara que conferiu o veículo e os itens acima.`,
+    lim(
+      "As avarias descritas de forma específica neste laudo foram consideradas no preço e não podem ser reclamadas como vício, somente na extensão em que foram descritas. O agravamento delas e as consequências não descritas continuam cobertos pela garantia legal.",
+    ),
+    ...(reparo
+      ? [
+          `As avarias marcadas para reparo pela loja não ficam excluídas: a VENDEDORA se obriga a repará-las antes da entrega, sem custo ao COMPRADOR, e a oferta vincula a VENDEDORA (arts. 30 e 35 do Código de Defesa do Consumidor).`,
+        ]
+      : []),
+    `Este laudo não exclui nem reduz a garantia legal da Cláusula ${garantia} do contrato: o prazo para reclamar de vício oculto conta de quando ele se manifestar (art. 26, § 3º, do Código de Defesa do Consumidor).`,
+    ...(c?.resultado === "reprovado"
+      ? [
+          lim(
+            `O COMPRADOR declara ciência de que o laudo cautelar nº ${txt(c.numero)}, emitido por ${txt(c.empresa)}, teve resultado REPROVADO, com os apontamentos descritos neste laudo, e decidiu prosseguir com a compra.`,
+          ),
+        ]
+      : []),
+  ];
 }
 
 /** Linha da assinatura da loja: "p/ NOME, cargo, CPF". */

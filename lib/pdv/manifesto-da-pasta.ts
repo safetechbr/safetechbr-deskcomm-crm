@@ -12,8 +12,9 @@
  *  - a pasta só é completa quando todo documento aplicável está pronto e nenhuma
  *    condição ficou sem registro.
  *
- * Hoje só o contrato de venda tem gerador. Cada etapa seguinte troca o
- * `nao_implementado` do seu documento pela avaliação real.
+ * Documentos com gerador saem com a avaliação real; os demais seguem como
+ * `nao_implementado`. Recibo e quitação nascem dos recebimentos (rota /recibos),
+ * por isso aqui só aguardam o evento.
  */
 import type { PendenciaDoDocumento, RetratoDaOperacao } from "./retrato-da-operacao";
 
@@ -98,6 +99,41 @@ function anexo(documento: DocumentoDaPasta): ItemDaPasta {
   };
 }
 
+/** Sai no contrato; o que falta é preenchido no ato da entrega (não faz a minuta). */
+function termoDeEntrega(r: RetratoDaOperacao): ItemDaPasta {
+  const faltam = r.termo_entrega ?? [];
+  if (!faltam.length) return anexo("termo_entrega");
+  return {
+    ...anexo("termo_entrega"),
+    situacao: "aguarda_evento",
+    motivo: `${NO_CONTRATO} Complete no ato da entrega.`,
+    pendencias: faltam,
+  };
+}
+
+/** Uma nota por parcela de promissória ou crediário; boleto e cheque já são o título. */
+function notaPromissoria(r: RetratoDaOperacao, parcelasALoja: boolean): ItemDaPasta {
+  const faltam = r.nota_promissoria;
+  if (!faltam)
+    return item(
+      "nota_promissoria",
+      "nao_aplica",
+      parcelasALoja
+        ? "Parcelas em boleto ou cheque: o próprio título cobre a parcela."
+        : "Sem pagamento futuro à própria loja.",
+    );
+  return {
+    documento: "nota_promissoria",
+    titulo: TITULO_DO_DOCUMENTO.nota_promissoria,
+    aplicacao: "aplica",
+    situacao: faltam.length ? "faltam_dados" : "pronto",
+    motivo: faltam.length
+      ? "Complete os dados: título de crédito não sai com campo em branco."
+      : "Uma nota por parcela paga direto à loja.",
+    pendencias: faltam,
+  };
+}
+
 function contrato(r: RetratoDaOperacao): ItemDaPasta {
   const base = {
     documento: "contrato" as const,
@@ -131,7 +167,7 @@ export function manifestoDaPasta(r: RetratoDaOperacao): ManifestoDaPasta {
     venda
       ? anexo("laudo_vistoria")
       : item("laudo_vistoria", "nao_aplica", "Entrada por compra usa vistoria de entrada própria."),
-    venda ? anexo("termo_entrega") : item("termo_entrega", "nao_aplica", "Compra pela loja não tem entrega."),
+    venda ? termoDeEntrega(r) : item("termo_entrega", "nao_aplica", "Compra pela loja não tem entrega."),
     venda && b.troca
       ? anexo("termo_recebimento")
       : item(
@@ -141,20 +177,14 @@ export function manifestoDaPasta(r: RetratoDaOperacao): ManifestoDaPasta {
             ? "A loja recebe um veículo nesta operação."
             : "Venda sem troca: a loja não recebe veículo.",
         ),
-    item(
-      "recibo_quitacao",
-      r.valores.pagamentos_previstos_cents > 0 ? "aplica" : "nao_aplica",
-      r.valores.pagamentos_previstos_cents > 0
-        ? "Cada recebimento confirmado gera um recibo."
-        : "Sem pagamentos na operação.",
-    ),
-    item(
-      "nota_promissoria",
-      venda && b.parcelas_a_loja ? "aplica" : "nao_aplica",
-      venda && b.parcelas_a_loja
-        ? "Há pagamento futuro à loja."
-        : "Sem pagamento futuro à própria loja.",
-    ),
+    r.valores.pagamentos_previstos_cents > 0
+      ? {
+          ...anexo("recibo_quitacao"),
+          situacao: "aguarda_evento",
+          motivo: "Recibo emitido a cada recebimento confirmado; termo de quitação quando o saldo zerar.",
+        }
+      : item("recibo_quitacao", "nao_aplica", "Sem pagamentos na operação."),
+    notaPromissoria(r, venda && b.parcelas_a_loja),
     venda
       ? anexo("procuracao_condutor")
       : item("procuracao_condutor", "nao_aplica", "Não se aplica à compra pela loja."),

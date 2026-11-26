@@ -172,7 +172,7 @@ describe.each(CENARIOS)("aceite do contrato: cenário $id", (c) => {
 
     // 4b. Campos do ato saem preenchidos nos anexos.
     expect(texto).toContain("10.000 km");
-    expect(texto).toContain("chaves (2 unidades)");
+    expect(texto).toContain("Chaves entregues: 2");
     expect(texto).toContain("Lataria e pintura: sem avarias");
     expect(texto).toContain("CNH nº: 01234567890");
 

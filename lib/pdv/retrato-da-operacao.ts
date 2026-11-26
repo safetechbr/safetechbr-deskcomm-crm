@@ -18,6 +18,9 @@
  * português; quem mostra traduz.
  */
 import { PRAZO_DA_GARANTIA } from "./modelo-contrato";
+import { faltasDaVistoria, usaLaudoDeVistoria } from "./laudo-vistoria";
+import { faltasDaNota, temNotaPromissoria } from "./nota-promissoria";
+import { faltasDoTermoDeEntrega } from "./termo-entrega";
 import {
   pendenciasDaPessoaFiscal,
   pendenciasDoVeiculoFiscal,
@@ -45,13 +48,7 @@ export type LugarDaPendencia =
  * ("Comprador › Informe a profissão do cliente.").
  */
 export type SetorDoPdv =
-  | "Loja"
-  | "Comprador"
-  | "Veículo"
-  | "Troca"
-  | "Pagamento"
-  | "Entrega e transferência"
-  | "Contrato";
+  "Loja" | "Comprador" | "Veículo" | "Troca" | "Pagamento" | "Entrega e transferência" | "Contrato";
 
 export interface PendenciaDoDocumento {
   onde: LugarDaPendencia;
@@ -127,6 +124,18 @@ export interface RetratoDaOperacao {
   valores: ValoresDaOperacao;
   eventos: EventosDaOperacao;
   pendencias: PendenciaDoDocumento[];
+  /**
+   * O que falta no termo de entrega (venda). Fica fora de `pendencias`: o termo
+   * é preenchido no ato da entrega, que pode ser depois da assinatura, e não
+   * deve fazer a minuta do contrato.
+   */
+  termo_entrega?: PendenciaDoDocumento[];
+  /**
+   * O que impede emitir as notas promissórias. Presente só quando a venda tem
+   * promissória ou crediário. Fica fora de `pendencias`: a nota não faz a
+   * minuta do contrato.
+   */
+  nota_promissoria?: PendenciaDoDocumento[];
 }
 
 const vazio = (v: unknown) => v == null || String(v).trim() === "";
@@ -232,7 +241,9 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
       n.pagamentos.some(
         (p) =>
           p.valor_cents > 0 &&
-          [p.data_pagamento, p.primeiro_vencimento].some((d) => !!d && !!assinatura && d.slice(0, 10) > assinatura),
+          [p.data_pagamento, p.primeiro_vencimento].some(
+            (d) => !!d && !!assinatura && d.slice(0, 10) > assinatura,
+          ),
       ));
 
   const faltas: Falta[] = [];
@@ -326,7 +337,9 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
       email: "o e-mail do cliente",
       ...(comprador === "pessoa_fisica" ? { nascimento: "a data de nascimento do cliente" } : {}),
       // Anexo de indicação do condutor: sem CNH sai em branco (o condutor pode ser outro).
-      ...(venda && comprador === "pessoa_fisica" ? { cnh: "a CNH do cliente (indicação de condutor)" } : {}),
+      ...(venda && comprador === "pessoa_fisica"
+        ? { cnh: "a CNH do cliente (indicação de condutor)" }
+        : {}),
     },
     "aviso",
   );
@@ -466,7 +479,7 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
       });
     // Termos de entrega e de recebimento: km e chaves no ato (km cai na do cadastro).
     exigir(faltas, "contrato", contrato, { entrega_chaves: "o número de chaves entregues" });
-    if (vazio(contrato.entrega_km) && vazio(v.km))
+    if (vazio(contrato.entrega_km) && vazio(v.km) && vazio(contrato.vistoria?.km))
       exigir(faltas, "contrato", contrato, { entrega_km: "a quilometragem na entrega" });
     if (troca) {
       exigir(faltas, "contrato", contrato, {
@@ -477,21 +490,33 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
           recebimento_troca_km: "a quilometragem do veículo da troca no recebimento",
         });
     }
-    // Anexo do estado do veículo: conferido na assinatura.
+    // Anexo do estado do veículo: conferido na assinatura. Venda nova usa o laudo de vistoria.
     const estado = contrato.estado_veiculo ?? {};
-    for (const [k, rotulo] of [
-      ["lataria", "o estado da lataria e pintura"],
-      ["interior", "o estado do interior"],
-      ["pneus", "o estado dos pneus"],
-      ["itens", "os itens e acessórios do veículo"],
-    ] as const)
-      if (vazio(estado[k]))
+    if (venda && usaLaudoDeVistoria(contrato))
+      for (const f of faltasDaVistoria(contrato.vistoria ?? {}, {
+        temRepresentante: !vazio(contrato.representante_nome),
+        entregaKm: contrato.entrega_km ?? undefined,
+      }))
         faltas.push({
           onde: "contrato",
-          campo: `estado_veiculo.${k}`,
+          campo: f.campo,
           gravidade: "bloqueia",
-          mensagem: `Informe ${rotulo}.`,
+          mensagem: f.mensagem,
         });
+    else
+      for (const [k, rotulo] of [
+        ["lataria", "o estado da lataria e pintura"],
+        ["interior", "o estado do interior"],
+        ["pneus", "o estado dos pneus"],
+        ["itens", "os itens e acessórios do veículo"],
+      ] as const)
+        if (vazio(estado[k]))
+          faltas.push({
+            onde: "contrato",
+            campo: `estado_veiculo.${k}`,
+            gravidade: "bloqueia",
+            mensagem: `Informe ${rotulo}.`,
+          });
     // Termo de garantia: só existe com garantia contratual, e então nada sai em branco.
     const g = contrato.garantia_contratual;
     if (g) {
@@ -535,9 +560,13 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
         consulta_debitos_em: "a data da consulta de débitos no Detran",
         test_drive: "se o comprador fez o test-drive",
         entrega_hora: "o horário da entrega do veículo",
-        ...(troca ? { recebimento_troca_hora: "o horário do recebimento do veículo da troca" } : {}),
+        ...(troca
+          ? { recebimento_troca_hora: "o horário do recebimento do veículo da troca" }
+          : {}),
         // A cláusula 7.2 (fruição) só existe quando há saldo depois da assinatura.
-        ...(blocos.saldo_posterior ? { taxa_fruicao: "a taxa de fruição mensal (configuração da loja)" } : {}),
+        ...(blocos.saldo_posterior
+          ? { taxa_fruicao: "a taxa de fruição mensal (configuração da loja)" }
+          : {}),
       },
       "aviso",
     );
@@ -566,6 +595,25 @@ export function retratoDaOperacao(n: Negociacao): RetratoDaOperacao {
       quitacao: { situacao: "nao_rastreada" },
     },
     pendencias: faltas.map((f) => ({ ...f, setor: setorDaPendencia(f.onde, f.campo) })),
+    ...(venda
+      ? {
+          termo_entrega: faltasDoTermoDeEntrega(contrato?.termo_entrega ?? {}).map((f) => ({
+            onde: "contrato" as const,
+            campo: f.campo,
+            gravidade: "aviso" as const,
+            mensagem: f.mensagem,
+            setor: "Entrega e transferência" as const,
+          })),
+        }
+      : {}),
+    ...(temNotaPromissoria(n)
+      ? {
+          nota_promissoria: faltasDaNota(n).map((f) => {
+            const onde = f.campo.split(".")[0] as LugarDaPendencia;
+            return { onde, campo: f.campo, gravidade: "bloqueia" as const, mensagem: f.mensagem, setor: setorDaPendencia(onde, f.campo) };
+          }),
+        }
+      : {}),
   };
 }
 
@@ -597,21 +645,26 @@ export function faltandoParaConcluir(
   if (n.tipo === "venda")
     for (const p of retratoDaOperacao(n).pendencias)
       if (p.gravidade === "bloqueia")
-        add({ setor: p.setor, onde: p.onde, ...(p.campo ? { campo: p.campo } : {}), mensagem: p.mensagem });
+        add({
+          setor: p.setor,
+          onde: p.onde,
+          ...(p.campo ? { campo: p.campo } : {}),
+          mensagem: p.mensagem,
+        });
   if (n.tipo === "venda" && n.troca) {
     const troca = n.troca;
     const jaPendente = (onde: LugarDaPendencia, campo: string) =>
       out.some((f) => f.onde === onde && f.campo === campo);
     for (const f of pendenciasDaPessoaFiscal(pessoaFiscal(troca.remetente ?? n.cliente), true)) {
-      const campo = f.campo === "logradouro" ? "endereco" : f.campo === "municipio" ? "cidade" : f.campo;
+      const campo =
+        f.campo === "logradouro" ? "endereco" : f.campo === "municipio" ? "cidade" : f.campo;
       if (troca.remetente || !jaPendente("cliente", campo))
         add({ setor: "Troca", onde: "troca", campo: `remetente.${campo}`, mensagem: f.mensagem });
     }
     const veiculo = veiculoFiscalDaTroca(troca, n.contrato?.recebimento_troca_km);
     for (const f of pendenciasDoVeiculoFiscal(veiculo)) {
       if (f.campo === "km" && jaPendente("contrato", "recebimento_troca_km")) continue;
-      if (!jaPendente("troca", f.campo))
-        add({ setor: "Troca", onde: "troca", ...f });
+      if (!jaPendente("troca", f.campo)) add({ setor: "Troca", onde: "troca", ...f });
     }
   }
   for (const m of pendenciasDeCaixa) add({ ...lugarDaPendenciaDeCaixa(m), mensagem: m });
@@ -623,7 +676,13 @@ function lugarDaPendenciaDeCaixa(m: string): Omit<FaltaParaConcluir, "mensagem">
   if (/do cliente/.test(m))
     return { setor: "Comprador", onde: "cliente", campo: /nome/.test(m) ? "nome" : "documento" };
   if (/da troca/.test(m)) return { setor: "Troca", onde: "troca", campo: "modelo" };
-  if (/veículo/.test(m)) return { setor: "Veículo", onde: "veiculo", campo: /estoque/.test(m) ? "veiculo_id" : "modelo" };
-  if (/preço|valor da compra/.test(m)) return { setor: "Veículo", onde: "veiculo", campo: "valor_cents" };
+  if (/veículo/.test(m))
+    return {
+      setor: "Veículo",
+      onde: "veiculo",
+      campo: /estoque/.test(m) ? "veiculo_id" : "modelo",
+    };
+  if (/preço|valor da compra/.test(m))
+    return { setor: "Veículo", onde: "veiculo", campo: "valor_cents" };
   return { setor: "Pagamento", onde: "pagamentos" };
 }

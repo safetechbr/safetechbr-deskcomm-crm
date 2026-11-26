@@ -1,5 +1,7 @@
 import { CLAUSULAS_DO_MODELO } from "./clausulas-modelo";
 import { z } from "zod";
+import { vistoriaSchema } from "./laudo-vistoria";
+import { termoEntregaSchema } from "./termo-entrega";
 const campo = z.string().trim().max(300).default("");
 /** Prazo da garantia com número e unidade ("3 meses"): é o que permite imprimir a data final. */
 export const PRAZO_DA_GARANTIA = /(\d+)\s*(mes|meses|m[eê]s|dia|dias|ano|anos)/i;
@@ -59,6 +61,10 @@ export const contratoSchema = z.object({
     .object({ lataria: campo, interior: campo, pneus: campo, itens: campo, observacoes: campo })
     .partial()
     .optional(),
+  /** Laudo de vistoria (Anexo I da venda); substitui `estado_veiculo` nas vendas novas. */
+  vistoria: vistoriaSchema.optional(),
+  /** Termo de entrega e responsabilidade (Anexo II da venda), preenchido no ato da entrega. */
+  termo_entrega: termoEntregaSchema.optional(),
   /** Quem assina pela loja. */
   representante_nome: campo.optional(),
   representante_cpf: campo.optional(),

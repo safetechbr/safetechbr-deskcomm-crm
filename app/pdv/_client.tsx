@@ -1129,12 +1129,127 @@ function TelaDoContrato({
           ) : null}
         </div>
       </div>
+      {concluida ? <RecibosDaVenda negociacaoId={negociacaoId} botao={botao} /> : null}
+      {concluida ? <PromissoriasDaVenda negociacaoId={negociacaoId} botao={botao} /> : null}
       <iframe
         src={url}
         title={t("Contrato")}
         className="min-h-[60vh] w-full flex-1 rounded-xl border border-border/60 bg-white"
         data-testid="pdv-contrato-iframe"
       />
+    </div>
+  );
+}
+
+interface RecibosDaVendaResposta {
+  recibos: { numero: number; valor_cents: number; saldo_cents: number }[];
+  quitada: boolean;
+  pendente_cents: number;
+}
+
+/** Recibos emitidos a cada recebimento e, com o saldo zerado, o termo de quitação. */
+export function RecibosDaVenda({ negociacaoId, botao }: { negociacaoId: string; botao: string }) {
+  const t = useT();
+  const base = `/api/v1/pdv/negociacoes/${negociacaoId}`;
+  const [dados, setDados] = React.useState<RecibosDaVendaResposta | null>(null);
+  React.useEffect(() => {
+    let vivo = true;
+    apiClient
+      .get<{ data: RecibosDaVendaResposta }>(`${base}/recibos`)
+      .then((r) => vivo && setDados(r.data))
+      .catch(() => vivo && setDados(null));
+    return () => {
+      vivo = false;
+    };
+  }, [base]);
+  if (!dados || (!dados.recibos.length && !dados.quitada)) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2" data-testid="pdv-recibos">
+      <span className="text-xs text-muted-foreground">{t("Recibos")}</span>
+      {dados.recibos.map((r) => (
+        <a
+          key={r.numero}
+          href={`${base}/recibos/${r.numero}`}
+          target="_blank"
+          rel="noreferrer"
+          className={`${botao} text-accent hover:bg-accent-soft`}
+          title={`${t("Saldo após este recibo")}: ${formatarPreco(r.saldo_cents)}`}
+        >
+          <FileText className="size-3.5" aria-hidden />
+          {`Nº ${r.numero} · ${formatarPreco(r.valor_cents)}`}
+          <span className="text-muted-foreground">{`(${t("saldo")} ${formatarPreco(r.saldo_cents)})`}</span>
+        </a>
+      ))}
+      {dados.quitada ? (
+        <a
+          href={`${base}/quitacao`}
+          target="_blank"
+          rel="noreferrer"
+          className={`${botao} bg-accent text-accent-foreground hover:bg-accent/90`}
+          data-testid="pdv-quitacao"
+        >
+          <FileText className="size-3.5" aria-hidden />
+          {t("Termo de quitação")}
+        </a>
+      ) : (
+        <span className="text-xs text-muted-foreground">
+          {`${t("A receber")}: ${formatarPreco(dados.pendente_cents)}`}
+        </span>
+      )}
+    </div>
+  );
+}
+
+interface PromissoriasDaVendaResposta {
+  notas: { numero: number; total: number; valor_cents: number; vencimento: string | null; paga_em: string | null }[];
+  faltas: { campo: string; mensagem: string }[];
+}
+
+/** Notas promissórias da venda: uma por parcela paga direto à loja. */
+export function PromissoriasDaVenda({ negociacaoId, botao }: { negociacaoId: string; botao: string }) {
+  const t = useT();
+  const base = `/api/v1/pdv/negociacoes/${negociacaoId}/promissorias`;
+  const [dados, setDados] = React.useState<PromissoriasDaVendaResposta | null>(null);
+  React.useEffect(() => {
+    let vivo = true;
+    apiClient
+      .get<{ data: PromissoriasDaVendaResposta }>(base)
+      .then((r) => vivo && setDados(r.data))
+      .catch(() => vivo && setDados(null));
+    return () => {
+      vivo = false;
+    };
+  }, [base]);
+  if (!dados?.notas.length) return null;
+  if (dados.faltas.length)
+    return (
+      <p className="text-xs text-warning" data-testid="pdv-promissorias">
+        {`${t("Notas promissórias")}: ${dados.faltas.map((f) => t(f.mensagem)).join(" ")}`}
+      </p>
+    );
+  const venc = (iso: string | null) => (iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString("pt-BR") : "—");
+  return (
+    <div className="flex flex-wrap items-center gap-2" data-testid="pdv-promissorias">
+      <span className="text-xs text-muted-foreground">{t("Notas promissórias")}</span>
+      {dados.notas.map((n) => (
+        <a
+          key={n.numero}
+          href={`${base}/${n.numero}`}
+          target="_blank"
+          rel="noreferrer"
+          className={`${botao} text-accent hover:bg-accent-soft`}
+        >
+          <FileText className="size-3.5" aria-hidden />
+          {`${n.numero}/${n.total} · ${formatarPreco(n.valor_cents)} · ${venc(n.vencimento)}`}
+          {n.paga_em ? <span className="text-muted-foreground">{`(${t("quitada")})`}</span> : null}
+        </a>
+      ))}
+      {dados.notas.length > 1 ? (
+        <a href={`${base}/todas`} target="_blank" rel="noreferrer" className={`${botao} text-accent hover:bg-accent-soft`}>
+          <FileText className="size-3.5" aria-hidden />
+          {t("Imprimir todas")}
+        </a>
+      ) : null}
     </div>
   );
 }

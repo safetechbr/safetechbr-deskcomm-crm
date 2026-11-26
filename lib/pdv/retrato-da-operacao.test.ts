@@ -109,6 +109,8 @@ describe("manifesto da pasta", () => {
     expect(por.laudo_vistoria!.situacao).toBe("pronto");
     expect(m.anexos_pendentes).not.toContain("termo_entrega");
     expect(m.anexos_pendentes).not.toContain("termo_recebimento");
+    expect(por.recibo_quitacao!.situacao).toBe("aguarda_evento");
+    expect(m.anexos_pendentes).not.toContain("recibo_quitacao");
     expect(m.completa).toBe(false);
   });
 
